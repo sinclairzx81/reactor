@@ -306,28 +306,28 @@ namespace Reactor
         {
             lock(this.Lock)
             {
-            if (this.Ended) {
+                if (this.Ended) {
 
-                return;
-            }
+                    return;
+                }
 
-            this.Ended = true;
+                this.Ended = true;
 
-            if (!this.Writing)
-            {
-                WriteComplete();
+                if (!this.Writing)
+                {
+                    WriteComplete();
 
-                this.Release();
+                    this.Release();
 
-                return;
-            }
+                    return;
+                }
 
-            this.OnWriteComplete = () => {
+                this.OnWriteComplete = () => {
 
-                WriteComplete();
+                    WriteComplete();
 
-                this.Release();
-            };
+                    this.Release();
+                };
             }
         }
 
@@ -337,21 +337,20 @@ namespace Reactor
         {
             lock(this.Lock)
             {
-                    if (this.Buffer.Length == 0)
-                    {
-                        this.Writing = false;
+                if (this.Buffer.Length == 0)
+                {
+                    this.Writing = false;
 
-                        if (this.Ended) {
+                    if (this.Ended) {
 
-                            if (this.OnWriteComplete != null) {
+                        if (this.OnWriteComplete != null) {
 
-                                this.OnWriteComplete();
-                            }
+                            this.OnWriteComplete();
                         }
-
-                        return;
                     }
-           
+
+                    return;
+                }
 
                 try
                 {

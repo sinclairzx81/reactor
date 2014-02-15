@@ -12,11 +12,22 @@ namespace Reactor.Tests
 
         static void Main(string [] args) 
         {
+            Console.BufferHeight = 4000;
+
             Reactor.Loop.Start();
 
+            long count = 0;
 
-            Http.TestHttpChain();
+            var client = Reactor.Fusion.Socket.Create("192.168.1.8", 5000);
 
+            client.OnData += (data) =>
+            {
+                Console.WriteLine(count + ":" + data.Length);
+                count++;
+                
+            };
+
+            client.OnEnd += () => Console.WriteLine(count);
 
 
 

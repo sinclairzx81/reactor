@@ -365,6 +365,26 @@ namespace Reactor
             return Encoding.GetString(this.Stream.ToArray());
         }
 
+        public string ToString(string encoding)
+        {
+            encoding = encoding.ToLower();
+
+            switch(encoding)
+            {
+                case "ascii":   return Encoding.ASCII.GetString(this.Stream.ToArray());
+
+                case "utf8":    return Encoding.UTF8.GetString(this.Stream.ToArray());
+
+                case "utf7":    return Encoding.UTF7.GetString(this.Stream.ToArray());
+
+                case "utf32":   return Encoding.UTF32.GetString(this.Stream.ToArray());
+
+                case "unicode": return Encoding.Unicode.GetString(this.Stream.ToArray());
+
+                default: return Encoding.UTF8.GetString(this.Stream.ToArray());
+            }
+        }
+
         #endregion
 
         #region Statics

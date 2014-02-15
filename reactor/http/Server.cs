@@ -94,41 +94,36 @@ namespace Reactor.Http
 
         #region GetContext
 
-        private static object sync = new object();
-
         private void GetContext()
         {
-            Loop.Post(() =>
+            this.HttpListener.BeginGetContext((Result) =>
             {
-                this.HttpListener.BeginGetContext((Result) =>
+                try
                 {
+                    var listenerContext = this.HttpListener.EndGetContext(Result);
 
-                    try
+                    var context = new HttpContext(listenerContext);
+
+                    Loop.Post(() =>
                     {
-                        var listenerContext = this.HttpListener.EndGetContext(Result);
+                        this.OnContext(context);
 
-                        var context = new HttpContext(listenerContext);
-
-                        Loop.Post(() =>
-                        {
-                            this.OnContext(context);
-
-                            this.GetContext();
-                        });
-                    }
-                    catch (Exception exception)
+                        this.GetContext();
+                    });
+                }
+                catch (Exception exception)
+                {
+                    Loop.Post(() =>
                     {
-                        Loop.Post(() =>
+                        if (this.OnError != null)
                         {
-                            if (this.OnError != null)
-                            {
-                                this.OnError(exception);
-                            }
-                        });
-                    }
+                            this.OnError(exception);
+                        }
+                    });
+                }
 
-                }, null);
-            });
+            }, null);
+         
         }
 
         #endregion
