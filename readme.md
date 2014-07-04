@@ -227,7 +227,6 @@ Reactor.Tcp.Server.Create(socket => {
 	socket.OnData += data => {
 	
 		// data is of type Reactor.Buffer
-
 	};
 
     var buffer = Reactor.Buffer.Create();
@@ -242,7 +241,7 @@ Reactor.Tcp.Server.Create(socket => {
 
 }).Listen(5000);
 
-
+```
 
 <a name='streams' />
 ### streams
