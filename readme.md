@@ -73,6 +73,8 @@ class Program
 {
 	static void Main(string [] args)
 	{
+		Reactor.Loop.Start();
+
         Reactor.Http.Request.Create("http://google.com", (response) => {
 
             response.OnData += (data) => {
@@ -82,7 +84,7 @@ class Program
 
         }).End();
 
-		Reactor.Loop.Start();
+
 	}
 }
 ```
@@ -174,13 +176,15 @@ fashioned after javascript setTimeout() and setInterval() respectively.
 Use the Timeout class set a delay.
 
 ```csharp
+Reactor.Loop.Start();
+
 Reactor.Timeout.Create(() => {
 
 	Console.WriteLine("this code will be run in 1 second");
 
 }, 1000);
 
-Reactor.Loop.Start();
+
 ```
 
 <a name='timers_interval' />
@@ -315,13 +319,13 @@ Reactor provides a evented abstraction for the .net type System.IO.FileStream. T
 Creating a file readstream. (copy one file to another)
 
 ```csharp
+Reactor.Loop.Start();
+
 var readstream = Reactor.File.ReadStream.Create("input.txt");
 
 var writestream = Reactor.File.WriteStream.Create("output.txt");
 
 readstream.Pipe(writestream);
-
-Reactor.Loop.Start();
 ```
 
 <a name='files_writestream' />
@@ -330,13 +334,13 @@ Reactor.Loop.Start();
 Creating a file writestream. (copy one file to another)
 
 ```csharp
+Reactor.Loop.Start();
+
 var readstream = Reactor.File.ReadStream.Create("input.txt");
 
 var writestream = Reactor.File.WriteStream.Create("output.txt");
 
 readstream.Pipe(writestream);
-
-Reactor.Loop.Start();
 ```
 
 <a name='http' />
@@ -356,6 +360,8 @@ Users may need to set access rights for the current user with the following nets
 
 ```csharp
 
+Reactor.Loop.Start();
+
 Reactor.Http.Server.Create((context) => {
 
     context.Response.ContentType = "text/html";
@@ -365,8 +371,6 @@ Reactor.Http.Server.Create((context) => {
     context.Response.End();
 
 }).Listen(5000);
-
-Reactor.Loop.Start();
 ```
 
 <a name='http_server_request' />
@@ -376,13 +380,13 @@ Reactor provides a evented abstraction over the type System.Net.HttpListenerRequ
 a implementation of a readable stream.
 
 ```csharp
+Reactor.Loop.Start();
+
 Reactor.Http.Server.Create((context) => {
 
     context.Response.Pipe(context.Request);
 
 }).Listen(5000);
-
-Reactor.Loop.Start();
 ```
 
 <a name='http_server_response' />
@@ -392,6 +396,8 @@ Reactor provides a evented abstraction over the type System.Net.HttpListenerResp
 a implementation of a writeable stream.
 
 ```csharp
+Reactor.Loop.Start();
+
 Reactor.Http.Server.Create((context) => {
 
     context.Response.Write("hello world");
@@ -399,8 +405,6 @@ Reactor.Http.Server.Create((context) => {
     context.Response.End();     
 
 }).Listen(5000);
-
-Reactor.Loop.Start();
 ```
 
 <a name='http_request' />
@@ -413,15 +417,18 @@ request.
 Make a GET request.
 
 ```csharp
+
+Reactor.Loop.Start();
+
 var request = Reactor.Http.Request.Create("http://domain.com", (response) => {
 
 	response.OnData += (data) => Console.WriteLine(data.ToString(Encoding.UTF8));
 
+	response.OnEnd += () => Console.WriteLine("the response has ended");
+
 });
 
 request.End(); // signals to make the request.
-
-Reactor.Loop.Start();
 ```
 Make a POST request
 
