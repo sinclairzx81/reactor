@@ -19,7 +19,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET20</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
@@ -31,14 +31,60 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>
+    </AssemblyOriginatorKeyFile>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="async\Async.cs" />
+    <Compile Include="delegates\DynamicAction.cs" />
+    <Compile Include="gc\GC.cs" />
+    <Compile Include="interfaces\IDuplexable.cs" />
+    <Compile Include="net\AuthenticationSchemes.cs" />
+    <Compile Include="net\AuthenticationSchemeSelector.cs" />
+    <Compile Include="net\ChunkedInputStream.cs" />
+    <Compile Include="net\ChunkStream.cs" />
+    <Compile Include="net\Cookie.cs" />
+    <Compile Include="net\CookieCollection.cs" />
+    <Compile Include="net\CookieException.cs" />
+    <Compile Include="net\EndPointListener.cs" />
+    <Compile Include="net\EndPointManager.cs" />
+    <Compile Include="net\HttpBasicIdentity.cs" />
+    <Compile Include="net\HttpConnection.cs" />
+    <Compile Include="net\HttpListener.cs" />
+    <Compile Include="net\HttpListenerContext.cs" />
+    <Compile Include="net\HttpListenerException.cs" />
+    <Compile Include="net\HttpListenerPrefixCollection.cs" />
+    <Compile Include="net\HttpListenerRequest.cs" />
+    <Compile Include="net\HttpListenerResponse.cs" />
+    <Compile Include="net\HttpStatusCode.cs" />
+    <Compile Include="net\HttpStreamAsyncResult.cs" />
+    <Compile Include="net\HttpUtility.cs" />
+    <Compile Include="net\HttpVersion.cs" />
+    <Compile Include="net\ListenerAsyncResult.cs" />
+    <Compile Include="net\ListenerPrefix.cs" />
+    <Compile Include="net\NetworkCredential.cs" />
+    <Compile Include="net\RequestStream.cs" />
+    <Compile Include="net\ResponseStream.cs" />
+    <Compile Include="net\WebHeaderCollection.cs" />
     <Compile Include="buffer\Buffer.cs" />
-    <Compile Include="crypto\Transform.cs" />
+    <Compile Include="Loop.IO.cs" />
     <Compile Include="delegates\Action.cs" />
     <Compile Include="delegates\Func.cs" />
+    <Compile Include="http\ServerConnection.cs" />
+    <Compile Include="ip\Socket.cs" />
+    <Compile Include="process\Process.cs" />
+    <Compile Include="process\WriteStream.cs" />
+    <Compile Include="bridge\concurrent\ConcurrentQueue.cs" />
+    <Compile Include="settings\Settings.cs" />
+    <Compile Include="tls\Server.cs" />
+    <Compile Include="tls\Socket.cs" />
     <Compile Include="udp\Socket.cs" />
     <Compile Include="net\Dns.cs" />
     <Compile Include="file\ReadStream.cs" />
@@ -54,18 +100,17 @@
     <Compile Include="Loop.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Loop.Runtime.cs" />
-    <Compile Include="stream\ReadStream.cs" />
-    <Compile Include="stream\WriteStream.cs" />
     <Compile Include="tcp\Server.cs" />
     <Compile Include="tcp\Socket.cs" />
     <Compile Include="timer\Interval.cs" />
     <Compile Include="timer\Timeout.cs" />
-    <Compile Include="thread\Worker.cs" />
     <Compile Include="udp\Socket.Stun.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="process\ReadStream.cs" />
     <None Include="Reactor.cd" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

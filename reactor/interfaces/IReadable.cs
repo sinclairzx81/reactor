@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -36,12 +38,12 @@ namespace Reactor
 
         event Action            OnEnd;
 
-        event Action            OnClose;
-
         IReadable               Pipe(IWriteable writeable);
 
         void                    Pause();
 
         void                    Resume();
+
+        void                    Close();
     }
 }

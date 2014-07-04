@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -370,6 +372,7 @@ namespace Reactor.Udp
             }
 
             // Update Message Length. NOTE: 20 bytes header not included.
+
             msg[2] = (byte)((offset - 20) >> 8);
 
             msg[3] = (byte)((offset - 20) & 0xFF);
@@ -623,8 +626,8 @@ namespace Reactor.Udp
         /// </summary>
         /// <param name="Host">The IP address of the Stun Server.</param>
         /// <param name="Port">The port of the Stun Server.</param>
-        /// <param name="Callback">A callback with the Stun response.</param>
-        public void Stun(string Host, int Port, Action<StunResponse> Callback)
+        /// <param name="callback">A callback with the Stun response.</param>
+        public void Stun(string Host, int Port, Action<Exception, StunResponse> callback)
         {
             //---------------------------------------------------------------- 
             // save any events on this socket.
@@ -648,7 +651,15 @@ namespace Reactor.Udp
             // resolve stun endpoint.
             //----------------------------------------------------------------
 
-            Reactor.Net.Dns.GetHostAddresses(Host, (exception, addresses) => {
+            Reactor.Net.Dns.GetHostAddresses(Host, (exception0, addresses) => {
+
+                if (exception0 != null)
+                {
+                    callback(exception0, null);
+
+                    return;
+                }
+
 
                 var remoteEP     = new IPEndPoint(addresses[0], Port);
                 
@@ -660,15 +671,12 @@ namespace Reactor.Udp
                 {
                     if (test1response == null)
                     {
-                        Loop.Post(() => {
-
-                            foreach(var action in actions) {
+                        foreach(var action in actions) {
                                 
-                                this.OnMessage += action;
-                            }
+                            this.OnMessage += action;
+                        }
 
-                            Callback(new StunResponse(NatType.UdpBlocked, null));
-                        });
+                        callback(null, new StunResponse(NatType.UdpBlocked, null)); 
                     }
                     else
                     {
@@ -684,27 +692,22 @@ namespace Reactor.Udp
                             {
                                 if (test2response == null)
                                 {
-                                    Loop.Post(() => {
-
-                                        foreach(var action in actions) {
+                                    foreach(var action in actions) {
                                 
-                                            this.OnMessage += action;
-                                        }
+                                        this.OnMessage += action;
+                                    }
 
-                                        Callback(new StunResponse(NatType.SymmetricUdpFirewall, test1response.MappedAddress));
-                                    });
+                                    callback(null, new StunResponse(NatType.SymmetricUdpFirewall, test1response.MappedAddress));
+                       
                                 }
                                 else
                                 {
-                                    Loop.Post(() => {
-
-                                        foreach(var action in actions) {
+                                    foreach(var action in actions) {
                                 
-                                            this.OnMessage += action;
-                                        }
+                                        this.OnMessage += action;
+                                    }
 
-                                        Callback(new StunResponse(NatType.OpenInternet, test1response.MappedAddress));
-                                    });
+                                    callback(null, new StunResponse(NatType.OpenInternet, test1response.MappedAddress));
                                 }
                             });
                         }
@@ -720,15 +723,12 @@ namespace Reactor.Udp
                             {
                                 if (test2response != null)
                                 {
-                                    Loop.Post(() => {
-
-                                        foreach(var action in actions) {
+                                    foreach(var action in actions) {
                                 
-                                            this.OnMessage += action;
-                                        }
+                                        this.OnMessage += action;
+                                    }
 
-                                        Callback(new StunResponse(NatType.FullCone, test1response.MappedAddress));
-                                    });
+                                    callback(null, new StunResponse(NatType.FullCone, test1response.MappedAddress));
                                 }
                                 else
                                 {
@@ -741,15 +741,12 @@ namespace Reactor.Udp
                                     {
                                         if (test12response == null)
                                         {
-                                            Loop.Post(() => {
-
-                                                foreach(var action in actions) {
+                                            foreach(var action in actions) {
                                 
-                                                    this.OnMessage += action;
-                                                }
+                                                this.OnMessage += action;
+                                            }
 
-                                                Callback(new StunResponse(NatType.UdpBlocked, null));
-                                            });
+                                            callback(null, new StunResponse(NatType.UdpBlocked, null));
                                         }
                                         else
                                         {
@@ -763,27 +760,21 @@ namespace Reactor.Udp
                                             {
                                                 if (test3response == null)
                                                 {
-                                                    Loop.Post(() => {
-
-                                                        foreach(var action in actions) {
+                                                    foreach(var action in actions) {
                                 
-                                                            this.OnMessage += action;
-                                                        }
+                                                        this.OnMessage += action;
+                                                    }
 
-                                                        Callback(new StunResponse(NatType.PortRestrictedCone, test1response.MappedAddress));
-                                                    });
+                                                    callback(null, new StunResponse(NatType.PortRestrictedCone, test1response.MappedAddress));
                                                 }
                                                 else
                                                 {
-                                                    Loop.Post(() => {
-
-                                                        foreach(var action in actions) {
+                                                    foreach(var action in actions) {
                                 
-                                                            this.OnMessage += action;
-                                                        }
+                                                        this.OnMessage += action;
+                                                    }
 
-                                                        Callback(new StunResponse(NatType.RestrictedCone, test1response.MappedAddress));
-                                                    });
+                                                    callback(null, new StunResponse(NatType.RestrictedCone, test1response.MappedAddress));
                                                 }
                                             });
                                         }
@@ -796,17 +787,17 @@ namespace Reactor.Udp
             });
         }
 
-        private void StunRequest(EndPoint stunEndPoint, StunPacket packet, Action<StunPacket> Callback)
+        private void StunRequest(EndPoint stunEndPoint, StunPacket packet, Action<StunPacket> callback)
         {
             bool hasresponded = false;
 
-            Action<EndPoint, byte[]> onresponse = null;
+            Action<EndPoint, byte[]> action = null;
 
             //---------------------------------------
             // the stun response handler.
             //---------------------------------------
 
-            onresponse = new Action<EndPoint, byte[]>((endpoint, data) => {
+            action = new Action<EndPoint, byte[]>((endpoint, data) => {
 
                 //---------------------------------------------
                 // here, we try and catch any parse errors, which
@@ -820,11 +811,11 @@ namespace Reactor.Udp
 
                     response.Parse(data);
 
-                    this.OnMessage -= onresponse;
+                    this.OnMessage -= action;
 
                     hasresponded    = true;
 
-                    Callback(response);
+                    callback(response);
                 }
                 catch {
                     
@@ -834,13 +825,14 @@ namespace Reactor.Udp
             //---------------------------------------
             // setup timeout in case of no response.
             //---------------------------------------
+            
             Reactor.Timeout.Create(() => {
 
                 if (!hasresponded) {
 
-                    this.OnMessage -= onresponse;
+                    this.OnMessage -= action;
 
-                    Callback(null);
+                    callback(null);
                 }
 
             }, 2000);
@@ -849,7 +841,7 @@ namespace Reactor.Udp
             // set on response, make request.
             //---------------------------------------
 
-            this.OnMessage += onresponse;
+            this.OnMessage += action;
 
             this.Send(stunEndPoint, packet.ToByteData());
         }

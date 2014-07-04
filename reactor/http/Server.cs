@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -31,64 +33,68 @@ namespace Reactor.Http
 {
     public class Server
     {
-        private HttpListener        HttpListener           { get; set; }
+        private Reactor.Net.HttpListener httplistener;
 
-        private Action<HttpContext> OnContext              { get; set; }
+        public Action<HttpContext> OnContext { get; set; }
 
-        public  Action<Exception>   OnError                { get; set; }
+        public Action<Exception>   OnError   { get; set; }
+
+        public Server()
+        {
+            
+        }
 
         public Server(Action<HttpContext> OnContext)
         {
             this.OnContext = OnContext;
         }
 
-        public Server Listen(int Port)
+        public Server Listen(int port, Reactor.Action<Exception> callback)
         {
-            if (!System.Net.HttpListener.IsSupported)
-            {
-                System.Console.WriteLine("Windows XP SP2 or Server 2003 is required to use the HttpListener class.");
+            try {
 
-                return this;
-            }
+                this.httplistener = new Reactor.Net.HttpListener();
 
-            try
-            {
-                this.HttpListener = new System.Net.HttpListener();
+                this.httplistener.Prefixes.Add(string.Format("http://*:{0}/", port));
 
-                this.HttpListener.Prefixes.Add(string.Format("http://*:{0}/", Port));
-
-                this.HttpListener.Start();
-               
+                this.httplistener.Start();
+                
                 this.GetContext();
+
+                callback(null);
             }
-            catch(Exception exception)
+            catch(Exception exception) {
+
+                if(exception is HttpListenerException) {
+
+                    callback(exception);
+                }
+                else {
+
+                    callback(exception);
+                }
+            }
+
+            return this;
+        }
+
+        public Server Listen(int port)
+        {
+            return this.Listen(port, (exception) => {
+
+                if (this.OnError != null) {
+
+                    this.OnError(exception);
+                }
+            });
+        }
+
+        public Server Stop()
+        {
+            if (this.httplistener != null)
             {
-                if(exception is HttpListenerException)
-                {
-                    if(exception.Message.ToLower() == "access is denied")
-                    {
-                        string username = System.Security.Principal.WindowsIdentity.GetCurrent().Name;
-
-                        string message  = string.Format("Access is denied. Run \"netsh http add urlacl url=http://127.0.0.1:{0}/ user={1}\" to grant access to this user.", Port, username);
-                        
-                        if(this.OnError != null) {
-
-                            Loop.Post(() => {
-
-                                this.OnError(new HttpListenerException(0, message));
-                            });
-                        }
-                    }
-                }
-                else
-                {
-                    if(this.OnError != null)
-                    {
-                        this.OnError(exception);
-                    }
-                }
+                this.httplistener.Stop();
             }
-
             return this;
         }
 
@@ -96,39 +102,35 @@ namespace Reactor.Http
 
         private void GetContext()
         {
-            this.HttpListener.BeginGetContext((Result) =>
+            IO.GetContext(this.httplistener, (exception, context) =>
             {
-                try
+                if(exception != null)
                 {
-                    var listenerContext = this.HttpListener.EndGetContext(Result);
-
-                    var context = new HttpContext(listenerContext);
-
-                    Loop.Post(() =>
+                    if(this.OnError != null)
                     {
-                        this.OnContext(context);
+                        this.OnError(exception);
+                    }
 
-                        this.GetContext();
-                    });
-                }
-                catch (Exception exception)
-                {
-                    Loop.Post(() =>
-                    {
-                        if (this.OnError != null)
-                        {
-                            this.OnError(exception);
-                        }
-                    });
+                    return;
                 }
 
-            }, null);
-         
+                if(this.OnContext != null)
+                {
+                    this.OnContext(new HttpContext(context));   
+                }
+
+                this.GetContext();
+            });
         }
 
         #endregion
 
         #region Statics
+
+        public static Server Create()
+        {
+            return new Server();
+        }
 
         public static Server Create(Action<HttpContext> OnContext)
         {

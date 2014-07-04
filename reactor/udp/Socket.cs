@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -25,7 +27,6 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 
@@ -36,7 +37,7 @@ namespace Reactor.Udp
     /// </summary>
     public partial class Socket
     {
-        private System.Net.Sockets.Socket             UdpSocket    { get; set; }
+        private System.Net.Sockets.Socket             socket;
 
         public  event Action<EndPoint, byte []>       OnMessage;
 
@@ -44,11 +45,7 @@ namespace Reactor.Udp
 
         public Socket()
         {
-            this.UdpSocket                   = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-
-            this.UdpSocket.SendBufferSize    = ushort.MaxValue;
-
-            this.UdpSocket.ReceiveBufferSize = ushort.MaxValue;
+            this.socket = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         }
 
         #region Methods
@@ -62,7 +59,7 @@ namespace Reactor.Udp
         /// <param name="port">The port to bind to.</param>
         public void Bind(IPAddress address, int port)
         {
-            this.UdpSocket.Bind(new IPEndPoint(address, port));
+            this.socket.Bind(new IPEndPoint(address, port));
 
             this.ReceiveFrom();
         }
@@ -87,7 +84,7 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.AddressFamily;
+                return this.socket.AddressFamily;
             }
         }
 
@@ -95,7 +92,7 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.Available;
+                return this.socket.Available;
             }
         }
 
@@ -103,11 +100,11 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.Blocking;
+                return this.socket.Blocking;
             }
             set
             {
-                this.UdpSocket.Blocking = value;
+                this.socket.Blocking = value;
             }
         }
 
@@ -115,7 +112,7 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.Connected;
+                return this.socket.Connected;
             }
         }
 
@@ -123,11 +120,11 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.DontFragment;
+                return this.socket.DontFragment;
             }
             set
             {
-                this.UdpSocket.DontFragment = value;
+                this.socket.DontFragment = value;
             }
         }
 
@@ -135,11 +132,11 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.EnableBroadcast;
+                return this.socket.EnableBroadcast;
             }
             set
             {
-                this.UdpSocket.EnableBroadcast = value;
+                this.socket.EnableBroadcast = value;
             }
         }
 
@@ -147,11 +144,11 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.ExclusiveAddressUse;
+                return this.socket.ExclusiveAddressUse;
             }
             set
             {
-                this.UdpSocket.ExclusiveAddressUse = value;
+                this.socket.ExclusiveAddressUse = value;
             }
         }
 
@@ -159,7 +156,7 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.Handle;
+                return this.socket.Handle;
             }
         }
 
@@ -167,7 +164,7 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.IsBound;
+                return this.socket.IsBound;
             }
         }
 
@@ -175,11 +172,11 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.LingerState;
+                return this.socket.LingerState;
             }
             set
             {
-                this.UdpSocket.LingerState = value;
+                this.socket.LingerState = value;
             }
         }
 
@@ -187,7 +184,7 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.LocalEndPoint;
+                return this.socket.LocalEndPoint;
             }
         }
 
@@ -195,11 +192,11 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.MulticastLoopback;
+                return this.socket.MulticastLoopback;
             }
             set
             {
-                this.UdpSocket.MulticastLoopback = value;
+                this.socket.MulticastLoopback = value;
             }
         }
 
@@ -207,11 +204,11 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.NoDelay;
+                return this.socket.NoDelay;
             }
             set
             {
-                this.UdpSocket.NoDelay = value;
+                this.socket.NoDelay = value;
             }
         }
 
@@ -227,7 +224,7 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.ProtocolType;
+                return this.socket.ProtocolType;
             }
         }
 
@@ -235,11 +232,11 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.ReceiveBufferSize;
+                return this.socket.ReceiveBufferSize;
             }
             set
             {
-                this.UdpSocket.ReceiveBufferSize = value;
+                this.socket.ReceiveBufferSize = value;
             }
         }
 
@@ -247,11 +244,11 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.ReceiveTimeout;
+                return this.socket.ReceiveTimeout;
             }
             set
             {
-                this.UdpSocket.ReceiveTimeout = value;
+                this.socket.ReceiveTimeout = value;
             }
         }
 
@@ -259,7 +256,7 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.RemoteEndPoint;
+                return this.socket.RemoteEndPoint;
             }
         }
 
@@ -267,11 +264,11 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.SendBufferSize;
+                return this.socket.SendBufferSize;
             }
             set
             {
-                this.UdpSocket.SendBufferSize = value;
+                this.socket.SendBufferSize = value;
             }
         }
 
@@ -279,11 +276,11 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.SendTimeout;
+                return this.socket.SendTimeout;
             }
             set
             {
-                this.UdpSocket.SendTimeout = value;
+                this.socket.SendTimeout = value;
             }
         }
 
@@ -291,7 +288,7 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.SocketType;
+                return this.socket.SocketType;
             }
         }
 
@@ -307,11 +304,11 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.Ttl;
+                return this.socket.Ttl;
             }
             set
             {
-                this.UdpSocket.Ttl = value;
+                this.socket.Ttl = value;
             }
         }
 
@@ -319,12 +316,32 @@ namespace Reactor.Udp
         {
             get
             {
-                return this.UdpSocket.Blocking;
+                return this.socket.Blocking;
             }
             set
             {
-                this.UdpSocket.Blocking = value;
+                this.socket.Blocking = value;
             }
+        }
+        
+        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, bool optionValue)
+        {
+            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
+        }
+        
+        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, byte[] optionValue)
+        {
+            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
+        }
+        
+        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, int optionValue)
+        {
+            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
+        }
+
+        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, object optionValue)
+        {
+            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
         }
 
         #endregion
@@ -348,68 +365,41 @@ namespace Reactor.Udp
 
         public void Send(EndPoint endpoint, byte [] data, int index, int count)
         {
-            this.UdpSocket.SendTo(data, index, count, SocketFlags.None, endpoint);
+            this.socket.SendTo(data, index, count, SocketFlags.None, endpoint);
         }
 
         #endregion
 
         #region ReceiveFrom
 
+        private byte[] receive_buffer = new byte[4096];
+
         private void ReceiveFrom()
         {
-            EndPoint remoteEP = new IPEndPoint(IPAddress.Any, 0);
-
-            try
+            IO.ReceiveFrom(this.socket, receive_buffer, (exception, remoteEP, read) =>
             {
-                var recv_buffer = new byte[this.UdpSocket.ReceiveBufferSize];
-
-                this.UdpSocket.BeginReceiveFrom(recv_buffer, 0, recv_buffer.Length, 0, ref remoteEP, (Result) =>
+                if(exception != null)
                 {
-                    try {
-
-                        int read = this.UdpSocket.EndReceiveFrom(Result, ref remoteEP);
-                        
-                        if (this.OnMessage != null) {
-
-                            byte[] buffer = new byte[read];
-
-                            System.Buffer.BlockCopy(recv_buffer, 0, buffer, 0, read);
-                                
-                            Loop.Post(() => {
-
-                                this.OnMessage(remoteEP, buffer); 
-                            });
-
-                            this.ReceiveFrom();
-                        }
-                    }
-                    catch (Exception exception) {
-
-                        Loop.Post(() => {
-
-                            this.ReceiveFrom();
-
-                            if (this.OnError != null)
-                            {
-                                this.OnError(exception);
-                            }
-                        });
-                    }
-                    
-                }, null);
-            }
-            catch (Exception exception) {
-
-                Loop.Post(() => {
-
-                    this.ReceiveFrom();
-
-                    if (this.OnError != null)
+                    if(this.OnError != null)
                     {
                         this.OnError(exception);
                     }
-                });
-            }
+
+                    return;
+                }
+
+                if (this.OnMessage != null)
+                {
+                    byte[] buffer = new byte[read];
+
+                    System.Buffer.BlockCopy(receive_buffer, 0, buffer, 0, read);
+                    
+                    this.OnMessage(remoteEP, buffer);
+                }
+
+                this.ReceiveFrom();
+
+            });
         }
 
         #endregion

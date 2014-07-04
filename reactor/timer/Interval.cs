@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -34,19 +36,19 @@ namespace Reactor
     /// </summary>
     public class Interval
     {
-        private Timer Timer  { get; set; }
+        private Timer timer;
 
         public Interval(Action callback, double interval)
         {
-            this.Timer          = new Timer();
+            this.timer          = new Timer();
 
-            this.Timer.Interval = interval;
+            this.timer.Interval = interval;
 
-            this.Timer.Enabled  = false;
+            this.timer.Enabled  = false;
 
-            this.Timer.Start();
+            this.timer.Start();
 
-            this.Timer.Elapsed += (sender, args) =>
+            this.timer.Elapsed += (sender, args) =>
             {
                 Loop.Post(() =>
                 {
@@ -60,11 +62,11 @@ namespace Reactor
         /// </summary>
         public void Clear()
         {
-            this.Timer.Enabled = false;
+            this.timer.Enabled = false;
 
-            this.Timer.Stop();
+            this.timer.Stop();
 
-            this.Timer.Dispose();
+            this.timer.Dispose();
         }
 
         #region Statics

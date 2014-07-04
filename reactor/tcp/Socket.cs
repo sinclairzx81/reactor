@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -25,104 +27,231 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
 
 namespace Reactor.Tcp
 {
     /// <summary>
     /// A Reactor TcpSocket.
     /// </summary>
-    public class Socket: IReadable, IWriteable
+    public class Socket: IDuplexable
     {
-        private System.Net.Sockets.Socket TcpSocket { get; set; }
-        
-        private ReadStream                 ReadStream             { get; set; }
+        #region Command
 
-        private WriteStream                WriteStream            { get; set; }
+        internal class Command
+        {
+            public Action<Exception> Callback { get; set; }
+        }
 
-        private NetworkStream              NetworkStream          { get; set; }
+        internal class WriteCommand : Command
+        {
+            public Buffer Buffer { get; set; }
 
-        public  IPAddress                  IPAddress              { get; set; }
+            public WriteCommand(Buffer buffer, Action<Exception> callback)
+            {
+                this.Buffer = buffer;
 
-        public  int                        Port                   { get; set; }
+                this.Callback = callback;
+            }
+        }
+
+        internal class EndCommand : Command
+        {
+            public EndCommand(Action<Exception> callback)
+            {
+                this.Callback = callback;
+            }
+        }
+
+        #endregion
+
+        private System.Net.Sockets.Socket  socket;
+
+        private NetworkStream              stream;
 
         public event Action                OnConnect;
 
-        public event Action<Exception>     OnSocketError;
+        //---------------------------------
+        // readable
+        //---------------------------------
+
+        private bool                       reading;
+
+        private bool                       paused;
+
+        private long                       received;
+
+        //---------------------------------
+        // writeable
+        //---------------------------------
+
+        private Queue<Command>             commands;
+
+        private bool                       writing;
+
+        private bool                       ended;
+
+        //---------------------------------
+        // shared
+        //---------------------------------
+
+        private bool                       closed;
 
         #region Constructors
 
-        internal Socket(System.Net.Sockets.Socket Socket) 
+        internal Socket(System.Net.Sockets.Socket socket) 
         {
-            this.TcpSocket               = Socket;
+            this.socket  = socket;
 
-            this.NetworkStream           = new NetworkStream(this.TcpSocket);
+            this.stream  = new NetworkStream(this.socket);
 
-            this.ReadStream              = new ReadStream(this.NetworkStream);
+            //---------------------
+            // readable
+            //---------------------
+            this.received = 0;
+            
+            this.closed   = false;
 
-            this.ReadStream.OnData      += this.ReadStreamOnData;
+            this.paused   = true;
 
-            this.ReadStream.OnError     += this.ReadStreamOnError;
+            //---------------------
+            // writeable
+            //---------------------
+            this.commands = new Queue<Command>();
 
-            this.ReadStream.OnEnd       += this.ReadStreamOnEnd;
+            this.closed   = false;
 
-            this.ReadStream.OnClose     += this.ReadStreamOnClose;
+            this.writing  = false;
 
-            this.WriteStream             = new WriteStream(this.NetworkStream);
-
-            this.WriteStream.OnError    += this.WriteStreamOnError;
+            this.ended    = false;
         }
         
-        public Socket(string Hostname, int Port) {
+        public Socket(string hostname, int port) 
+        {
+            //---------------------
+            // readable
+            //---------------------
+            this.received = 0;
+            
+            this.closed   = false;
 
-            Reactor.Net.Dns.GetHostAddresses(Hostname, (exception, addresses) => {
+            this.paused   = true;
 
-                if(exception != null) {
+            //---------------------
+            // writeable
+            //---------------------
 
-                    if(this.OnError != null) {
+            this.commands = new Queue<Command>();
 
-                        this.OnError(exception);
+            this.closed   = false;
 
+            this.writing  = false;
+
+            this.ended    = false;
+
+            IO.Resolve(this.socket, hostname, (exception0, addresses) =>
+            {
+                if (exception0 != null)
+                {
+                    if (this.OnError != null)
+                    {
+                        this.OnError(exception0);
                     }
 
                     return;
                 }
 
-                if(addresses.Length == 0) {
-
-                    if (this.OnError != null) {
-
-                        Loop.Post(() => {
-
-                            this.OnError(new Exception("Unable to resolve hostname."));
-                        });
+                if(addresses.Length == 0)
+                {
+                    if (this.OnError != null)
+                    {
+                        this.OnError(new Exception(string.Format("Unable to resolve hostname {0}", hostname)));
                     }
 
-                    return;
-
+                    return;                    
                 }
 
-                this.IPAddress = addresses[0];
+                this.socket = new System.Net.Sockets.Socket(addresses[0].AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-                this.Port      = Port;
+                IO.Connect(this.socket, addresses[0], port, (exception1) =>
+                {
+                    if (exception1 != null)
+                    {
+                        if (this.OnError != null)
+                        {
+                            this.OnError(exception1);
+                        }
 
-                this.TcpSocket = new System.Net.Sockets.Socket(IPAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                        return;
+                    }
 
-                this.Connect();
+                    this.stream = new NetworkStream(this.socket);
+
+                    if(this.OnConnect != null)
+                    {
+                        this.OnConnect();
+                    }
+
+                    if (this.ondata != null)
+                    {
+                        this.Resume();
+                    }
+                });
             });
+
         }
 
-        public Socket(IPAddress IPAddress, int Port)
+        public Socket(IPAddress address, int port)
         {
-            this.TcpSocket    = new System.Net.Sockets.Socket(IPAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            this.socket = new System.Net.Sockets.Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-            this.IPAddress    = IPAddress;
+            //---------------------
+            // readable
+            //---------------------
+            this.received = 0;
+            
+            this.closed   = false;
 
-            this.Port         = Port;
-                
-            this.Connect();
+            this.paused   = true;
+
+            //---------------------
+            // writeable
+            //---------------------
+
+            this.commands = new Queue<Command>();
+
+            this.closed   = false;
+
+            this.writing  = false;
+
+            this.ended    = false;
+
+            IO.Connect(this.socket, address, port, (exception) =>
+            {
+                if(exception != null)
+                {
+                    if(this.OnError != null)
+                    {
+                        this.OnError(exception);
+                    }
+
+                    return;
+                }
+
+                this.stream = new NetworkStream(this.socket);
+
+                if (this.OnConnect != null)
+                {
+                    this.OnConnect();
+                }
+
+                if (this.ondata != null)
+                {
+                    this.Resume();
+                }
+            });
         }
 
         #endregion
@@ -133,7 +262,7 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.AddressFamily;
+                return this.socket.AddressFamily;
             }
         }
 
@@ -141,7 +270,7 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.Available;
+                return this.socket.Available;
             }
         }
         
@@ -149,11 +278,11 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.Blocking;
+                return this.socket.Blocking;
             }
             set
             {
-                this.TcpSocket.Blocking = value;
+                this.socket.Blocking = value;
             }
         }
 
@@ -161,7 +290,7 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.Connected;
+                return this.socket.Connected;
             }
         }
 
@@ -169,11 +298,11 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.DontFragment;
+                return this.socket.DontFragment;
             }
             set
             {
-                this.TcpSocket.DontFragment = value;
+                this.socket.DontFragment = value;
             }
         }
 
@@ -181,11 +310,11 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.EnableBroadcast;
+                return this.socket.EnableBroadcast;
             }
             set
             {
-                this.TcpSocket.EnableBroadcast = value;
+                this.socket.EnableBroadcast = value;
             }
         }
 
@@ -193,11 +322,11 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.ExclusiveAddressUse;
+                return this.socket.ExclusiveAddressUse;
             }
             set
             {
-                this.TcpSocket.ExclusiveAddressUse = value;
+                this.socket.ExclusiveAddressUse = value;
             }
         }
 
@@ -205,7 +334,7 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.Handle;
+                return this.socket.Handle;
             }
         }
 
@@ -213,7 +342,7 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.IsBound;
+                return this.socket.IsBound;
             }
         }
 
@@ -221,11 +350,11 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.LingerState;
+                return this.socket.LingerState;
             }
             set
             {
-                this.TcpSocket.LingerState = value;
+                this.socket.LingerState = value;
             }
         }
 
@@ -233,7 +362,7 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.LocalEndPoint;
+                return this.socket.LocalEndPoint;
             }
         }
 
@@ -241,11 +370,11 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.MulticastLoopback;
+                return this.socket.MulticastLoopback;
             }
             set
             {
-                this.TcpSocket.MulticastLoopback = value;
+                this.socket.MulticastLoopback = value;
             }
         }
 
@@ -253,11 +382,11 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.NoDelay;
+                return this.socket.NoDelay;
             }
             set
             {
-                this.TcpSocket.NoDelay = value;
+                this.socket.NoDelay = value;
             }
         }
 
@@ -273,7 +402,7 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.ProtocolType;
+                return this.socket.ProtocolType;
             }
         }
 
@@ -281,11 +410,11 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.ReceiveBufferSize;
+                return this.socket.ReceiveBufferSize;
             }
             set
             {
-                this.TcpSocket.ReceiveBufferSize = value;
+                this.socket.ReceiveBufferSize = value;
             }
         }
 
@@ -293,11 +422,11 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.ReceiveTimeout;
+                return this.socket.ReceiveTimeout;
             }
             set
             {
-                this.TcpSocket.ReceiveTimeout = value;
+                this.socket.ReceiveTimeout = value;
             }
         }
 
@@ -305,7 +434,7 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.RemoteEndPoint;
+                return this.socket.RemoteEndPoint;
             }
         }
 
@@ -313,11 +442,11 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.SendBufferSize;
+                return this.socket.SendBufferSize;
             }
             set
             {
-                this.TcpSocket.SendBufferSize = value;
+                this.socket.SendBufferSize = value;
             }
         }
 
@@ -325,11 +454,11 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.SendTimeout;
+                return this.socket.SendTimeout;
             }
             set
             {
-                this.TcpSocket.SendTimeout = value;
+                this.socket.SendTimeout = value;
             }
         }
 
@@ -337,7 +466,7 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.SocketType;
+                return this.socket.SocketType;
             }
         }
 
@@ -349,16 +478,15 @@ namespace Reactor.Tcp
             }
         }
 
-
         public short Ttl
         {
             get
             {
-                return this.TcpSocket.Ttl;
+                return this.socket.Ttl;
             }
             set
             {
-                this.TcpSocket.Ttl = value;
+                this.socket.Ttl = value;
             }
         }
 
@@ -366,291 +494,532 @@ namespace Reactor.Tcp
         {
             get
             {
-                return this.TcpSocket.Blocking;
+                return this.socket.Blocking;
             }
             set
             {
-                this.TcpSocket.Blocking = value;
+                this.socket.Blocking = value;
             }
+        }
+
+        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, bool optionValue)
+        {
+            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
+        }
+
+        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, byte[] optionValue)
+        {
+            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
+        }
+
+        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, int optionValue)
+        {
+            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
+        }
+
+        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, object optionValue)
+        {
+            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
         }
 
         #endregion
 
-        #region IReadable
+        #region IReadStream
 
-        public event Action<Exception> OnError;
+        public event  Action<Exception> OnError;
 
-        public event Action<Buffer>    OnData;
+        private event Action<Buffer> ondata;
 
-        public event Action            OnEnd;
-
-        public event Action            OnClose;
-
-        public IReadable Pipe(IWriteable writestream)
+        public event  Action<Buffer> OnData
         {
-            return this.ReadStream.Pipe(writestream);
+            add
+            {
+                this.ondata += value;
+
+                this.Resume();
+            }
+            remove
+            {
+                this.ondata -= value;
+            }
+        }
+
+        public event  Action        OnEnd;
+
+        public IReadable Pipe(IWriteable writeable)
+        {
+            this.OnData += data =>
+            {
+                this.Pause();
+
+                writeable.Write(data, (exception0) =>
+                {
+                    if (exception0 != null)
+                    {
+                        if (this.OnError != null)
+                        {
+                            this.OnError(exception0);
+                        }
+
+                        return;
+                    }
+
+                    writeable.Flush((exception1) =>
+                    {
+                        if (exception1 != null)
+                        {
+                            if (this.OnError != null)
+                            {
+                                this.OnError(exception1);
+                            }
+
+                            return;
+                        }
+
+                        this.Resume();
+                    });
+                });
+            };
+
+            this.OnEnd += () =>
+            {
+                writeable.End();
+            };
+
+            if (writeable is IReadable)
+            {
+                return writeable as IReadable;
+            }
+
+            return null;
         }
 
         public void Pause()
         {
-            this.ReadStream.Pause();
+            this.paused = true;
         }
 
         public void Resume()
         {
-            this.ReadStream.Resume();
+            this.paused = false;
+
+            if (this.Connected) // special case
+            {
+                if (!this.reading)
+                {
+                    if (!this.closed)
+                    {
+                        this.Read();
+                    }
+                }
+            }
+        }
+
+        public void Close()
+        {
+            this.closed = true;
         }
 
         #endregion
 
         #region IWriteable
 
-        public void Write(byte[] data)
+        public void Write (Buffer buffer, Action<Exception> callback)
         {
-            this.WriteStream.Write(data);
+            this.commands.Enqueue(new WriteCommand(buffer, callback));
+
+            if (!this.writing)
+            {
+                this.writing = true;
+
+                if (!this.ended)
+                {
+                    this.Write();
+                }
+            }
         }
 
-        public void Write(Buffer buffer)
+        public void Write (Buffer buffer)
         {
-            this.WriteStream.Write(buffer);
+            this.Write(buffer, exception => { });
         }
 
-        public void Write(string data)
+        public void Flush(Action<Exception> callback)
         {
-            this.WriteStream.Write(data);
-        }
-        
-        public void Write(string format, object arg0)
-        {
-            this.WriteStream.Write(format, arg0);
+            callback(null);
         }
 
-        public void Write(string format, params object[] args)
+        public void Flush()
         {
-            this.WriteStream.Write(format, args);
+            this.Flush(exception => { });
         }
 
-        public void Write(string format, object arg0, object arg1)
+        public void End   (Action<Exception> callback)
         {
-            this.WriteStream.Write(format, arg0, arg1);
+            this.commands.Enqueue(new EndCommand(callback));
+
+            if (!this.writing)
+            {
+                this.writing = true;
+
+                if (!this.ended)
+                {
+                    this.Write();
+                }
+            }
         }
 
-        public void Write(string format, object arg0, object arg1, object arg2)
+        public void End   ()
         {
-            this.WriteStream.Write(format, arg0, arg1, arg2);
+            this.End(exception => { });
         }
 
-        public void Write(byte data)
+        #endregion
+
+        private byte[] readbuffer = new byte[Reactor.Settings.DefaultReadBufferSize];
+
+        private void Read  ()
+          {
+            this.reading = true;
+
+            IO.Read(this.stream, this.readbuffer, (exception, read) =>
+            {
+                //----------------------------------------------
+                // exception
+                //----------------------------------------------
+
+                if (exception != null)
+                {
+                    if (this.OnError != null)
+                    {
+                        this.OnError(exception);
+                    }
+
+                    if (this.OnEnd != null)
+                    {
+                        this.OnEnd();
+                    }
+
+                    try
+                    {
+                        this.stream.Dispose();
+                    }
+                    catch (Exception _exception)
+                    {
+                        if (this.OnError != null)
+                        {
+                            this.OnError(_exception);
+                        }
+                    }
+
+                    this.reading = false;
+
+                    this.closed = true;
+
+                    return;
+                }
+
+                //----------------------------------------------
+                // end of stream
+                //----------------------------------------------
+                if (read == 0)
+                {
+                    if (this.OnEnd != null)
+                    {
+                        this.OnEnd();
+                    }
+
+                    try
+                    {
+                        this.stream.Dispose();
+                    }
+                    catch (Exception _exception)
+                    {
+                        if (this.OnError != null)
+                        {
+                            this.OnError(_exception);
+                        }
+                    }
+
+                    this.reading = false;
+
+                    this.closed = true;
+
+                    return;
+                }
+
+                //----------------------------------------------
+                // increment received.
+                //----------------------------------------------
+
+                this.received = this.received + read;
+
+                //----------------------------------------------
+                // standard
+                //----------------------------------------------
+                if (this.ondata != null)
+                {
+                    this.ondata(new Buffer(this.readbuffer, 0, read));
+                }
+
+                //----------------------------------------------
+                // continue
+                //----------------------------------------------
+
+                if (!this.paused)
+                {
+                    this.Read();
+                }
+                else
+                {
+                    this.reading = false;
+                }
+            });            
+        }
+
+        private void Write ()
         {
-            this.WriteStream.Write(data);
+            var command  = this.commands.Dequeue();
+
+            //----------------------------------
+            // command: write
+            //----------------------------------
+
+            if (command is WriteCommand)
+            {
+                var write = command as WriteCommand;
+                
+                IO.Write(this.stream, write.Buffer.ToArray(), exception =>
+                {
+                    write.Callback(exception);
+
+                    if (exception != null)
+                    {
+                        if (this.OnError != null)
+                        {
+                            this.OnError(exception);
+                        }
+
+                        this.ended = true;
+
+                        return;
+                    }
+
+                    if (this.commands.Count > 0)
+                    {
+                        this.Write();
+
+                        return;
+                    }
+
+                    this.writing = false;
+                });
+            }
+
+            //----------------------------------
+            // command: end
+            //----------------------------------
+
+            if (command is EndCommand)
+            {
+                var end = command as EndCommand;
+
+                this.writing = false;
+
+                this.ended   = true;
+
+                try
+                {
+                    this.socket.Shutdown(SocketShutdown.Send);
+                }
+                catch(Exception exception)
+                {
+                    if (this.OnError != null)
+                    {
+                        this.OnError(exception);
+                    }
+
+                    if (this.OnEnd != null)
+                    {
+                        this.OnEnd();
+                    }
+
+                    end.Callback(exception);
+                }
+
+                IO.Disconnect(this.socket, false, exception0 =>
+                {
+                    if (exception0 != null)
+                    {
+                        if (this.OnError != null)
+                        {
+                            this.OnError(exception0);
+                        }
+
+                        if (this.OnEnd != null)
+                        {
+                            this.OnEnd();
+                        }
+
+                        end.Callback(exception0);
+
+                        return;
+                    }
+
+                    try
+                    {
+                        this.stream.Dispose();
+
+                        end.Callback(null);
+                    }
+                    catch(Exception exception1)
+                    {
+                        end.Callback(exception1);
+                    }
+                });
+            }
+        }
+
+        #region Statics
+
+        public static Socket Create(int port)
+        {
+            return new Socket(IPAddress.Loopback, port);
+        }
+
+        public static Socket Create(IPAddress address, int port)
+        {
+            return new Socket(address, port);
+        }
+
+        public static Socket Create(string hostname, int port)
+        {
+            return new Socket(hostname, port);
+        }
+
+        #endregion
+
+        #region IWritables
+
+        public void Write(byte[] buffer)
+        {
+            this.Write(Reactor.Buffer.Create(buffer));
         }
 
         public void Write(byte[] buffer, int index, int count)
         {
-            this.WriteStream.Write(buffer, index, count);
+            this.Write(Reactor.Buffer.Create(buffer, 0, count));
+        }
+
+        public void Write(string data)
+        {
+            var buffer = System.Text.Encoding.UTF8.GetBytes(data);
+
+            this.Write(buffer);
+        }
+
+        public void Write(string format, object arg0)
+        {
+            format = string.Format(format, arg0);
+
+            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
+
+            this.Write(buffer);
+        }
+
+        public void Write(string format, params object[] args)
+        {
+            format = string.Format(format, args);
+
+            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
+
+            this.Write(buffer);
+        }
+
+        public void Write(string format, object arg0, object arg1)
+        {
+            format = string.Format(format, arg0, arg1);
+
+            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
+
+            this.Write(buffer);
+        }
+
+        public void Write(string format, object arg0, object arg1, object arg2)
+        {
+            format = string.Format(format, arg0, arg1, arg2);
+
+            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
+
+            this.Write(buffer);
+        }
+
+        public void Write(byte data)
+        {
+            this.Write(new byte[1] { data });
         }
 
         public void Write(bool value)
         {
-            this.WriteStream.Write(value);
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
         }
 
         public void Write(short value)
         {
-            this.WriteStream.Write(value);
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
         }
 
         public void Write(ushort value)
         {
-            this.WriteStream.Write(value);
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
         }
 
         public void Write(int value)
         {
-            this.WriteStream.Write(value);
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
         }
 
         public void Write(uint value)
         {
-            this.WriteStream.Write(value);
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
         }
 
         public void Write(long value)
         {
-            this.WriteStream.Write(value);
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
         }
 
         public void Write(ulong value)
         {
-            this.WriteStream.Write(value);
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
         }
 
         public void Write(float value)
         {
-            this.WriteStream.Write(value);
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
         }
 
         public void Write(double value)
         {
-            this.WriteStream.Write(value);
-        }
+            var buffer = BitConverter.GetBytes(value);
 
-        
-
-        public void End()
-        {
-            this.WriteStream.End(() => 
-            {
-                try  
-                {
-                    this.TcpSocket.Disconnect(false);
-                }
-                catch(Exception exception) 
-                {
-                    Loop.Post(() => 
-                    {
-                        if(this.OnSocketError != null) 
-                        {
-                            OnSocketError(exception);
-                        }
-                    });
-                }
-
-                this.NetworkStream.Dispose();
-            });
-        }
-
-        #endregion
-
-        #region BeginConnect
-
-        private void Connect()
-        {
-            Loop.Post(() =>
-            {
-                this.TcpSocket.BeginConnect(new IPEndPoint(this.IPAddress, this.Port), (Result) =>
-                {
-                    try
-                    {
-                        this.TcpSocket.EndConnect(Result);
-
-                        this.NetworkStream = new NetworkStream(this.TcpSocket, true);
-
-                        this.ReadStream = new ReadStream(this.NetworkStream);
-
-                        this.WriteStream = new WriteStream(this.NetworkStream);
-
-                        this.ReadStream.OnData += this.ReadStreamOnData;
-
-                        this.ReadStream.OnError += this.ReadStreamOnError;
-
-                        this.ReadStream.OnEnd += this.ReadStreamOnEnd;
-
-                        this.ReadStream.OnClose += this.ReadStreamOnClose;
-
-                        this.WriteStream.OnError += this.WriteStreamOnError;
-
-                        Loop.Post(() =>
-                        {
-                            if (this.OnConnect != null)
-                            {
-                                this.OnConnect();
-                            }
-                        });
-                    }
-                    catch (Exception exception)
-                    {
-                        Loop.Post(() =>
-                        {
-                            if (this.OnSocketError != null)
-                            {
-                                this.OnSocketError(exception);
-                            }
-                        });
-                    }
-
-                }, null);
-            });
-        }
-
-        #endregion
-
-        #region Handlers
-
-        private void WriteStreamOnError(Exception exception) 
-        {
-            if (this.OnError != null)
-            {
-                this.OnError(exception);
-            }               
-        }
-
-        private void ReadStreamOnData(Buffer buffer) 
-        {
-            if(this.OnData != null)
-            {
-                this.OnData(buffer);
-            }
-        }
-
-        private void ReadStreamOnEnd()
-        {
-            if (this.OnEnd != null)
-            {
-                this.OnEnd();
-            }            
-        }
-
-        private void ReadStreamOnError(Exception exception) 
-        {
-            if (this.OnError != null)
-            {
-                this.OnError(exception);
-            }            
-        }
-
-        private void ReadStreamOnClose()
-        {
-            if (this.OnClose != null)
-            {
-                this.OnClose();
-            }
-        }
-
-        #endregion
-
-        #region Statics
-
-        /// <summary>
-        /// Creates a new TcpSocket and connects to localhost on the given Port.
-        /// </summary>
-        /// <param name="Port">The Port</param>
-        /// <returns>A new TcpSocket</returns>
-        public static Socket Create(int Port)
-        {
-            return new Socket(IPAddress.Loopback, Port);
-        }
-
-        /// <summary>
-        /// Creates a new TcpSocket to the given Hostname and Port.
-        /// </summary>
-        /// <param name="Hostname">The Hostname.</param>
-        /// <param name="Port">The port.</param>
-        /// <returns>A new TcpSocket.</returns>
-        public static Socket Create(IPAddress address, int Port)
-        {
-            return new Socket(address, Port);
-        }
-
-        /// <summary>
-        /// Creates a new TcpSocket to the given Hostname and Port.
-        /// </summary>
-        /// <param name="Hostname">The Hostname.</param>
-        /// <param name="Port">The port.</param>
-        /// <returns>A new TcpSocket.</returns>
-        public static Socket Create(string Hostname, int Port)
-        {
-            return new Socket(Hostname, Port);
+            this.Write(buffer);
         }
 
         #endregion

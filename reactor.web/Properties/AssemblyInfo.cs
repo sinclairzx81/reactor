@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("reactor.web")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("Reactor.Web")]
+[assembly: AssemblyDescription("Reactor Web Server")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("reactor.web")]
+[assembly: AssemblyProduct("Reactor.Web")]
 [assembly: AssemblyCopyright("Copyright ©  2014")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("388548f0-72a2-4292-a796-e7e8e8823c68")]
+[assembly: Guid("2f10bd9e-436f-42d9-a209-8eb478be5bf8")]
 
 // Version information for an assembly consists of the following four values:
 //

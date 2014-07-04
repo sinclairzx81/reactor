@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -30,41 +32,15 @@ namespace Reactor
 {
     public interface IWriteable
     {
+        void Write(Buffer buffer, Action<Exception> callback);
+
         void Write(Buffer buffer);
 
-        void Write(string data);
+        void Flush(Action<Exception> callback);
 
-        void Write(string format, object arg0);
+        void Flush();
 
-        void Write(string format, params object[] args);
-
-        void Write(string format, object arg0, object arg1);
-
-        void Write(string format, object arg0, object arg1, object arg2);
-
-        void Write(byte data);
-
-        void Write(byte[] buffer);
-
-        void Write(byte[] buffer, int index, int count);
-
-        void Write(bool value);
-
-        void Write(short value);
-
-        void Write(ushort value);
-
-        void Write(int value);
-
-        void Write(uint value);
-
-        void Write(long value);
-
-        void Write(ulong value);
-
-        void Write(float value);
-
-        void Write(double value);
+        void End(Action<Exception> callback);
 
         void End();
 

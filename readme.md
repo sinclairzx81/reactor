@@ -2,33 +2,25 @@
 ## asynchronous evented io for .net
 
 ```csharp
-
-var server = Reactor.Tcp.Server.Create((socket) => {
-
-	socket.Write("hello world!!");
-	
-}).Listen(5000);
-
-
-var client = Reactor.Tcp.Socket.Create(5000);
-
-client.OnData += (data) => {
-
-	Console.WriteLine(data.ToString(Encoding.UTF8));
-};
-
 Reactor.Loop.Start();
+
+var server = Reactor.Http.Server.Create(context => {
+
+	context.Response.Write("hello world!!");
+
+	context.Response.End();
+	
+}).Listen(8080);
 ```
 
 ### overview
 
-Reactor is a evented, asynchronous io and networking library written for the Microsoft.Net, Mono, and Unity3D
-platforms. Reactor is heavily influenced by libuv and nodejs, and aims to both mimic both their feature set, as well 
-provide easy interoperability between managed code and nodejs (socket bound) network services. 
+Reactor is a evented, asynchronous io and networking framework written for the Microsoft.Net, Mono, and Unity3D
+platforms. Reactor is heavily influenced by libuv and nodejs, and aims to both mirror both their feature set, and aims
+to provide easy interoperability between .net applications and real-time network services.
 
-Reactor is specifically written to target applications running versions of .net as low as .net 2.0. Developers
-can leverage Reactor to both consume realtime network services (written in nodejs), as well as expose realtime
-services of their own.
+Reactor is specifically written to target .net applications running versions of .net as low as 2.0. Developers can 
+leverage Reactor to both consume realtime network services, as well as expose realtime services of their own.
 
 ### contents
 
@@ -57,41 +49,17 @@ services of their own.
 	* [socket](#tcp_socket)
 * [udp](#udp)
 	* [socket](#udp_socket)
-* [threads](#threads)
-	* [workers](#threads_worker)
-* [crypto](#crypto)
-	* [transform](#crypto_transform)
 
 <a name='getting_started' />
 ### getting_started
 
-Reactor works by way of a event loop. This is very similar to the event loop found in libuv. Reactor requires
-a process enumerating its internal loop for operation.
+The following section describes setting up a Reactor application.
 
 <a name='getting_started_event_loop' />
 #### the event loop
 
-In order for reactor to do anything, the reactor event loop must be running. The loop can be found in the top 
-level namespace of the Reactor library. The following demonstrates ways of starting the loop running. 
-
-```csharp
-// start a background thread to process the loop.
-Reactor.Loop.Start();
-```
-similarly, the following with stop the loop..
-
-```csharp
-// stop the background thread processing the loop.
-Reactor.Loop.Stop();
-```
-Alternitively, users can manually iterate over the loop in the following way...
-
-```csharp
-// manually iterate over the loop.
-while (Reactor.Loop.Enumerator().MoveNext()) {
-                            
-}
-```
+At its core, reactor requires that users start an event loop. The reactor event loop internally synchronizes and serializes asynchronous
+operations back on the main thread. The following describes recommended approaches to starting the loop.
 
 <a name='getting_started_console_applications' />
 #### console applications
@@ -174,7 +142,7 @@ public class MyGameObject : MonoBehaviour {
 	void Start () {
 		
         Reactor.Http.Request.Create("http://google.com", (response) => {
-
+			
             response.OnData += (data) => {
 
                 // event fired on the main UI thread.

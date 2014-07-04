@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -33,27 +35,27 @@ namespace Reactor
     /// </summary>
     public class Timeout
     {
-        private Timer Timer { get; set; }
+        private Timer timer;
 
         public Timeout(Action callback, int interval)
         {
-            this.Timer          = new Timer();
+            this.timer          = new Timer();
 
-            this.Timer.Interval = interval;
+            this.timer.Interval = interval;
 
-            this.Timer.Enabled  = false;
+            this.timer.Enabled  = false;
 
-            this.Timer.Start();
+            this.timer.Start();
 
-            this.Timer.Elapsed += (sender, args) => {
+            this.timer.Elapsed += (sender, args) => {
 
-                Loop.Post(() => 
-                {
-                    this.Timer.Enabled = false;
+                this.timer.Enabled = false;
 
-                    this.Timer.Stop();
+                this.timer.Stop();
 
-                    this.Timer.Dispose();
+                this.timer.Dispose();
+
+                Loop.Post(() => {
 
                     callback();
                 });

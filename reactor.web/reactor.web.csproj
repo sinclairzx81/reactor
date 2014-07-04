@@ -4,14 +4,13 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{E2CB74AC-0A8B-4385-9245-28978AA9E251}</ProjectGuid>
+    <ProjectGuid>{3C36767D-9365-4A7E-AD8C-9B893216F2F2}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Reactor.Web</RootNamespace>
     <AssemblyName>Reactor.Web</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -30,21 +29,34 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>
+    </AssemblyOriginatorKeyFile>
+  </PropertyGroup>
   <ItemGroup>
-    <Compile Include="middleware\Middleware.cs" />
-    <Compile Include="routes\Route.cs" />
-    <Compile Include="WebServer.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="WebServerContext.cs" />
+    <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Reactor.Web.cd" />
+    <Compile Include="Context.cs" />
+    <Compile Include="media\Mime.cs" />
+    <Compile Include="Middleware.cs" />
+    <Compile Include="Router.cs" />
+    <Compile Include="StaticFiles.cs" />
+    <Compile Include="Route.cs" />
+    <Compile Include="Server.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\reactor\reactor.csproj">
       <Project>{313a33d5-3743-4610-8e37-225f0376bcc9}</Project>
       <Name>reactor</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Reactor.Web.cd" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

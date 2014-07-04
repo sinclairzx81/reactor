@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -25,22 +27,76 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
-using System.Net;
+using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace Reactor.Http
 {
     public class ServerResponse : IWriteable
     {
-        private HttpListenerResponse   HttpListenerResponse   { get; set; }
+        #region Command
 
-        private WriteStream            WriteStream            { get; set; }
-
-        internal ServerResponse(HttpListenerResponse HttpListenerResponse)
+        internal class Command
         {
-            this.HttpListenerResponse   = HttpListenerResponse;
+            public Action<Exception> Callback { get; set; }
+        }
 
-            this.WriteStream            = new WriteStream(this.HttpListenerResponse.OutputStream);
+        internal class WriteCommand : Command
+        {
+            public Buffer Buffer { get; set; }
+
+            public WriteCommand(Buffer buffer, Action<Exception> callback)
+            {
+                this.Buffer = buffer;
+
+                this.Callback = callback;
+            }
+        }
+
+        internal class FlushCommand : Command
+        {
+            public FlushCommand(Action<Exception> callback)
+            {
+                this.Callback = callback;
+            }
+        }
+
+        internal class EndCommand : Command
+        {
+            public EndCommand(Action<Exception> callback)
+            {
+                this.Callback = callback;
+            }
+        }
+
+        #endregion
+
+        private HttpContext                    context;
+
+        private Reactor.Net.HttpListenerResponse   httplistenerresponse;
+
+        private Stream                         stream;
+
+        private Queue<Command>                 commands;
+
+        private bool                           writing;
+
+        private bool                           ended;
+
+        internal ServerResponse(HttpContext context, Reactor.Net.HttpListenerResponse httplistenerresponse)
+        {
+            this.context              = context;
+
+            this.httplistenerresponse = httplistenerresponse;
+
+            this.stream               = this.httplistenerresponse.OutputStream;
+
+            this.commands             = new Queue<Command>();
+
+            this.ended                = false;
+
+            this.writing              = false;
         }
 
         #region HttpListenerResponse
@@ -49,11 +105,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerResponse.ContentEncoding;
+                return this.httplistenerresponse.ContentEncoding;
             }
             set
             {
-                this.HttpListenerResponse.ContentEncoding = value;
+                this.httplistenerresponse.ContentEncoding = value;
             }
         }
 
@@ -61,11 +117,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerResponse.ContentLength64;
+                return this.httplistenerresponse.ContentLength64;
             }
             set
             {
-                this.HttpListenerResponse.ContentLength64 = value;
+                this.httplistenerresponse.ContentLength64 = value;
             }
         }
 
@@ -73,35 +129,35 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerResponse.ContentType;
+                return this.httplistenerresponse.ContentType;
             }
             set
             {
-                this.HttpListenerResponse.ContentType = value;
+                this.httplistenerresponse.ContentType = value;
             }
         }
 
-        public CookieCollection Cookies
+        public Reactor.Net.CookieCollection Cookies
         {
             get
             {
-                return this.HttpListenerResponse.Cookies;
+                return this.httplistenerresponse.Cookies;
             }
             set
             {
-                this.HttpListenerResponse.Cookies = value;
+                this.httplistenerresponse.Cookies = value;
             }
         }
 
-        public WebHeaderCollection Headers
+        public Reactor.Net.WebHeaderCollection Headers
         {
             get
             {
-                return this.HttpListenerResponse.Headers;
+                return this.httplistenerresponse.Headers;
             }
             set
             {
-                this.HttpListenerResponse.Headers = value;
+                this.httplistenerresponse.Headers = value;
             }
         }
 
@@ -109,11 +165,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerResponse.KeepAlive;
+                return this.httplistenerresponse.KeepAlive;
             }
             set
             {
-                this.HttpListenerResponse.KeepAlive = value;
+                this.httplistenerresponse.KeepAlive = value;
             }
         }
 
@@ -121,11 +177,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerResponse.ProtocolVersion;
+                return this.httplistenerresponse.ProtocolVersion;
             }
             set
             {
-                this.HttpListenerResponse.ProtocolVersion = value;
+                this.httplistenerresponse.ProtocolVersion = value;
             }
         }
 
@@ -133,35 +189,35 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerResponse.RedirectLocation;
+                return this.httplistenerresponse.RedirectLocation;
             }
             set
             {
-                this.HttpListenerResponse.RedirectLocation = value;
+                this.httplistenerresponse.RedirectLocation = value;
             }
         }
 
-        public bool SendChunked
-        {
-            get
-            {
-                return this.HttpListenerResponse.SendChunked;
-            }
-            set
-            {
-                this.HttpListenerResponse.SendChunked = value;
-            }
-        }
+        //public bool SendChunked
+        //{
+        //    get
+        //    {
+        //        return this.HttpListenerResponse.SendChunked;
+        //    }
+        //    set
+        //    {
+        //        this.HttpListenerResponse.SendChunked = value;
+        //    }
+        //}
 
         public int StatusCode
         {
             get
             {
-                return this.HttpListenerResponse.StatusCode;
+                return this.httplistenerresponse.StatusCode;
             }
             set
             {
-                this.HttpListenerResponse.StatusCode = value;
+                this.httplistenerresponse.StatusCode = value;
             }
         }
 
@@ -169,149 +225,334 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerResponse.StatusDescription;
+                return this.httplistenerresponse.StatusDescription;
             }
             set
             {
-                this.HttpListenerResponse.StatusDescription = value;
+                this.httplistenerresponse.StatusDescription = value;
             }
         }
 
         public void AddHeader(string name, string value)
         {
-            this.HttpListenerResponse.AddHeader(name, value);
+            this.httplistenerresponse.AddHeader(name, value);
         }
 
-        public void AppendCookie(Cookie cookie)
+        public void AppendCookie(Reactor.Net.Cookie cookie)
         {
-            this.HttpListenerResponse.AppendCookie(cookie);
+            this.httplistenerresponse.AppendCookie(cookie);
         }
 
         public void AppendHeader(string name, string value)
         {
-            this.HttpListenerResponse.AppendHeader(name, value);
+            this.httplistenerresponse.AppendHeader(name, value);
         }
 
         public void Redirect(string url)
         {
-            this.HttpListenerResponse.Redirect(url);
+            this.httplistenerresponse.Redirect(url);
         }
 
-        public void SetCookie(Cookie cookie)
+        public void SetCookie(Reactor.Net.Cookie cookie)
         {
-            this.HttpListenerResponse.SetCookie(cookie);
+            this.httplistenerresponse.SetCookie(cookie);
         }
 
         #endregion
 
         #region IWriteable
 
-        public void Write(byte[] data)
+        public void Write(Buffer buffer, Action<Exception> callback)
         {
-            this.WriteStream.Write(data);
+            this.commands.Enqueue(new WriteCommand(buffer, callback));
+
+            if (!this.writing)
+            {
+                this.writing = true;
+
+                if (!this.ended)
+                {
+                    this.Write();
+                }
+            }
         }
 
         public void Write(Buffer buffer)
         {
-            this.WriteStream.Write(buffer);
+            this.Write(buffer, exception => { });
         }
 
-        public void Write(string data)
+        public void Flush(Action<Exception> callback)
         {
-            this.WriteStream.Write(data);
+            this.commands.Enqueue(new FlushCommand(callback));
+
+            if (!this.writing)
+            {
+                this.writing = true;
+
+                if (!this.ended)
+                {
+                    this.Write();
+                }
+            }
         }
 
-        public void Write(string format, object arg0)
+        public void Flush()
         {
-            this.WriteStream.Write(format, arg0);
+            this.Flush(exception => { });
         }
 
-        public void Write(string format, params object[] args)
+        public void End(Action<Exception> callback)
         {
-            this.WriteStream.Write(format, args);
-        }
+            this.commands.Enqueue(new EndCommand(callback));
 
+            if (!this.writing)
+            {
+                this.writing = true;
 
-        public void Write(string format, object arg0, object arg1)
-        {
-            this.WriteStream.Write(format, arg0, arg1);
-        }
-
-        public void Write(string format, object arg0, object arg1, object arg2)
-        {
-            this.WriteStream.Write(format, arg0, arg1, arg2);
-        }
-
-        public void Write(byte data)
-        {
-            this.WriteStream.Write(data);
-        }
-
-        public void Write(byte[] buffer, int index, int count)
-        {
-            this.WriteStream.Write(buffer, index, count);
-        }
-
-        public void Write(bool value)
-        {
-            this.WriteStream.Write(value);
-        }
-
-        public void Write(short value)
-        {
-            this.WriteStream.Write(value);
-        }
-
-        public void Write(ushort value)
-        {
-            this.WriteStream.Write(value);
-        }
-
-        public void Write(int value)
-        {
-            this.WriteStream.Write(value);
-        }
-
-        public void Write(uint value)
-        {
-            this.WriteStream.Write(value);
-        }
-
-        public void Write(long value)
-        {
-            this.WriteStream.Write(value);
-        }
-
-        public void Write(ulong value)
-        {
-            this.WriteStream.Write(value);
-        }
-
-        public void Write(float value)
-        {
-            this.WriteStream.Write(value);
-        }
-
-        public void Write(double value)
-        {
-            this.WriteStream.Write(value);
+                if (!this.ended)
+                {
+                    this.Write();
+                }
+            }
         }
 
         public void End()
         {
-            this.WriteStream.End();
+            this.End(exception => { });
         }
 
-        public event Action<Exception> OnError
+        public event Action<Exception> OnError;
+
+        #endregion
+
+        private void Write()
         {
-            add
+            //----------------------------------
+            // command: write
+            //----------------------------------
+
+            var command = this.commands.Dequeue();
+
+            //----------------------------------
+            // command: write
+            //----------------------------------
+
+            if (command is WriteCommand)
             {
-                this.WriteStream.OnError += value;
+                var write = command as WriteCommand;
+
+                IO.Write(this.stream, write.Buffer.ToArray(), (exception) =>
+                {
+                    command.Callback(exception);
+
+                    if (exception != null)
+                    {
+                        if (this.OnError != null)
+                        {
+                            this.OnError(exception);
+                        }
+
+                        this.ended = true;
+
+                        return;
+                    }
+
+                    if (this.commands.Count > 0)
+                    {
+                        this.Write();
+
+                        return;
+                    }
+
+                    this.writing = false;
+                });
             }
-            remove
+
+            //----------------------------------
+            // command: flush
+            //----------------------------------
+
+            if (command is FlushCommand)
             {
-                this.WriteStream.OnError -= value;
+                try
+                {
+                    this.stream.Flush();
+
+                    command.Callback(null);
+                }
+                catch (Exception exception)
+                {
+                    command.Callback(exception);
+
+                    if (this.OnError != null)
+                    {
+                        this.OnError(exception);
+                    }
+
+                    this.ended = true;
+                }
+                if (this.commands.Count > 0)
+                {
+                    this.Write();
+
+                    return;
+                }
+
+                this.writing = false;
             }
+
+            //----------------------------------
+            // command: end
+            //----------------------------------
+
+            if (command is EndCommand)
+            {
+                var end = command as EndCommand;
+
+                try
+                {
+                    this.stream.Dispose();
+
+                    end.Callback(null);
+                }
+                catch (Exception exception)
+                {
+                    end.Callback(exception);
+
+                    if (this.OnError != null)
+                    {
+                        this.OnError(exception);
+                    }
+                }
+
+                this.writing = false;
+
+                this.ended   = true;
+            }
+        }
+
+        #region IWritables
+
+        public void Write(byte[] buffer)
+        {
+            this.Write(Reactor.Buffer.Create(buffer));
+        }
+
+        public void Write(byte[] buffer, int index, int count)
+        {
+            this.Write(Reactor.Buffer.Create(buffer, 0, count));
+        }
+
+        public void Write(string data)
+        {
+            var buffer = System.Text.Encoding.UTF8.GetBytes(data);
+
+            this.Write(buffer);
+        }
+
+        public void Write(string format, object arg0)
+        {
+            format = string.Format(format, arg0);
+
+            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
+
+            this.Write(buffer);
+        }
+
+        public void Write(string format, params object[] args)
+        {
+            format = string.Format(format, args);
+
+            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
+
+            this.Write(buffer);
+        }
+
+        public void Write(string format, object arg0, object arg1)
+        {
+            format = string.Format(format, arg0, arg1);
+
+            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
+
+            this.Write(buffer);
+        }
+
+        public void Write(string format, object arg0, object arg1, object arg2)
+        {
+            format = string.Format(format, arg0, arg1, arg2);
+
+            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
+
+            this.Write(buffer);
+        }
+
+        public void Write(byte data)
+        {
+            this.Write(new byte[1] { data });
+        }
+
+        public void Write(bool value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(short value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(ushort value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(int value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(uint value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(long value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(ulong value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(float value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(double value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
         }
 
         #endregion

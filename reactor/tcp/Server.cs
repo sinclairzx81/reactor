@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -30,73 +32,52 @@ using System.Net.Sockets;
 
 namespace Reactor.Tcp
 {
-    /// <summary>
-    /// A Tcp socket server.
-    /// </summary>
     public class Server
     {
-        private TcpListener                Listener { get; set; }
+        private TcpListener             listener;
 
         private Action<Socket>          OnSocket;
 
-        public  event Action<Exception>    OnSocketError;
+        public  event Action<Exception> OnError;
 
         public Server(Action<Socket> OnSocket)
         {
             this.OnSocket = OnSocket;
         }
 
-        /// <summary>
-        /// Starts this server listening on the supplied port.
-        /// </summary>
-        /// <param name="Port">The port to listen on.</param>
-        /// <returns>This TcpServer.</returns>
-        public Server Listen(int Port)
+        public Server Listen(int port)
         {
-            this.Listener = new TcpListener(IPAddress.Any, Port);
+            this.listener = new TcpListener(IPAddress.Any, port);
 
-            this.Listener.Start();
+            this.listener.Start();
 
             this.AcceptSocket();
 
             return this;
         }
 
-        #region AcceptSocket
-
         private void AcceptSocket()
         {
-            Loop.Post(() =>
+            IO.AcceptSocket(this.listener, (exception, socket) =>
             {
-                this.Listener.BeginAcceptSocket((Result) =>
+                if(exception != null)
                 {
-                    try
+                    if(this.OnError != null)
                     {
-                        var socket = new Socket(this.Listener.EndAcceptSocket(Result));
-
-                        Loop.Post(() =>
-                        {
-                            this.OnSocket(socket);
-
-                            this.AcceptSocket();
-                        });
-                    }
-                    catch (Exception exception)
-                    {
-                        Loop.Post(() =>
-                        {
-                            if (this.OnSocketError != null) {
-
-                                this.OnSocketError(exception);
-                            }
-                        });
+                        this.OnError(exception);
                     }
 
-                }, null);
+                    return;
+                }
+
+                if(this.OnSocket != null)
+                {
+                    this.OnSocket(new Socket(socket));
+                }
+
+                this.AcceptSocket();
             });
         }
-
-        #endregion 
 
         #region Statics
 

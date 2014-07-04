@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -24,10 +26,8 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using System;
 using System.IO;
 using System.Text;
-using System.Threading;
 
 namespace Reactor
 {
@@ -36,30 +36,35 @@ namespace Reactor
     /// encapsulate data passed on IO bound data events. Supports both read and write 
     /// operations and can be used as a general in memory storage object.
     /// </summary>
-    public class Buffer : IWriteable
+    public class Buffer
     {
-        private MemoryStream Stream { get; set; }
+        private MemoryStream stream;
 
-        private BinaryReader Reader { get; set; }
+        private BinaryReader reader;
 
-        private BinaryWriter Writer { get; set; }
+        private BinaryWriter writer;
 
         public Buffer()
         {
-            this.Stream = new MemoryStream();
+            this.stream = new MemoryStream();
 
-            this.Reader = new BinaryReader(Stream);
+            this.reader = new BinaryReader(stream);
 
-            this.Writer = new BinaryWriter(Stream);
+            this.writer = new BinaryWriter(stream);
         }
 
         public Buffer(byte [] data, int index, int count)
         {
-            this.Stream = new MemoryStream(data, index, count);
+            this.stream = new MemoryStream(data, index, count);
 
-            this.Reader = new BinaryReader(Stream);
+            this.reader = new BinaryReader(stream);
 
-            this.Writer = new BinaryWriter(Stream);
+            this.writer = new BinaryWriter(stream);
+        }
+
+        public Buffer(byte[] data) : this(data, 0, data.Length)
+        {
+
         }
 
         #region Properties
@@ -71,7 +76,7 @@ namespace Reactor
         {
             get
             {
-                return this.Stream.Length;
+                return this.stream.Length;
             }
         }
 
@@ -85,9 +90,9 @@ namespace Reactor
         /// <param name="buffer">The buffer to write.</param>
         public void Write(Buffer buffer)
         {
-            var _buffer = buffer.Stream.ToArray();
+            var _buffer = buffer.stream.ToArray();
 
-            this.Writer.Write(_buffer, 0, _buffer.Length);
+            this.writer.Write(_buffer, 0, _buffer.Length);
         }
 
         /// <summary>
@@ -98,7 +103,7 @@ namespace Reactor
         {
             var buffer = Encoding.UTF8.GetBytes(data);
 
-            this.Writer.Write(buffer, 0, buffer.Length);
+            this.writer.Write(buffer, 0, buffer.Length);
         }
 
         /// <summary>
@@ -112,7 +117,7 @@ namespace Reactor
 
             var buffer = Encoding.UTF8.GetBytes(format);
 
-            this.Writer.Write(buffer, 0, buffer.Length);
+            this.writer.Write(buffer, 0, buffer.Length);
         }
 
         /// <summary>
@@ -126,7 +131,7 @@ namespace Reactor
 
             var buffer = Encoding.UTF8.GetBytes(format);
 
-            this.Writer.Write(buffer, 0, buffer.Length);
+            this.writer.Write(buffer, 0, buffer.Length);
         }
 
         /// <summary>
@@ -141,7 +146,7 @@ namespace Reactor
 
             var buffer = Encoding.UTF8.GetBytes(format);
 
-            this.Writer.Write(buffer, 0, buffer.Length);
+            this.writer.Write(buffer, 0, buffer.Length);
         }
 
         /// <summary>
@@ -157,7 +162,7 @@ namespace Reactor
 
             var buffer = Encoding.UTF8.GetBytes(format);
 
-            this.Writer.Write(buffer, 0, buffer.Length);
+            this.writer.Write(buffer, 0, buffer.Length);
         }
 
         /// <summary>
@@ -166,7 +171,7 @@ namespace Reactor
         /// <param name="data">The byte to write</param>
         public void Write(byte data)
         {
-            this.Writer.Write(data);
+            this.writer.Write(data);
         }
 
         /// <summary>
@@ -175,7 +180,7 @@ namespace Reactor
         /// <param name="buffer">The buffer to write.</param>
         public void Write(byte[] buffer)
         {
-            this.Writer.Write(buffer);
+            this.writer.Write(buffer);
         }
 
         /// <summary>
@@ -186,7 +191,7 @@ namespace Reactor
         /// <param name="count">The number of bytes to write.</param>
         public void Write(byte[] buffer, int index, int count)
         {
-            this.Writer.Write(buffer, index, count);
+            this.writer.Write(buffer, index, count);
         }
 
         /// <summary>
@@ -195,7 +200,7 @@ namespace Reactor
         /// <param name="value">The Boolean to write.</param>
         public void Write(bool value)
         {
-            this.Writer.Write(value);
+            this.writer.Write(value);
         }
 
         /// <summary>
@@ -204,7 +209,7 @@ namespace Reactor
         /// <param name="value">The value to write.</param>
         public void Write(short value)
         {
-            this.Writer.Write(value);
+            this.writer.Write(value);
         }
 
         /// <summary>
@@ -213,7 +218,7 @@ namespace Reactor
         /// <param name="value">The value to write.</param>
         public void Write(ushort value)
         {
-            this.Writer.Write(value);
+            this.writer.Write(value);
         }
 
         /// <summary>
@@ -222,7 +227,7 @@ namespace Reactor
         /// <param name="value">The value to write.</param>
         public void Write(int value)
         {
-            this.Writer.Write(value);
+            this.writer.Write(value);
         }
 
         /// <summary>
@@ -231,7 +236,7 @@ namespace Reactor
         /// <param name="value">The value to write.</param>
         public void Write(uint value)
         {
-            this.Writer.Write(value);
+            this.writer.Write(value);
         }
 
         /// <summary>
@@ -240,7 +245,7 @@ namespace Reactor
         /// <param name="value">The value to write.</param>
         public void Write(long value)
         {
-            this.Writer.Write(value);
+            this.writer.Write(value);
         }
 
         /// <summary>
@@ -249,7 +254,7 @@ namespace Reactor
         /// <param name="value">The value to write.</param>
         public void Write(ulong value)
         {
-            this.Writer.Write(value);
+            this.writer.Write(value);
         }
 
         /// <summary>
@@ -258,7 +263,7 @@ namespace Reactor
         /// <param name="value">The value to write.</param>
         public void Write(float value)
         {
-            this.Writer.Write(value);
+            this.writer.Write(value);
         }
 
         /// <summary>
@@ -267,19 +272,7 @@ namespace Reactor
         /// <param name="value">The value to write.</param>
         public void Write(double value)
         {
-            this.Writer.Write(value);
-        }
-
-        void IWriteable.End()
-        {
-
-        }
-
-        event Action<Exception> IWriteable.OnError
-        {
-            add { }
-
-            remove { }
+            this.writer.Write(value);
         }
 
         #endregion
@@ -288,57 +281,57 @@ namespace Reactor
 
         public byte ReadByte()
         {
-            return this.Reader.ReadByte();
+            return this.reader.ReadByte();
         }
 
         public byte[] ReadBytes(int count)
         {
-            return this.Reader.ReadBytes(count);
+            return this.reader.ReadBytes(count);
         }
 
         public bool ReadBool()
         {
-            return this.Reader.ReadBoolean();
+            return this.reader.ReadBoolean();
         }
 
         public short ReadInt16()
         {
-            return this.Reader.ReadInt16();
+            return this.reader.ReadInt16();
         }
 
         public ushort ReadUInt16()
         {
-            return this.Reader.ReadUInt16();
+            return this.reader.ReadUInt16();
         }
 
         public int ReadInt32()
         {
-            return this.Reader.ReadInt32();
+            return this.reader.ReadInt32();
         }
 
         public uint ReadUInt32()
         {
-            return this.Reader.ReadUInt32();
+            return this.reader.ReadUInt32();
         }
 
         public long ReadInt64()
         {
-            return this.Reader.ReadInt64();
+            return this.reader.ReadInt64();
         }
 
         public ulong ReadUInt64()
         {
-            return this.Reader.ReadUInt64();
+            return this.reader.ReadUInt64();
         }
 
         public float ReadSingle()
         {
-            return this.Reader.ReadSingle();
+            return this.reader.ReadSingle();
         }
 
         public double ReadDouble()
         {
-            return this.Reader.ReadDouble();
+            return this.reader.ReadDouble();
         }
 
         #endregion
@@ -347,22 +340,22 @@ namespace Reactor
 
         public void Seek(int position)
         {
-            this.Stream.Seek(position, SeekOrigin.Begin);
+            this.stream.Seek(position, SeekOrigin.Begin);
         }
 
         public void SetLength(int size)
         {
-            this.Stream.SetLength(size);
+            this.stream.SetLength(size);
         }
 
         public byte [] ToArray()
         {
-            return this.Stream.ToArray();
+            return this.stream.ToArray();
         }
         
         public string ToString(System.Text.Encoding Encoding)
         {
-            return Encoding.GetString(this.Stream.ToArray());
+            return Encoding.GetString(this.stream.ToArray());
         }
 
         public string ToString(string encoding)
@@ -371,17 +364,17 @@ namespace Reactor
 
             switch(encoding)
             {
-                case "ascii":   return Encoding.ASCII.GetString(this.Stream.ToArray());
+                case "ascii":   return Encoding.ASCII.GetString(this.stream.ToArray());
 
-                case "utf8":    return Encoding.UTF8.GetString(this.Stream.ToArray());
+                case "utf8":    return Encoding.UTF8.GetString(this.stream.ToArray());
 
-                case "utf7":    return Encoding.UTF7.GetString(this.Stream.ToArray());
+                case "utf7":    return Encoding.UTF7.GetString(this.stream.ToArray());
 
-                case "utf32":   return Encoding.UTF32.GetString(this.Stream.ToArray());
+                case "utf32":   return Encoding.UTF32.GetString(this.stream.ToArray());
 
-                case "unicode": return Encoding.Unicode.GetString(this.Stream.ToArray());
+                case "unicode": return Encoding.Unicode.GetString(this.stream.ToArray());
 
-                default: return Encoding.UTF8.GetString(this.Stream.ToArray());
+                default: return Encoding.UTF8.GetString(this.stream.ToArray());
             }
         }
 
@@ -398,14 +391,7 @@ namespace Reactor
             return new Buffer();
         }
 
-        /// <summary>
-        /// Creates a new Reactor Buffer.
-        /// </summary>
-        /// <returns>A Buffer</returns>
-        public static Buffer Create(byte [] data)
-        {
-            return new Buffer(data, 0, data.Length);
-        }
+
 
         /// <summary>
         /// Creates a new Reactor Buffer.
@@ -414,6 +400,27 @@ namespace Reactor
         public static Buffer Create(byte[] data, int index, int count)
         {
             return new Buffer(data, index, count);
+        }
+
+        /// <summary>
+        /// Creates a new Reactor Buffer.
+        /// </summary>
+        /// <returns>A Buffer</returns>
+        public static Buffer Create(byte[] data)
+        {
+            return new Buffer(data);
+        }
+
+        /// <summary>
+        /// Creates a new Reactor Buffer from a string.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        public static Buffer Create(string data)
+        {
+            var buffer = System.Text.Encoding.UTF8.GetBytes(data);
+
+            return new Reactor.Buffer(buffer, 0, buffer.Length);
         }
 
         #endregion
@@ -428,7 +435,7 @@ namespace Reactor
             {
                 if (!this.disposed)
                 {
-                    this.Stream.Dispose();
+                    this.stream.Dispose();
 
                     this.disposed = true;
                 }
@@ -449,5 +456,7 @@ namespace Reactor
         }
 
         #endregion
+
+
     }
 }

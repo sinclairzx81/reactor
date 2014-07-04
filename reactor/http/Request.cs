@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -25,6 +27,7 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Cache;
@@ -34,23 +37,90 @@ namespace Reactor.Http
 {
     public class Request : IWriteable
     {
-        private HttpWebRequest         HttpWebRequest         { get; set; }
+        #region Command
 
-        private Reactor.Buffer         WriteBuffer            { get; set; }
+        internal class Command
+        {
+            public Action<Exception> Callback { get; set; }
+        }
 
-        private WriteStream            WriteStream            { get; set; }
+        internal class WriteCommand : Command
+        {
+            public Buffer Buffer { get; set; }
 
-        private Action<Response>       OnResponse             { get; set; }
+            public WriteCommand(Buffer buffer, Action<Exception> callback)
+            {
+                this.Buffer = buffer;
+
+                this.Callback = callback;
+            }
+        }
+
+        internal class FlushCommand : Command
+        {
+            public FlushCommand(Action<Exception> callback)
+            {
+                this.Callback = callback;
+            }
+        }
+
+        internal class EndCommand : Command
+        {
+            public EndCommand(Action<Exception> callback)
+            {
+                this.Callback = callback;
+            }
+        }
+
+        internal class GetRequestStreamCommand : Command 
+        {
+            public GetRequestStreamCommand(Action<Exception> callback)
+            {
+                this.Callback = callback;
+            }
+        }
+
+        internal class GetResponseCommand : Command
+        {
+            public GetResponseCommand(Action<Exception> callback)
+            {
+                this.Callback = callback;
+            }
+        }
+
+        #endregion
+
+        private HttpWebRequest   httpwebrequest;
+
+        private System.IO.Stream stream;
+
+        private Queue<Command>   commands;
+
+        private bool             writing;
+
+        private bool             ended;
+
+        private Action<Response> onresponse;
+
+        private bool             requestedStream;
 
         #region Constructor
 
         public Request(string Url, Action<Response> OnResponse)
         {
-            this.OnResponse             = OnResponse;
+            this.onresponse            = OnResponse;
 
-            this.WriteBuffer            = Reactor.Buffer.Create();
+            this.httpwebrequest        = (HttpWebRequest)WebRequest.Create(Url);
 
-            this.HttpWebRequest         = (HttpWebRequest)WebRequest.Create(Url);
+            this.stream                = null;
+
+            this.commands              = new Queue<Command>();
+
+            this.ended                 = false;
+
+            this.writing               = false;
+
+            this.requestedStream       = false;
         }
 
         #endregion
@@ -61,11 +131,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.Accept;
+                return this.httpwebrequest.Accept;
             }
             set
             {
-                this.HttpWebRequest.Accept = value;
+                this.httpwebrequest.Accept = value;
             }
         }
 
@@ -73,7 +143,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.Address;
+                return this.httpwebrequest.Address;
             }
         }
 
@@ -81,11 +151,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.AllowAutoRedirect;
+                return this.httpwebrequest.AllowAutoRedirect;
             }
             set
             {
-                this.HttpWebRequest.AllowAutoRedirect = value;
+                this.httpwebrequest.AllowAutoRedirect = value;
             }
         }
 
@@ -93,11 +163,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.AllowWriteStreamBuffering;
+                return this.httpwebrequest.AllowWriteStreamBuffering;
             }
             set
             {
-                this.HttpWebRequest.AllowWriteStreamBuffering = value;
+                this.httpwebrequest.AllowWriteStreamBuffering = value;
             }
         }
 
@@ -105,11 +175,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.AutomaticDecompression;
+                return this.httpwebrequest.AutomaticDecompression;
             }
             set
             {
-                this.HttpWebRequest.AutomaticDecompression = value;
+                this.httpwebrequest.AutomaticDecompression = value;
             }
         }
 
@@ -117,11 +187,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.ClientCertificates;
+                return this.httpwebrequest.ClientCertificates;
             }
             set
             {
-                this.HttpWebRequest.ClientCertificates = value;
+                this.httpwebrequest.ClientCertificates = value;
             }
         }
 
@@ -129,11 +199,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.Connection;
+                return this.httpwebrequest.Connection;
             }
             set
             {
-                this.HttpWebRequest.Connection = value;
+                this.httpwebrequest.Connection = value;
             }
         }
 
@@ -141,11 +211,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.ConnectionGroupName;
+                return this.httpwebrequest.ConnectionGroupName;
             }
             set
             {
-                this.HttpWebRequest.ConnectionGroupName = value;
+                this.httpwebrequest.ConnectionGroupName = value;
             }
         }
 
@@ -153,11 +223,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.ContentLength;
+                return this.httpwebrequest.ContentLength;
             }
             set
             {
-                this.HttpWebRequest.ContentLength = value;
+                this.httpwebrequest.ContentLength = value;
             }
         }
 
@@ -165,11 +235,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.ContentType;
+                return this.httpwebrequest.ContentType;
             }
             set
             {
-                this.HttpWebRequest.ContentType = value;
+                this.httpwebrequest.ContentType = value;
             }
         }
 
@@ -177,11 +247,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.ContinueDelegate;
+                return this.httpwebrequest.ContinueDelegate;
             }
             set
             {
-                this.HttpWebRequest.ContinueDelegate = value;
+                this.httpwebrequest.ContinueDelegate = value;
             }
         }
 
@@ -189,11 +259,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.CookieContainer;
+                return this.httpwebrequest.CookieContainer;
             }
             set
             {
-                this.HttpWebRequest.CookieContainer = value;
+                this.httpwebrequest.CookieContainer = value;
             }
         }
 
@@ -201,11 +271,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.Credentials;
+                return this.httpwebrequest.Credentials;
             }
             set
             {
-                this.HttpWebRequest.Credentials = value;
+                this.httpwebrequest.Credentials = value;
             }
         }
 
@@ -249,11 +319,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.Expect;
+                return this.httpwebrequest.Expect;
             }
             set
             {
-                this.HttpWebRequest.Expect = value;
+                this.httpwebrequest.Expect = value;
             }
         }
 
@@ -261,11 +331,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.Headers;
+                return this.httpwebrequest.Headers;
             }
             set
             {
-                this.HttpWebRequest.Headers = value;
+                this.httpwebrequest.Headers = value;
             }
         }
 
@@ -273,11 +343,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.IfModifiedSince;
+                return this.httpwebrequest.IfModifiedSince;
             }
             set
             {
-                this.HttpWebRequest.IfModifiedSince = value;
+                this.httpwebrequest.IfModifiedSince = value;
             }
         }
 
@@ -285,11 +355,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.KeepAlive;
+                return this.httpwebrequest.KeepAlive;
             }
             set
             {
-                this.HttpWebRequest.KeepAlive = value;
+                this.httpwebrequest.KeepAlive = value;
             }
         }
 
@@ -297,11 +367,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.MaximumAutomaticRedirections;
+                return this.httpwebrequest.MaximumAutomaticRedirections;
             }
             set
             {
-                this.HttpWebRequest.MaximumAutomaticRedirections = value;
+                this.httpwebrequest.MaximumAutomaticRedirections = value;
             }
         }
 
@@ -309,11 +379,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.MaximumResponseHeadersLength;
+                return this.httpwebrequest.MaximumResponseHeadersLength;
             }
             set
             {
-                this.HttpWebRequest.MaximumResponseHeadersLength = value;
+                this.httpwebrequest.MaximumResponseHeadersLength = value;
             }
         }
 
@@ -321,11 +391,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.MediaType;
+                return this.httpwebrequest.MediaType;
             }
             set
             {
-                this.HttpWebRequest.MediaType = value;
+                this.httpwebrequest.MediaType = value;
             }
         }
 
@@ -333,11 +403,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.Method;
+                return this.httpwebrequest.Method;
             }
             set
             {
-                this.HttpWebRequest.Method = value;
+                this.httpwebrequest.Method = value;
             }
         }
 
@@ -345,11 +415,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.Pipelined;
+                return this.httpwebrequest.Pipelined;
             }
             set
             {
-                this.HttpWebRequest.Pipelined = value;
+                this.httpwebrequest.Pipelined = value;
             }
         }
 
@@ -357,11 +427,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.PreAuthenticate;
+                return this.httpwebrequest.PreAuthenticate;
             }
             set
             {
-                this.HttpWebRequest.PreAuthenticate = value;
+                this.httpwebrequest.PreAuthenticate = value;
             }
         }
 
@@ -369,11 +439,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.ProtocolVersion;
+                return this.httpwebrequest.ProtocolVersion;
             }
             set
             {
-                this.HttpWebRequest.ProtocolVersion = value;
+                this.httpwebrequest.ProtocolVersion = value;
             }
         }
 
@@ -381,11 +451,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.Proxy;
+                return this.httpwebrequest.Proxy;
             }
             set
             {
-                this.HttpWebRequest.Proxy = value;
+                this.httpwebrequest.Proxy = value;
             }
         }
 
@@ -393,11 +463,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.ReadWriteTimeout;
+                return this.httpwebrequest.ReadWriteTimeout;
             }
             set
             {
-                this.HttpWebRequest.ReadWriteTimeout = value;
+                this.httpwebrequest.ReadWriteTimeout = value;
             }
         }
 
@@ -405,11 +475,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.Referer;
+                return this.httpwebrequest.Referer;
             }
             set
             {
-                this.HttpWebRequest.Referer = value;
+                this.httpwebrequest.Referer = value;
             }
         }
 
@@ -417,19 +487,22 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.RequestUri;
+                return this.httpwebrequest.RequestUri;
             }
         }
 
+        /// <summary>
+        /// Send Chunked: Warning: possible issues using this. Mono HttpListener OnEnd not fired when sending chunked from this client.
+        /// </summary>
         public bool SendChunked
         {
             get
             {
-                return this.HttpWebRequest.SendChunked;
+                return this.httpwebrequest.SendChunked;
             }
             set
             {
-                this.HttpWebRequest.SendChunked = value;
+                this.httpwebrequest.SendChunked = value;
             }
         }
 
@@ -437,7 +510,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.ServicePoint;
+                return this.httpwebrequest.ServicePoint;
             }
         }
 
@@ -445,11 +518,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.Timeout;
+                return this.httpwebrequest.Timeout;
             }
             set
             {
-                this.HttpWebRequest.Timeout = value;
+                this.httpwebrequest.Timeout = value;
             }
         }
 
@@ -457,11 +530,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.TransferEncoding;
+                return this.httpwebrequest.TransferEncoding;
             }
             set
             {
-                this.HttpWebRequest.TransferEncoding = value;
+                this.httpwebrequest.TransferEncoding = value;
             }
         }
 
@@ -469,11 +542,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.UnsafeAuthenticatedConnectionSharing;
+                return this.httpwebrequest.UnsafeAuthenticatedConnectionSharing;
             }
             set
             {
-                this.HttpWebRequest.UnsafeAuthenticatedConnectionSharing = value;
+                this.httpwebrequest.UnsafeAuthenticatedConnectionSharing = value;
             }
         }
 
@@ -481,11 +554,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.UseDefaultCredentials;
+                return this.httpwebrequest.UseDefaultCredentials;
             }
             set
             {
-                this.HttpWebRequest.UseDefaultCredentials = value;
+                this.httpwebrequest.UseDefaultCredentials = value;
             }
         }
 
@@ -493,213 +566,592 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebRequest.UserAgent;
+                return this.httpwebrequest.UserAgent;
             }
             set
             {
-                this.HttpWebRequest.UserAgent = value;
+                this.httpwebrequest.UserAgent = value;
             }
         }
 
         #endregion
 
-        #region IWriteStream
+        #region IWriteable
 
-        public event Action<Exception> OnError;
-
-        public void Write(byte[] data)
+        public void Write(Buffer buffer, Action<Exception> callback)
         {
-            this.WriteBuffer.Write(data);
+            if(!this.requestedStream)
+            {
+                this.requestedStream = true;
+
+                this.commands.Enqueue(new GetRequestStreamCommand((exception) => {
+                    
+                    if (!this.writing)
+                    {   
+                        this.writing = true;
+
+                        if (!this.ended)
+                        {
+                            this.Write();
+                        }
+                    }                    
+
+                }));
+            }
+
+            this.commands.Enqueue(new WriteCommand(buffer, callback));
+
+            if (!this.writing)
+            {
+                this.writing = true;
+
+                if (!this.ended)
+                {
+                    this.Write();
+                }
+            }
         }
 
         public void Write(Buffer buffer)
         {
-            this.WriteBuffer.Write(buffer);
+            this.Write(buffer, exception => { });
         }
 
-        public void Write(string data)
+        public void Flush(Action<Exception> callback)
         {
-            this.WriteBuffer.Write(data);
+            this.commands.Enqueue(new FlushCommand(callback));
+
+            if (!this.writing)
+            {
+                this.writing = true;
+
+                if (!this.ended)
+                {
+                    this.Write();
+                }
+            }
         }
 
-        public void Write(string format, object arg0)
+        public void Flush()
         {
-            this.WriteBuffer.Write(format, arg0);
+            this.Flush(exception => { });
         }
 
-        public void Write(string format, params object[] args)
+        public void End(Action<Exception> callback)
         {
-            this.WriteBuffer.Write(format, args);
-        }
+            if(this.requestedStream)
+            {
+                this.commands.Enqueue(new EndCommand(callback));
+            }
+            
+            this.commands.Enqueue(new GetResponseCommand(callback));
 
-        public void Write(string format, object arg0, object arg1)
-        {
-            this.WriteBuffer.Write(format, arg0, arg1);
-        }
+            if (!this.writing)
+            {
+                this.writing = true;
 
-        public void Write(string format, object arg0, object arg1, object arg2)
-        {
-            this.WriteBuffer.Write(format, arg0, arg1, arg2);
+                if (!this.ended)
+                {
+                    this.Write();
+                }
+            }
         }
-
-        public void Write(byte data)
-        {
-            this.WriteBuffer.Write(data);
-        }
-
-        public void Write(byte[] buffer, int index, int count)
-        {
-            this.WriteBuffer.Write(buffer, index, count);
-        }
-
-        public void Write(bool value)
-        {
-            this.WriteBuffer.Write(value);
-        }
-
-        public void Write(short value)
-        {
-            this.WriteBuffer.Write(value);
-        }
-
-        public void Write(ushort value)
-        {
-            this.WriteBuffer.Write(value);
-        }
-
-        public void Write(int value)
-        {
-            this.WriteBuffer.Write(value);
-        }
-
-        public void Write(uint value)
-        {
-            this.WriteBuffer.Write(value);
-        }
-
-        public void Write(long value)
-        {
-            this.WriteBuffer.Write(value);
-        }
-
-        public void Write(ulong value)
-        {
-            this.WriteBuffer.Write(value);
-        }
-
-        public void Write(float value)
-        {
-            this.WriteBuffer.Write(value);
-        }
-
-        public void Write(double value)
-        {
-            this.WriteBuffer.Write(value);
-        }
-
-        #endregion
 
         public void End()
         {
-            if(this.WriteBuffer.Length > 0) {
-
-                this.GetRequestStream((stream) => {
-                    
-                    var writestream = new Reactor.WriteStream(stream);
-
-                    writestream.Write(this.WriteBuffer);
-
-                    writestream.End(() => {
-
-                        this.GetResponse();
-                    });
-                });
-
-                return;
-            }
-
-            this.GetResponse();
+            this.End(exception => { });
         }
 
-        #region GetRequestStream
-
-        private void GetRequestStream(Reactor.Action<Stream> callback)
-        {
-
-            this.HttpWebRequest.BeginGetRequestStream((Result) => {
-
-                try {
-
-                    var stream = this.HttpWebRequest.EndGetRequestStream(Result);
-
-                    callback(stream);
-                }
-                catch (Exception exception)
-                {
-                    Loop.Post(() =>
-                    {
-                        if (this.OnError != null) {
-
-                            this.OnError(exception);
-                        }
-                    });
-                }
-
-            }, null);
-        }
+        public event Action<Exception> OnError;
 
         #endregion
 
-        #region GetResponse
-
-        private void GetResponse()
+        private void Write()
         {
-            // fix - resolve uninitialized
-            // content length in instances
-            // where the client is POSTing,
-            // but isn't sending data.
-            if (this.HttpWebRequest.Method != "GET") {
+            //----------------------------------
+            // command: write
+            //----------------------------------
 
-                if (this.HttpWebRequest.ContentLength == -1) {
+            var command = this.commands.Dequeue();
 
-                    this.HttpWebRequest.ContentLength = 0;
-                }
-            }
+            //----------------------------------
+            // command: get request stream
+            //----------------------------------
 
-            this.HttpWebRequest.BeginGetResponse((Result) => {
+            if(command is GetRequestStreamCommand)
+            {
+                var getrequeststream = command as GetRequestStreamCommand;
 
-                try
+                IO.GetRequestStream(this.httpwebrequest, (exception, stream) =>
                 {
-                    var response = new Response((HttpWebResponse)this.HttpWebRequest.EndGetResponse(Result));
+                    getrequeststream.Callback(exception);
 
-                    Loop.Post(() =>
-                    {
-                        this.OnResponse(response);
-                    });
-                }
-                catch (Exception exception)
-                {
-                    Loop.Post(() =>
+                    if (exception != null)
                     {
                         if (this.OnError != null)
                         {
                             this.OnError(exception);
                         }
-                    });
+
+                        return;
+                    }
+
+                    this.stream = stream;
+
+                    if (this.commands.Count > 0)
+                    {
+                        this.Write();
+
+                        return;
+                    }
+                });
+            }
+
+            //----------------------------------
+            // command: write
+            //----------------------------------
+
+            if (command is WriteCommand)
+            {
+                var write = command as WriteCommand;
+                
+                IO.Write(this.stream, write.Buffer.ToArray(), (exception) =>
+                {
+                    write.Callback(exception);
+
+                    if (exception != null)
+                    {
+                        if (this.OnError != null)
+                        {
+                            this.OnError(exception);
+                        }
+
+                        this.ended = true;
+
+                        return;
+                    }
+
+                    if (this.commands.Count > 0)
+                    {
+                        this.Write();
+
+                        return;
+                    }
+
+                    this.writing = false;
+                });
+            }
+
+            //----------------------------------
+            // command: flush
+            //----------------------------------
+
+            if (command is FlushCommand)
+            {
+                try
+                {
+                    this.stream.Flush();
+
+                    command.Callback(null);
                 }
-                  
+                catch (Exception exception)
+                {
+                    command.Callback(exception);
 
-            }, null);
-  
+                    if (this.OnError != null)
+                    {
+                        this.OnError(exception);
+                    }
+
+                    this.ended = true;
+                }
+                if (this.commands.Count > 0)
+                {
+                    this.Write();
+
+                    return;
+                }
+
+                this.writing = false;
+            }
+
+            //----------------------------------
+            // command: end
+            //----------------------------------
+
+            if (command is EndCommand)
+            {
+                var end = command as EndCommand;
+
+                try
+                {
+                    if (this.stream != null)
+                    {
+                        this.stream.Close();
+                    }
+
+                    end.Callback(null);
+                }
+                catch (Exception exception)
+                {
+                    end.Callback(exception);
+
+                    if (this.OnError != null)
+                    {
+                        this.OnError(exception);
+                    }
+                }
+                
+                this.writing = false;
+
+                this.ended  = true;
+
+                if (this.commands.Count > 0)
+                {
+                    this.Write();
+
+                    return;
+                }
+            }
+
+            //----------------------------------
+            // command: get response
+            //----------------------------------
+
+            if (command is GetResponseCommand)
+            {
+                var getresponse = command as GetResponseCommand;
+
+                // fix - resolve uninitialized
+                // content length in instances
+                // where the client is POSTing,
+                // but isn't sending data.
+                try
+                {
+                    if (this.httpwebrequest.Method != "GET")
+                    {
+                        if (this.httpwebrequest.ContentLength == -1)
+                        {
+                            this.httpwebrequest.ContentLength = 0;
+                        }
+                    }
+                }
+                catch {}
+             
+
+                IO.GetResponse(this.httpwebrequest, (exception, response) =>
+                {
+                    getresponse.Callback(exception);
+
+                    if (exception != null)
+                    {
+                        if (this.OnError != null)
+                        {
+                            this.OnError(exception);
+                        }
+
+                        this.ended = true;
+
+                        return;
+                    }
+
+                    if(this.onresponse != null)
+                    {
+                        this.onresponse(new Reactor.Http.Response(response));
+                    }
+                });
+            }
         }
-
-        #endregion
 
         #region Statics
 
         public static Request Create(string Url, Action<Response> OnResponse)
         {
             return new Request(Url, OnResponse);
+        }
+
+        public static void Get(string Url, string contentType, IDictionary<string, string> headers, Action<Exception, Buffer> callback)
+        {
+            var request = Reactor.Http.Request.Create(Url, (response) =>
+            {
+                var buffer_ = Reactor.Buffer.Create();
+
+                response.OnData  += buffer_.Write;
+
+                response.OnEnd   += () => callback(null, buffer_);
+
+                response.OnError += (e) => callback(e, null);
+            });
+
+            request.OnError += (e) => callback(e, null);
+
+            foreach (var pair in headers)
+            {
+                request.Headers[pair.Key] = pair.Value;
+            }
+
+            request.ContentType = contentType;
+
+            request.End();
+        }
+
+        public static void Get(string Url, string contentType, Action<Exception, Buffer> callback)
+        {
+            Get(Url, contentType, new Dictionary<string, string>(), callback);
+        }
+
+        public static void Get(string Url, Action<Exception, Buffer> callback)
+        {
+            Get(Url, "application/octet-stream", new Dictionary<string, string>(), callback);
+        }
+
+        public static void Post(string Url, string contentType, IDictionary<string, string> headers, Buffer buffer, Action<Exception, Buffer> callback)
+        {
+            var request = Reactor.Http.Request.Create(Url, (response) =>
+            {
+                var buffer_ = Reactor.Buffer.Create();
+
+                response.OnData += buffer_.Write;
+
+                response.OnEnd += () => callback(null, buffer_);
+
+                response.OnError += (e) => callback(e, null);
+            });
+
+            request.OnError += (e) => callback(e, null);
+
+            foreach (var pair in headers)
+            {
+                request.Headers[pair.Key] = pair.Value;
+            }
+
+            request.Method = "POST";
+
+            request.ContentType = contentType;
+
+            request.ContentLength = buffer.Length;
+
+            request.Write(buffer);
+
+            request.End();
+        }
+
+        public static void Post(string Url, string contentType, Reactor.Buffer buffer, Action<Exception, Buffer> callback)
+        {
+            Post(Url, contentType, new Dictionary<string, string>(), buffer, callback);
+        }
+
+        public static void Post(string Url, Reactor.Buffer buffer, Action<Exception, Buffer> callback)
+        {
+            Post(Url, "application/octet-stream", new Dictionary<string, string>(), buffer, callback);
+        }
+
+        public static void Put(string Url, string contentType, IDictionary<string, string> headers, Buffer buffer, Action<Exception, Buffer> callback)
+        {
+            var request = Reactor.Http.Request.Create(Url, (response) =>
+            {
+                var buffer_ = Reactor.Buffer.Create();
+
+                response.OnData += buffer_.Write;
+
+                response.OnEnd += () => callback(null, buffer_);
+
+                response.OnError += (e) => callback(e, null);
+            });
+
+            request.OnError += (e) => callback(e, null);
+
+            foreach (var pair in headers)
+            {
+                request.Headers[pair.Key] = pair.Value;
+            }
+
+            request.Method = "PUT";
+
+            request.ContentType = contentType;
+
+            request.ContentLength = buffer.Length;
+
+            request.Write(buffer);
+
+            request.End();
+        }
+
+        public static void Put(string Url, string contentType, Reactor.Buffer buffer, Action<Exception, Buffer> callback)
+        {
+            Put(Url, contentType, new Dictionary<string, string>(), buffer, callback);
+        }
+
+        public static void Put(string Url, Reactor.Buffer buffer, Action<Exception, Buffer> callback)
+        {
+            Put(Url, "application/octet-stream", new Dictionary<string, string>(), buffer, callback);
+        }
+
+
+        public static void Delete(string Url, string contentType, IDictionary<string, string> headers, Buffer buffer, Action<Exception, Buffer> callback)
+        {
+            var request = Reactor.Http.Request.Create(Url, (response) =>
+            {
+                var buffer_ = Reactor.Buffer.Create();
+
+                response.OnData += buffer_.Write;
+
+                response.OnEnd += () => callback(null, buffer_);
+
+                response.OnError += (e) => callback(e, null);
+            });
+
+            request.OnError += (e) => callback(e, null);
+
+            foreach (var pair in headers)
+            {
+                request.Headers[pair.Key] = pair.Value;
+            }
+
+            request.Method = "DELETE";
+
+            request.ContentType = contentType;
+
+            request.ContentLength = buffer.Length;
+
+            request.Write(buffer);
+
+            request.End();
+        }
+
+        public static void Delete(string Url, string contentType, Reactor.Buffer buffer, Action<Exception, Buffer> callback)
+        {
+            Delete(Url, contentType, new Dictionary<string, string>(), buffer, callback);
+        }
+
+        public static void Delete(string Url, Reactor.Buffer buffer, Action<Exception, Buffer> callback)
+        {
+            Delete(Url, "application/octet-stream", new Dictionary<string, string>(), buffer, callback);
+        }
+
+        #endregion
+
+        #region IWritables
+        
+        public void Write(byte[] buffer)
+        {
+            this.Write(Reactor.Buffer.Create(buffer));
+        }
+
+        public void Write(byte[] buffer, int index, int count)
+        {
+            this.Write(Reactor.Buffer.Create(buffer, 0, count));
+        }
+
+        public void Write(string data)
+        {
+            var buffer = System.Text.Encoding.UTF8.GetBytes(data);
+
+            this.Write(buffer);
+        }
+
+        public void Write(string format, object arg0)
+        {
+            format = string.Format(format, arg0);
+
+            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
+
+            this.Write(buffer);
+        }
+
+        public void Write(string format, params object[] args)
+        {
+            format = string.Format(format, args);
+
+            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
+
+            this.Write(buffer);
+        }
+
+        public void Write(string format, object arg0, object arg1)
+        {
+            format = string.Format(format, arg0, arg1);
+
+            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
+
+            this.Write(buffer);
+        }
+
+        public void Write(string format, object arg0, object arg1, object arg2)
+        {
+            format = string.Format(format, arg0, arg1, arg2);
+
+            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
+
+            this.Write(buffer);
+        }
+
+        public void Write(byte data)
+        {
+            this.Write(new byte[1] { data });
+        }
+
+        public void Write(bool value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(short value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(ushort value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(int value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(uint value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(long value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(ulong value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(float value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
+        }
+
+        public void Write(double value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+
+            this.Write(buffer);
         }
 
         #endregion

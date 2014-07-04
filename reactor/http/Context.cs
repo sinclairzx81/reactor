@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -31,23 +33,27 @@ namespace Reactor.Http
 {
     public class HttpContext
     {
-        private HttpListenerContext HttpListenerContext    { get; set; }
+        private Reactor.Net.HttpListenerContext httpListenerContext    { get; set; }
 
-        public IPrincipal           User                   { get; set; }
+        public IPrincipal                   User                   { get; set; }
 
-        public ServerRequest        Request                { get; set; }
+        public ServerConnection             Connection             { get; set; }
 
-        public ServerResponse       Response               { get; set; }
+        public ServerRequest                Request                { get; set; }
 
-        internal HttpContext(HttpListenerContext HttpListenerContext)
+        public ServerResponse               Response               { get; set; }
+
+        internal HttpContext(Reactor.Net.HttpListenerContext HttpListenerContext)
         {
-            this.HttpListenerContext    = HttpListenerContext;
+            this.httpListenerContext    = HttpListenerContext;
 
-            this.User                   = this.HttpListenerContext.User;
+            this.User                   = this.httpListenerContext.User;
 
-            this.Request                = new ServerRequest (this.HttpListenerContext.Request);
+            this.Connection             = new ServerConnection (this, HttpListenerContext.Connection);
 
-            this.Response               = new ServerResponse(this.HttpListenerContext.Response);
+            this.Request                = new ServerRequest    (this, this.httpListenerContext.Request);
+
+            this.Response               = new ServerResponse   (this, this.httpListenerContext.Response);
         }
     }
 }

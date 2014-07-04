@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -26,6 +28,7 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Specialized;
+using System.IO;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -34,15 +37,35 @@ namespace Reactor.Http
 {
     public class ServerRequest : IReadable
     {
-        private HttpListenerRequest  HttpListenerRequest   { get; set; }
+        private HttpContext          context;
 
-        private ReadStream           ReadStream            { get; set; }
+        private Reactor.Net.HttpListenerRequest  httplistenerrequest;
 
-        internal ServerRequest(HttpListenerRequest HttpListenerRequest)
+        private Stream               stream;
+
+        private bool                 reading;
+
+        private long                 received;
+
+        private bool                 paused;
+
+        private bool                 closed;
+
+        internal ServerRequest(HttpContext context, Reactor.Net.HttpListenerRequest httplistenerrequest)
         {
-            this.HttpListenerRequest    = HttpListenerRequest;
+            this.context                = context;
 
-            this.ReadStream             = new ReadStream(this.HttpListenerRequest.InputStream, true);
+            this.httplistenerrequest    = httplistenerrequest;
+
+            this.stream                 = this.httplistenerrequest.InputStream;
+
+            this.received               = 0;
+
+            this.paused                 = true;
+
+            this.closed                 = false;
+
+            this.reading                = false;
         }
 
         #region HttpListenerRequest
@@ -51,7 +74,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.AcceptTypes;
+                return this.httplistenerrequest.AcceptTypes;
             }
         }
 
@@ -59,7 +82,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.ClientCertificateError;
+                return this.httplistenerrequest.ClientCertificateError;
             }
         }
 
@@ -67,7 +90,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.ContentEncoding;
+                return this.httplistenerrequest.ContentEncoding;
             }
         }
 
@@ -75,7 +98,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.ContentLength64;
+                return this.httplistenerrequest.ContentLength64;
             }
         }
 
@@ -83,23 +106,17 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.ContentType;
+                return this.httplistenerrequest.ContentType;
             }
         }
 
-        public CookieCollection Cookies
-        {
-            get
-            {
-                return this.HttpListenerRequest.Cookies;
-            }
-        }
+
 
         public bool HasEntityBody
         {
             get
             {
-                return this.HttpListenerRequest.HasEntityBody;
+                return this.httplistenerrequest.HasEntityBody;
             }
         }
 
@@ -107,7 +124,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.Headers;
+                return this.httplistenerrequest.Headers;
             }
         }
 
@@ -115,7 +132,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.HttpMethod;
+                return this.httplistenerrequest.HttpMethod;
             }
         }
 
@@ -123,7 +140,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.IsAuthenticated;
+                return this.httplistenerrequest.IsAuthenticated;
             }
         }
 
@@ -131,7 +148,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.IsLocal;
+                return this.httplistenerrequest.IsLocal;
             }
         }
 
@@ -139,7 +156,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.IsSecureConnection;
+                return this.httplistenerrequest.IsSecureConnection;
             }
         }
 
@@ -147,7 +164,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.KeepAlive;
+                return this.httplistenerrequest.KeepAlive;
             }
         }
 
@@ -155,7 +172,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.LocalEndPoint;
+                return this.httplistenerrequest.LocalEndPoint;
             }
         }
 
@@ -163,7 +180,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.ProtocolVersion;
+                return this.httplistenerrequest.ProtocolVersion;
             }
         }
 
@@ -171,7 +188,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.QueryString;
+                return this.httplistenerrequest.QueryString;
             }
         }
 
@@ -179,7 +196,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.RawUrl;
+                return this.httplistenerrequest.RawUrl;
             }
         }
 
@@ -187,7 +204,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.RemoteEndPoint;
+                return this.httplistenerrequest.RemoteEndPoint;
             }
         }
 
@@ -195,7 +212,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.RequestTraceIdentifier;
+                return this.httplistenerrequest.RequestTraceIdentifier;
             }
         }
 
@@ -203,7 +220,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.Url;
+                return this.httplistenerrequest.Url;
             }
         }
 
@@ -211,7 +228,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.UrlReferrer;
+                return this.httplistenerrequest.UrlReferrer;
             }
         }
 
@@ -219,7 +236,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.UserAgent;
+                return this.httplistenerrequest.UserAgent;
             }
         }
 
@@ -227,7 +244,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.UserHostAddress;
+                return this.httplistenerrequest.UserHostAddress;
             }
         }
 
@@ -235,7 +252,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.UserHostName;
+                return this.httplistenerrequest.UserHostName;
             }
         }
 
@@ -243,7 +260,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpListenerRequest.UserLanguages;
+                return this.httplistenerrequest.UserLanguages;
             }
         }
 
@@ -253,95 +270,204 @@ namespace Reactor.Http
 
         public void Certificate(Action<Exception, X509Certificate2> OnCertificate)
         {
-            this.HttpListenerRequest.BeginGetClientCertificate((result) =>
-            {
-                try
-                {
-                    var certificate = this.HttpListenerRequest.EndGetClientCertificate(result);
-
-                    Loop.Post(() =>
-                    {
-                        OnCertificate(null, certificate);
-                    });
-                }
-                catch (Exception exception)
-                {
-                    Loop.Post(() =>
-                    {
-                        OnCertificate(exception, null);
-                    });
-                }
-
-            }, null);
+            //this.HttpListenerRequest.GetClientCertificate(OnCertificate);
         }
 
         #endregion
 
         #region IReadStream
 
-        public event Action<Exception> OnError
-        {
-            add
-            {
-                this.ReadStream.OnError += value;
-            }
-            remove
-            {
-                this.ReadStream.OnError -= value;
-            }
-        }
+        public event Action<Exception> OnError;
+
+        private event Action<Buffer> ondata;
 
         public event Action<Buffer> OnData
         {
             add
             {
-                this.ReadStream.OnData += value;
+                this.ondata += value;
+
+                this.Resume();
             }
             remove
             {
-                this.ReadStream.OnData -= value;
+                this.ondata -= value;
             }
         }
 
-        public event Action OnEnd
-        {
-            add
-            {
-                this.ReadStream.OnEnd += value;
-            }
-            remove
-            {
-                this.ReadStream.OnEnd -= value;
-            }
-        }
-
-        public event Action OnClose
-        {
-            add
-            {
-                this.ReadStream.OnClose += value;
-            }
-            remove
-            {
-                this.ReadStream.OnClose -= value;
-            }
-        }
+        public event Action OnEnd;
 
         public IReadable Pipe(IWriteable writeable)
         {
-            return this.ReadStream.Pipe(writeable);
-        }
+            this.OnData += data =>
+            {
+                this.Pause();
 
-        public void Resume()
-        {
-            this.ReadStream.Resume();
+                writeable.Write(data, (exception0) =>
+                {
+                    if (exception0 != null)
+                    {
+                        if (this.OnError != null)
+                        {
+                            this.OnError(exception0);
+                        }
+
+                        return;
+                    }
+
+                    writeable.Flush((exception1) =>
+                    {
+                        if (exception1 != null)
+                        {
+                            if (this.OnError != null)
+                            {
+                                this.OnError(exception1);
+                            }
+
+                            return;
+                        }
+
+                        this.Resume();
+                    });
+                });
+            };
+
+            this.OnEnd += () =>
+            {
+                writeable.End();
+            };
+
+            if (writeable is IReadable)
+            {
+                return writeable as IReadable;
+            }
+
+            return null;
         }
 
         public void Pause()
         {
-            this.ReadStream.Pause();
+            this.paused = true;
+        }
+
+        public void Resume()
+        {
+            this.paused = false;
+
+            if (!this.reading)
+            {
+                if (!this.closed)
+                {
+                    this.Read();
+                }
+            }
+        }
+
+        public void Close()
+        {
+            this.closed = true;
         }
 
         #endregion
+
+        private byte[] readbuffer = new byte[Reactor.Settings.DefaultReadBufferSize];
+
+        private void Read()
+        {
+            this.reading = true;
+
+            IO.Read(this.stream, this.readbuffer, (exception, read) =>
+            {
+                //----------------------------------------------
+                // exception
+                //----------------------------------------------
+                if (exception != null)
+                {
+                    if (this.OnError != null)
+                    {
+                        this.OnError(exception);
+                    }
+
+                    if (this.OnEnd != null)
+                    {
+                        this.OnEnd();
+                    }
+
+                    try
+                    {
+                        this.stream.Dispose();
+                    }
+                    catch (Exception _exception)
+                    {
+                        if (this.OnError != null)
+                        {
+                            this.OnError(_exception);
+                        }
+                    }
+
+                    this.reading = false;
+
+                    this.closed  = true;
+
+                    return;
+                }
+
+                //----------------------------------------------
+                // end of stream
+                //----------------------------------------------
+                if (read == 0 || read == -1)
+                {
+                    if (this.OnEnd != null)
+                    {
+                        this.OnEnd();
+                    }
+
+                    try
+                    {
+                        this.stream.Dispose();
+                    }
+                    catch (Exception _exception)
+                    {
+                        if (this.OnError != null)
+                        {
+                            this.OnError(_exception);
+                        }
+                    }
+
+                    this.reading = false;
+
+                    this.closed = true;
+
+                    return;
+                }
+
+                //----------------------------------------------
+                // increment received.
+                //----------------------------------------------
+
+                this.received = this.received + read;
+
+                //----------------------------------------------
+                // standard
+                //----------------------------------------------
+                if (this.ondata != null)
+                {
+                    this.ondata(new Buffer(this.readbuffer, 0, read));
+                }
+
+                //----------------------------------------------
+                // continue
+                //----------------------------------------------
+
+                if (!this.paused)
+                {
+                    this.Read();
+                }
+                else
+                {
+                    this.reading = false;
+                }
+            });                 
+        }
     }
 }

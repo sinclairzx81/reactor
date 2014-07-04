@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -21,24 +23,42 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
 ---------------------------------------------------------------------------*/
 
 using System;
+using System.IO;
 using System.Net;
 
 namespace Reactor.Http
 {
     public class Response : IReadable
     {
-        private HttpWebResponse   HttpWebResponse        { get; set; }
+        private HttpWebResponse httpwebresponse;
 
-        private ReadStream        ReadStream             { get; set; }
+        private Stream          stream;
 
-        internal Response(HttpWebResponse HttpWebResponse)
+        private bool            reading;
+
+        private long            received;
+
+        private bool            paused;
+
+        private bool            closed;
+
+        internal Response(HttpWebResponse httpwebresponse)
         {
-            this.HttpWebResponse        = HttpWebResponse;
+            this.httpwebresponse = httpwebresponse;
 
-            this.ReadStream             = new ReadStream(this.HttpWebResponse.GetResponseStream(), true);
+            this.stream          = this.httpwebresponse.GetResponseStream();
+
+            this.reading         = false;
+
+            this.paused          = true;
+
+            this.closed          = false;
+
+            this.received        = 0;
         }
 
         #region HttpWebResponse
@@ -47,7 +67,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebResponse.CharacterSet;
+                return this.httpwebresponse.CharacterSet;
             }
         }
 
@@ -55,7 +75,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebResponse.ContentEncoding;
+                return this.httpwebresponse.ContentEncoding;
             }
         }
 
@@ -63,7 +83,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebResponse.ContentLength;
+                return this.httpwebresponse.ContentLength;
             }
         }
 
@@ -71,7 +91,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebResponse.ContentType;
+                return this.httpwebresponse.ContentType;
             }
         }
 
@@ -79,11 +99,11 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebResponse.Cookies;
+                return this.httpwebresponse.Cookies;
             }
             set
             {
-                this.HttpWebResponse.Cookies = value;
+                this.httpwebresponse.Cookies = value;
             }
         }
 
@@ -91,7 +111,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebResponse.Headers;
+                return this.httpwebresponse.Headers;
             }
         }
 
@@ -99,7 +119,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebResponse.IsMutuallyAuthenticated;
+                return this.httpwebresponse.IsMutuallyAuthenticated;
             }
         }
 
@@ -108,7 +128,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebResponse.LastModified;
+                return this.httpwebresponse.LastModified;
             }
         }
 
@@ -116,7 +136,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebResponse.Method;
+                return this.httpwebresponse.Method;
             }
         }
 
@@ -125,7 +145,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebResponse.ProtocolVersion;
+                return this.httpwebresponse.ProtocolVersion;
             }
         }
 
@@ -133,7 +153,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebResponse.ResponseUri;
+                return this.httpwebresponse.ResponseUri;
             }
         }
 
@@ -141,7 +161,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebResponse.Server;
+                return this.httpwebresponse.Server;
             }
         }
 
@@ -150,7 +170,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebResponse.StatusCode;
+                return this.httpwebresponse.StatusCode;
             }
         }
 
@@ -158,76 +178,204 @@ namespace Reactor.Http
         {
             get
             {
-                return this.HttpWebResponse.StatusDescription;
+                return this.httpwebresponse.StatusDescription;
             }
         }
         #endregion
 
         #region IReadStream
 
-        public event Action<Exception> OnError 
-        {
-            add 
-            {
-                this.ReadStream.OnError += value;
-            }
-            remove 
-            {
-                this.ReadStream.OnError -= value;
-            }
-        }
+        public event Action<Exception> OnError;
+
+        private event Action<Buffer> ondata;
 
         public event Action<Buffer> OnData
         {
             add
             {
-                this.ReadStream.OnData += value;
+                this.ondata += value;
+
+                this.Resume();
             }
             remove
             {
-                this.ReadStream.OnData -= value;
+                this.ondata -= value;
             }
         }
 
-        public event Action OnEnd
-        {
-            add
-            {
-                this.ReadStream.OnEnd += value;
-            }
-            remove
-            {
-                this.ReadStream.OnEnd -= value;
-            }
-        }
-
-        public event Action OnClose
-        {
-            add
-            {
-                this.ReadStream.OnClose += value;
-            }
-            remove
-            {
-                this.ReadStream.OnClose -= value;
-            }
-        }
+        public event Action OnEnd;
 
         public IReadable Pipe(IWriteable writeable)
         {
-            return this.ReadStream.Pipe(writeable);
-        }
+            this.OnData += data =>
+            {
+                this.Pause();
 
-        public void Resume()
-        {
-            this.ReadStream.Resume();
+                writeable.Write(data, (exception0) =>
+                {
+                    if (exception0 != null)
+                    {
+                        if (this.OnError != null)
+                        {
+                            this.OnError(exception0);
+                        }
+
+                        return;
+                    }
+
+                    writeable.Flush((exception1) =>
+                    {
+                        if (exception1 != null)
+                        {
+                            if (this.OnError != null)
+                            {
+                                this.OnError(exception1);
+                            }
+
+                            return;
+                        }
+
+                        this.Resume();
+                    });
+                });
+            };
+
+            this.OnEnd += () =>
+            {
+                writeable.End();
+            };
+
+            if (writeable is IReadable)
+            {
+                return writeable as IReadable;
+            }
+
+            return null;
         }
 
         public void Pause()
         {
-            this.ReadStream.Pause();
+            this.paused = true;
+        }
+
+        public void Resume()
+        {
+            this.paused = false;
+
+            if (!this.reading)
+            {
+                if (!this.closed)
+                {
+                    this.Read();
+                }
+            }
+        }
+
+        public void Close()
+        {
+            this.closed = true;
         }
 
         #endregion
+
+        private byte[] readbuffer = new byte[Reactor.Settings.DefaultReadBufferSize];
+
+        private void Read()
+        {
+            this.reading = true;
+
+            IO.Read(this.stream, this.readbuffer, (exception, read) =>
+            {
+                //----------------------------------------------
+                // exception
+                //----------------------------------------------
+                if (exception != null)
+                {
+                    if (this.OnError != null)
+                    {
+                        this.OnError(exception);
+                    }
+
+                    if (this.OnEnd != null)
+                    {
+                        this.OnEnd();
+                    }
+
+                    try
+                    {
+                        this.stream.Dispose();
+                    }
+                    catch (Exception _exception)
+                    {
+                        if (this.OnError != null)
+                        {
+                            this.OnError(_exception);
+                        }
+                    }
+
+                    this.reading = false;
+
+                    this.closed = true;
+
+                    return;
+                }
+
+                //----------------------------------------------
+                // end of stream
+                //----------------------------------------------
+                if (read == 0)
+                {
+                    if (this.OnEnd != null)
+                    {
+                        this.OnEnd();
+                    }
+
+                    try
+                    {
+                        this.stream.Dispose();
+                    }
+                    catch (Exception _exception)
+                    {
+                        if (this.OnError != null)
+                        {
+                            this.OnError(_exception);
+                        }
+                    }
+
+                    this.reading = false;
+
+                    this.closed = true;
+
+                    return;
+                }
+
+                //----------------------------------------------
+                // increment received.
+                //----------------------------------------------
+
+                this.received = this.received + read;
+
+                //----------------------------------------------
+                // standard
+                //----------------------------------------------
+                if (this.ondata != null)
+                {
+                    this.ondata(new Buffer(this.readbuffer, 0, read));
+                }
+
+                //----------------------------------------------
+                // continue
+                //----------------------------------------------
+
+                if (!this.paused)
+                {
+                    this.Read();
+                }
+                else
+                {
+                    this.reading = false;
+                }
+            });
+        }
     }
 }

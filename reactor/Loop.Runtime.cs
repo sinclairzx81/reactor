@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -36,8 +38,6 @@ namespace Reactor
         private static Thread                 Thread                 { get; set; }
 
         private static bool                   Started                { get; set; }
-
-        private static object                 LoopLock { get; set; }
 
         #region Methods
 
@@ -101,7 +101,7 @@ namespace Reactor
                 {
                     while (Reactor.Loop.Enumerator().MoveNext())
                     {
-                            
+                        
                     }
                 }
 

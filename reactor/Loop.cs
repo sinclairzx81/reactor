@@ -1,5 +1,7 @@
 ﻿/*--------------------------------------------------------------------------
 
+Reactor
+
 The MIT License (MIT)
 
 Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
@@ -34,6 +36,8 @@ namespace Reactor
     /// </summary>
     public sealed partial class Loop
     {
+        #region Singleton
+
         private static object         synclock = new object();
 
         private static volatile Loop  instance = null;
@@ -57,43 +61,29 @@ namespace Reactor
             }
         }
 
-        private object                SyncLock;
+        #endregion
 
-        private Queue<Reactor.Action> Actions;
+        private Reactor.ConcurrentQueue<Reactor.Action> Actions;
 
         private Loop()
         {
-            this.SyncLock = new object();
-
-            this.Actions  = new Queue<Reactor.Action>();
+            this.Actions = new Reactor.ConcurrentQueue<Reactor.Action>();
         }
 
         #region Internals
 
-        /// <summary>
-        /// Posts an action to the event loop.
-        /// </summary>
-        /// <param name="action">The action to run.</param>
         public static void            Post       (Reactor.Action action)
         {
-            lock (Loop.Instance.SyncLock)
-            {
-                Loop.Instance.Actions.Enqueue(action);
-            }
+            Loop.Instance.Actions.Enqueue(action);
         }
 
-        /// <summary>
-        /// Dequeues the next action on the event loop. if no actions, will return null.
-        /// </summary>
-        /// <param name="action">The action to run.</param>
         internal static Action          Pop        ()
         {
-            lock (Loop.Instance.SyncLock)
+            Reactor.Action action;
+
+            if(Loop.Instance.Actions.TryDequeue(out action))
             {
-                if (Loop.Instance.Actions.Count > 0)
-                {
-                    return Loop.Instance.Actions.Dequeue();
-                }
+                return action;
             }
 
             return null;
@@ -113,13 +103,42 @@ namespace Reactor
 
             while (action != null)
             {
-                lock (Loop.Instance.SyncLock)
-                {
-                    action();
-                }
+                LastAction = action;
+
+                action();
+              
                 yield return 0;
 
                 action = Reactor.Loop.Pop();
+            }
+        }
+
+        #endregion
+
+        #region Diagnostics
+
+        public static Action LastAction { get; set; }
+
+        public static int PendingCount
+        {
+            get
+            {
+                return Loop.Instance.Actions.Count;
+            }
+        }
+
+        public static List<Reactor.Action> PendingList
+        {
+            get
+            {
+                var ret = new List<Reactor.Action>();
+
+                foreach (var a in Loop.Instance.Actions)
+                {
+                    ret.Add(a);
+                }
+
+                return ret;
             }
         }
 
