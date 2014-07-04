@@ -220,40 +220,29 @@ Reactor has a single buffer primitive which is used to buffer data in memory, an
 a container for data transmitted via a stream. The buffer contains read and write operations, 
 and is type passed back on OnData events.
 
-Buffers can be used to ensure that data being written as a block, and prevents fragmentation
-of data. Consider the following.....
-
 ```csharp
-// server
-Reactor.Tcp.Server.Create((socket) => {
+
+Reactor.Tcp.Server.Create(socket => {
+	
+	socket.OnData += data => {
+	
+		// data is of type Reactor.Buffer
+
+	};
+
     var buffer = Reactor.Buffer.Create();
+
     buffer.Write(10.0f);
+
     buffer.Write(20.0f);
+
     buffer.Write(30.0f);
+
     socket.Write(buffer);
+
 }).Listen(5000);
 
-// client
-var client = Reactor.Tcp.Socket.Create(5000);
-client.OnData += (data) => { // data is of type 'Buffer'
-    var x = data.ReadSingle();
-    var y = data.ReadSingle();
-    var z = data.ReadSingle();
-    Console.WriteLine("{0} {1} {2}", x, y, z);
-};
-```
 
-note: replace the server code with the following to see fragmentation...
-
-```csharp
-Reactor.Tcp.Server.Create((socket) => {
-    socket.Write(10.0f);
-    socket.Write(20.0f);
-    socket.Write(30.0f);
-}).Listen(5000);
-```
-
-note: the error when attempting to read 'y' from the buffer.
 
 <a name='streams' />
 ### streams
