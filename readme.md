@@ -16,8 +16,8 @@ var server = Reactor.Http.Server.Create(context => {
 ### overview
 
 Reactor is a evented, asynchronous io and networking framework written for the Microsoft.Net, Mono, Xamarin, and Unity3D
-platforms. Reactor is heavily influenced by libuv and nodejs, and aims to both mirror both their feature set, and aims
-to provide easy interoperability between .net applications and real-time network services.
+platforms. Reactor is heavily influenced by libuv and nodejs, and aims to mirror both their feature set, and ultimately 
+provide easy interoperability between .net applications and real-time network services.
 
 Reactor is specifically written to target .net applications running versions of .net as low as 2.0. Developers can 
 leverage Reactor to both consume realtime network services, as well as expose realtime services of their own.
@@ -58,15 +58,16 @@ The following section describes setting up a Reactor application.
 <a name='getting_started_event_loop' />
 #### the event loop
 
-At its core, reactor requires that users start an event loop. The reactor event loop internally synchronizes and serializes asynchronous
-operations back on the main thread. The following describes recommended approaches to starting the loop.
+At its core, reactor requires that users start an event loop. The reactor event loop internally demultiplexes asynchronous callback 
+operations back to the main thread. The following describes recommended approaches to running a loop.
 
 <a name='getting_started_console_applications' />
 #### console applications
 
-The following is the recommended approach for starting the reactor event loop in a typical console application. Calling Reactor.Loop.Start()
-will begin a background thread which will enumerate reactors internal event queue, and dispatch asynchronous completion callbacks to the caller. 
-The in example below, we start the loop, make a request to google, and stop the loop. 
+The following describes running a reactor event loop in a typical console application. Calling Reactor.Loop.Start()
+will begin a background thread which will enumerate reactors internal event queue. By doing this, reactor will dispatch 
+any asynchronous completation callbacks to the caller. The in example below, we start the loop, make a request to google, 
+then (optionally) stop the loop. 
 
 ```csharp
 class Program 
@@ -88,11 +89,11 @@ class Program
 <a name='getting_started_windows_forms_applications' />
 #### windows forms applications
 
-When developing UI applications, handling asynchronous callbacks typically require the user to manage 
-synchronization back on applications UI thread. Reactor allows developers to specify a SynchronizationContext 
-when starting the event loop. With this, you can specify the UI's synchronization context, ensuring all 
-asynchronous completes are synchronized back on application UI thread. The following demonstrates a simple
-setup.
+When developing UI applications, handling asynchronous callbacks typically requires the user to manage 
+synchronization back on applications UI thread by way of a SynchronizationContext. Reactor provides a 
+convienient overload for starting loops that accepts a SynchronizationContext as a argument. In the example
+below, the loop is started with System.Threading.SynchronizationContext.Current on OnLoad(). This ensures
+that all async completations are always returned to the UI thread.
 
 ```csharp
 public partial class Form1 : Form
@@ -122,10 +123,9 @@ public partial class Form1 : Form
 <a name='getting_started_unity3D_applications' />
 #### unity3D applications
 
-In Unity3D, a SynchronizationContext is not available to developers. Instead, Unity3D requires developers to 
-leverage Cooroutines to orchestrate asynchrony. In these scenarios, Reactor provides a Reactor.Loop.Enumerator() 
-that can be passed as a argument to StartCoroutine(). Unity3D will enumerate the Reactor event loop, achieving
-the same result as running the event loop in a seperate thread.
+In Unity3D, a SynchronizationContext is not available to developers. Rather, Unity3D requires developers to 
+use cooroutines to orchestrate asynchrony. In these scenarios, Reactor provides a Reactor.Loop.Enumerator() that
+Unity can use to enumerate completed asynchronous operations. The example below demonstrates how.
 
 ```csharp
 using UnityEngine;
@@ -143,7 +143,7 @@ public class MyGameObject : MonoBehaviour {
 	
 	void Update () {
 
-		StartCoroutine ( Reactor.Loop.Enumerator ());
+		StartCoroutine ( Reactor.Loop.Enumerator() );
 	}
 }
 ```
