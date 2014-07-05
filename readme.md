@@ -13,7 +13,7 @@ var server = Reactor.Http.Server.Create(context => {
 }).Listen(8080);
 ```
 
-[download](https://s3.amazonaws.com/sinclair-code/reactor-0.9.zip "download 0.9")
+
 
 ### overview
 
@@ -23,6 +23,8 @@ provide easy interoperability between .net applications and real-time network se
 
 Reactor is specifically written to target .net applications running versions as low as 2.0. Developers can 
 leverage Reactor to both consume realtime network services, as well as expose realtime services of their own.
+
+[download reactor 0.9](https://s3.amazonaws.com/sinclair-code/reactor-0.9.zip "download 0.9")
 
 ### contents
 
