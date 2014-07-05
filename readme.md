@@ -15,7 +15,7 @@ var server = Reactor.Http.Server.Create(context => {
 
 ### overview
 
-Reactor is a evented, asynchronous io and networking framework written for the Microsoft.Net, Mono, and Unity3D
+Reactor is a evented, asynchronous io and networking framework written for the Microsoft.Net, Mono, Xamarin, and Unity3D
 platforms. Reactor is heavily influenced by libuv and nodejs, and aims to both mirror both their feature set, and aims
 to provide easy interoperability between .net applications and real-time network services.
 
@@ -64,9 +64,9 @@ operations back on the main thread. The following describes recommended approach
 <a name='getting_started_console_applications' />
 #### console applications
 
-The following is the recommended approach for starting the event loop in a console application. 
-Note, by calling the loop, the application will not close at the end of Main(). Calling Start() on the
-event loop will internally spawn a single thread which will iterate over the loop (as above).
+The following is the recommended approach for starting the reactor event loop in a typical console application. Calling Reactor.Loop.Start()
+will begin a background thread which will enumerate reactors internal event queue, and dispatch asynchronous completion callbacks to the caller. 
+The in example below, we start the loop, make a request to google, and stop the loop. 
 
 ```csharp
 class Program 
@@ -75,16 +75,12 @@ class Program
 	{
 		Reactor.Loop.Start();
 
-        Reactor.Http.Request.Create("http://google.com", (response) => {
+        Reactor.Http.Request.Get("http://google.com", (exception, buffer) => {
 
-            response.OnData += (data) => {
-			
-                 Console.WriteLine(data.ToString(Encoding.UTF8));
-            };
+			Console.WriteLine(buffer.ToString("utf8"));
 
-        }).End();
-
-
+			Reactor.Loop.Stop(); // optional
+        });
 	}
 }
 ```
@@ -92,12 +88,11 @@ class Program
 <a name='getting_started_windows_forms_applications' />
 #### windows forms applications
 
-Reactor is capible of returning all events back to the main UI thread. This is important
-for windows forms applications as asynchronous events typically need invoke some action
-within the UI. Returning control to the UI thread is achieved by way of the SynchronizationContext.
-The following demonstrates setting up in a basic form. The demonstration assumes one textbox and
-one button. Clicking on the button will asynchronously download html from the google homepage and
-display the result in the textbox.
+When developing UI applications, handling asynchronous callbacks typically require the user to manage 
+synchronization back on applications UI thread. Reactor allows developers to specify a SynchronizationContext 
+when starting the event loop. With this, you can specify the UI's synchronization context, ensuring all 
+asynchronous completes are synchronized back on application UI thread. The following demonstrates a simple
+setup.
 
 ```csharp
 public partial class Form1 : Form
@@ -116,14 +111,10 @@ public partial class Form1 : Form
 
     private void button1_Click(object sender, EventArgs e)
     {
-        Reactor.Http.Request.Create("http://google.com", (response) => {
+        Reactor.Http.Request.Get("http://google.com", (exception, buffer) => {
 
-            response.OnData += (data) => {
-
-                this.textBox1.Text += data.ToString(Encoding.UTF8);
-            };
-
-        }).End();
+			this.textbox1.Text = buffer.ToString("utf8");
+        });
     }
 }
 ```
@@ -131,9 +122,10 @@ public partial class Form1 : Form
 <a name='getting_started_unity3D_applications' />
 #### unity3D applications
 
-Reactor integrates well within Unity3D. Reactor simplifies asynchronous programming on the Unity3D platform
-by taking care of returning asynchronous control back to the main UI thread. The following demonstrates
-setting up reactor in a MonoBehaviour.
+In Unity3D, a SynchronizationContext is not available to developers. Instead, Unity3D requires developers to 
+leverage Cooroutines to orchestrate asynchrony. In these scenarios, Reactor provides a Reactor.Loop.Enumerator() 
+that can be passed as a argument to StartCoroutine(). Unity3D will enumerate the Reactor event loop, achieving
+the same result as running the event loop in a seperate thread.
 
 ```csharp
 using UnityEngine;
@@ -143,21 +135,13 @@ public class MyGameObject : MonoBehaviour {
 	
 	void Start () {
 		
-        Reactor.Http.Request.Create("http://google.com", (response) => {
-			
-            response.OnData += (data) => {
+        Reactor.Http.Request.Get("http://google.com", (exception, buffer) => {
 
-                // event fired on the main UI thread.
-            };
-
-        }).End();
+			// ready to go!!
+        });
 	}
 	
 	void Update () {
-		
-		//-----------------------------------------------		
-		// run the event loop as a coroutine on update.
-		//-----------------------------------------------
 
 		StartCoroutine ( Reactor.Loop.Enumerator ());
 	}
@@ -176,15 +160,11 @@ fashioned after javascript setTimeout() and setInterval() respectively.
 Use the Timeout class set a delay.
 
 ```csharp
-Reactor.Loop.Start();
-
 Reactor.Timeout.Create(() => {
 
 	Console.WriteLine("this code will be run in 1 second");
 
 }, 1000);
-
-
 ```
 
 <a name='timers_interval' />
@@ -218,10 +198,9 @@ interval = Reactor.Interval.Create(() => {
 
 Reactor has a single buffer primitive which is used to buffer data in memory, and to act as
 a container for data transmitted via a stream. The buffer contains read and write operations, 
-and is type passed back on OnData events.
+and is type passed back on all OnData events.
 
 ```csharp
-
 Reactor.Tcp.Server.Create(socket => {
 	
 	socket.OnData += data => {
@@ -240,49 +219,59 @@ Reactor.Tcp.Server.Create(socket => {
     socket.Write(buffer);
 
 }).Listen(5000);
-
 ```
 
 <a name='streams' />
 ### streams
 
-All IO bound objects in Reactor are implementations of streams, and they are either Readable, Writeable 
-or both. Reactor borrows heavily from libuv / nodejs in this regard. 
+Reactor aligns closely with the evented io model found in nodejs. Reactor implements IReadable, 
+IWriteable, or IDuplexable interfaces across file io, tcp, http request / response, stdio etc, with 
+the intent of enabling effecient, evented piping of data across transports.
+
+```csharp
+Reactor.Http.Server.Create(context => {
+
+	var readstream = Reactor.File.ReadStream.Create("c:/video.mp4");
+
+    context.Response.ContentLength = readstream.Length;
+
+    context.Response.ContentType = "video/mp4";
+
+    readstream.Pipe(context.Response);
+
+}).Listen(8080);
+```
 
 <a name='streams_readstream' />
-#### readstream
+#### IReadable
 
-Readstreams support OnData, OnEnd, OnClose and OnError events. In addition, readstreams also
-support Pipe(), Pause() and Resume() operations. These functions mirror nodejs streams.
+Supports OnData, OnEnd and OnError events. As well as Pause(), Resume() and Pipe().
 
 The following demonstrates opening a file as a readstream.
 
 ```csharp
-
 var readstream = Reactor.File.ReadStream.Create("myfile.txt");
 
-// fired when the stream has data
-readstream.OnData += (data) => { };
+readstream.OnData += (data) => { 
+	
+	// fired when we have read data from the file system.
+};
 
-// fired when the stream has reached the end
-readstream.OnEnd += () => { };
+readstream.OnEnd += () => { 
 
-// fired when the stream has closed
-readstream.OnClose += () => { };
+	// fired when we have read to the end of the file.
+};
 
-// fired if there was an error reading from the stream.
-readstream.OnError += (exception) => { };
-
+readstream.OnError += (error) => { 
+	
+	// fired on error. error is of type System.Exception.
+};
 ```
 
 <a name='streams_writestream' />
-#### writestream
+#### IWriteable
 
-Writestreams support writing data on a underlying stream. Reactor writestreams are
-fashioned after nodejs writable streams, and support similar operations. 
-
-The following demonstrates opening a file as a writestream and writing things to it. note that
-data written to the stream is written sequentially. 
+Supports Write(), Flush() and End() operations on a underlying stream.
 
 ```csharp
 var writestream = Reactor.File.WriteStream.Create("myfile.txt");
@@ -304,115 +293,65 @@ Reactor provides a evented abstraction for the .net type System.IO.FileStream. T
 <a name='files_readstream' />
 #### readstream
 
-Creating a file readstream. (copy one file to another)
+The following creates a reactor file readstream. The example outputs its contents to the console window.
 
 ```csharp
-Reactor.Loop.Start();
-
 var readstream = Reactor.File.ReadStream.Create("input.txt");
 
-var writestream = Reactor.File.WriteStream.Create("output.txt");
+readstream.OnData += (data) => Console.Write(data.ToString("utf8"));
 
-readstream.Pipe(writestream);
+readstream.OnEnd  += ()     => Console.Write("finished reading");
 ```
 
 <a name='files_writestream' />
 #### writestream
 
-Creating a file writestream. (copy one file to another)
+The followinf creates a reactor file writestream. The example writes data and ends the stream when complete.
 
 ```csharp
-Reactor.Loop.Start();
-
-var readstream = Reactor.File.ReadStream.Create("input.txt");
-
 var writestream = Reactor.File.WriteStream.Create("output.txt");
 
-readstream.Pipe(writestream);
+writestream.Write("hello world");
+
+writestream.End();
+
 ```
 
 <a name='http' />
 ### http
 
-Reactor provides a abstraction over the BCL http classes. The following outlines their use.
-
-
+Reactor provides a evented abstraction over the http bcl classes.
 
 <a name='http_server' />
 #### server
 
-The following will create a simple http server and listen on port 5000.
-
-note: windows users may need to run their applications with elevated privilges as the HttpListener class will complain with Access denied errors in .NET. 
-Users may need to set access rights for the current user with the following netsh http add urlacl url=http://[host_port]:[your port]/ user=MACHINENAME/USERNAME.
+The following will create a simple http server and listen on port 8080.
 
 ```csharp
-
-Reactor.Loop.Start();
-
-Reactor.Http.Server.Create((context) => {
-
-    context.Response.ContentType = "text/html";
+var server = Reactor.Http.Server.Create(context => {
 
     context.Response.Write("hello world");
 
     context.Response.End();
 
-}).Listen(5000);
+}).Listen(8080);
 ```
 
-<a name='http_server_request' />
-##### request
-
-Reactor provides a evented abstraction over the type System.Net.HttpListenerRequest. The request is
-a implementation of a readable stream.
-
-```csharp
-Reactor.Loop.Start();
-
-Reactor.Http.Server.Create((context) => {
-
-    context.Response.Pipe(context.Request);
-
-}).Listen(5000);
-```
-
-<a name='http_server_response' />
-##### response
-
-Reactor provides a evented abstraction over the type System.Net.HttpListenerResponse The response is
-a implementation of a writeable stream.
-
-```csharp
-Reactor.Loop.Start();
-
-Reactor.Http.Server.Create((context) => {
-
-    context.Response.Write("hello world");
-
-    context.Response.End();     
-
-}).Listen(5000);
-```
+The reactor http server passes a 'context' for each request. The context object contains Request, Response objects, which 
+are in themselves, implementations of IReadable and IWritable respectively.
 
 <a name='http_request' />
 #### request
 
-Reactor provides a evented abstraction over both HttpWebRequest and HttpWebResponse classes. The request is a implementation of a writeable stream, and 
-the response is a implementation of a readable stream. The following demonstrates making a GET and POST with Reactor.
-request.
+Reactor provides a evented abstraction over both HttpWebRequest and HttpWebResponse classes. 
 
 Make a GET request.
-
 ```csharp
-
-Reactor.Loop.Start();
-
 var request = Reactor.Http.Request.Create("http://domain.com", (response) => {
 
 	response.OnData += (data) => Console.WriteLine(data.ToString(Encoding.UTF8));
 
-	response.OnEnd += () => Console.WriteLine("the response has ended");
+	response.OnEnd += ()      => Console.WriteLine("the response has ended");
 
 });
 
@@ -442,49 +381,46 @@ request.End();
 <a name='tcp' />
 ### tcp
 
-Reactor provides a abstraction over the System.Net.Sockets.Socket TCP socket. The following demonstrates
-its use.
+Reactor provides a evented abstraction over the System.Net.Sockets.Socket TCP socket.
 
 <a name='tcp_server' />
 #### server
 
-Create a tcp socket server. 
+Create a tcp socket server. The following example emits the message "hello world" to a connecting client, 
+then closes the connection with End().
 
 ```csharp
-Reactor.Tcp.Server.Create((socket) => {
+Reactor.Tcp.Server.Create(socket => {
 
-	Console.WriteLine("we have a socket");
-
-	Reactor.Interval.Create(() => {
-
-		socket.Write("hello there");
+	socket.Write("hello there");
 	
-	}, 1000);
+	socket.End();
 
 }).Listen(5000);
-
 ```
 
 <a name='tcp_socket' />
 #### socket
 
-Reactor sockets are evented abstractions over System.Net.Socket.Socket. Tcp sockets are implementations
-of both readable and writable streams. The following code connects to the server in the previous example.
+Reactor tcp sockets are evented abstractions over System.Net.Socket.Socket. Tcp sockets are implementations
+of type IDuplexable. The following code connects to the server in the previous example. (assumed to be both on localhost)
 
 ```csharp
-var client = Reactor.Tcp.Socket.Create(System.Net.IPAddress.Loopback, 5000);
+var client = Reactor.Tcp.Socket.Create(5000);
 
-client.OnConnect += () => {
+client.OnConnect += () => { // wait for connection.
 
-	client.OnData += (data) => Console.WriteLine(data.ToString(Encoding.UTF8));
+    client.OnData += (d) => Console.WriteLine(d.ToString("utf8"));
+
+    client.OnEnd  += ()  => Console.WriteLine("tcp transport closed");
 };
 ```
 
 <a name='udp' />
 ### udp
 
-Reactor provides a abstraction over a System.Net.Sockets.Socket UDP socket. The following demonstrates
-its use.
+Reactor provides a evented abstraction over a System.Net.Sockets.Socket for UDP sockets. The following 
+demonstrates setting up two udp endpoints, and exchanging messages between both.
 
 <a name='udp_socket' />
 #### socket
@@ -492,167 +428,55 @@ its use.
 The following demonstrates setting up two sockets, one to connect to the other.
 
 ```csharp
-// setup socket A (listen for B)
-var socketA = Reactor.Udp.Socket.Create();
-socketA.Bind(System.Net.IPAddress.Any, 5000);
-socketA.OnMessage += (endpoint, data) => {
-	Console.WriteLine(endpoint);
-	Console.WriteLine(System.Text.Encoding.UTF8.GetString(data));	
+//--------------------------------------------------
+// socket a: create a udp socket and bind to port. 
+// on receiving a message. print to console.
+//--------------------------------------------------
+
+var a = Reactor.Udp.Socket.Create();
+            
+a.Bind(System.Net.IPAddress.Any, 5000);
+           
+a.OnMessage += (remote_endpoint, message) => {
+
+    Console.WriteLine(System.Text.Encoding.UTF8.GetString(message));
 };
 
-// setup socket B (send to A)
-var socketB = Reactor.Udp.Socket.Create();
-socketB.Bind(System.Net.IPAddress.Any, 5001);
-socketB.Send(IPAddress.Loopback, System.Text.Encoding.UTF8.GetBytes("hello from socket B"));
+//--------------------------------------------------
+// socket b: create a udp socket and send message
+// to port localhost on port 5000.
+//--------------------------------------------------
+
+var b = Reactor.Udp.Socket.Create();
+
+b.Send(IPAddress.Loopback, 5000, System.Text.Encoding.UTF8.GetBytes("hello from b"));
 
 ```
 
 <a name='threads' />
 ### threads
 
-Reactor provides a mechansism for developers to create threaded processes which can be called out
-to and returned back on the main thread once they complete. This functionality was intended for 
-Unity3D developers who may need to process work out on a background thread. 
+Reactor has the ability to execute threads within the applications thread pool.
 
 <a name='threads_worker' />
-#### worker
+#### async tasks
 
-Workers can be created in the following way. Below, the worker is returned back as a delegate.
+In the following example, a 'task' is created which accepts an integer argument, and returns a integer. Inside the 
+body of the task, Thread.Sleep() is invoked to emulate some long running computation.
 
 ```csharp
-//--------------------------------------------------------------
-// a simple worker, accepts a integer, and returns a string
-//--------------------------------------------------------------
-var worker = Reactor.Threads.Worker.Create<int, string>((int a) => {
-	
-	return a.ToString();	
+var task = Reactor.Async.Task<int, int>(interval => {
 
+    Thread.Sleep(interval); // run computation here !
+
+    return 0;
 });
 ```
-note: the parameterized type is of the form. <input, output>.
-
-The following will call the worker.
+Once the task has been created, the user can invoke the process with the following.
 
 ```csharp
+task(10000, (error, result) => {
 
-worker(10, (exception, result) => {
-
-	Console.WriteLine(result); // will print "10"
-
+    Console.WriteLine(result);
 });
-```
-
-<a name='crypto' />
-### crypto
-
-Reactor provides a mechanism to encrypt and decrypt data passed down readable and writeable interfaces by building on .net's ICryptoTransform
-interface.
-
-<a name='crypto_transform' />
-#### crypto_transform
-
-Reactor abstracts the ICryptoTransform interface to allow for the encrypting and decrypting of streams. The Reactor.Crypto.Transform class
-is both a readable and writeable stream implementation, and can be used to pipe data from a to b. 
-
-example 1: encrypting a string.
-
-```csharp
-//-------------------------------------------
-// setup simple encryptor
-//-------------------------------------------
-var rijndael = Rijndael.Create();
-
-var encryptor = Reactor.Crypto.Transform.Create( rijndael.CreateEncryptor(rijndael.Key, rijndael.IV) );
-
-encryptor.OnData += (data) => {
-
-	Console.WriteLine("encrypted: ");
-
-    Console.WriteLine( data.ToString(Encoding.UTF8) ); 
-};
-
-//-------------------------------------------
-// encrypt data
-//-------------------------------------------
-
-encryptor.Write("this is a string to encrypt");
-
-```
-example 2: encrypt and decrypt
-
-```csharp
-//-------------------------------------------
-// setup encryptor and decryptor
-//-------------------------------------------
-var rijndael = Rijndael.Create();
-
-var encryptor = Reactor.Crypto.Transform.Create(rijndael.CreateEncryptor(rijndael.Key, rijndael.IV));
-
-var decryptor = Reactor.Crypto.Transform.Create(rijndael.CreateDecryptor(rijndael.Key, rijndael.IV));
-
-encryptor.OnData += (data) => {
-
-    Console.WriteLine("encrypted: ");
-
-    Console.WriteLine(data.ToString(Encoding.UTF8));
-
-    decryptor.Write(data); // decrypt
-};
-
-decryptor.OnData += (data) => {
-
-    Console.WriteLine("decrypted: ");
-
-    Console.WriteLine(data.ToString(Encoding.UTF8));
-};
-
-//-------------------------------------------
-// encrypt data
-//-------------------------------------------
-
-encryptor.Write("this is a string to encrypt");
-
-```
-example 3: encrypting a file (use pipe)
-
-```csharp
-var filereadstream     = Reactor.File.ReadStream.Create("myfile.txt");
-
-var encryptor	       = Reactor.Crypto.Transform.Create( rijndael.CreateEncryptor(rijndael.Key, rijndael.IV));
-
-var encrypted          = Reactor.File.WriteStream.Create("encrypted.txt");
-
-input.Pipe(encryptor).Pipe(encrypted);
-```
-example 4: encrypting and decrypting a file
-
-```csharp
-var rijndael = Rijndael.Create();
-
-//-----------------------
-// encrypt
-//-----------------------
-
-var readstream         = Reactor.File.ReadStream.Create("myfile.txt");
-
-var encryptor          = Reactor.Crypto.Transform.Create( rijndael.CreateEncryptor(rijndael.Key, rijndael.IV));
-
-var encrypted          = Reactor.File.WriteStream.Create("encrypted.txt");
-
-readstream.Pipe(encryptor).Pipe(encrypted);
-
-encryptor.OnEnd += () => { // wait for encryptor
-	
-	//-----------------------
-	// decrypt
-	//-----------------------
-
-    readstream    = Reactor.File.ReadStream.Create("encrypted.txt");
-
-    var decryptor = Reactor.Crypto.Transform.Create(rijndael.CreateDecryptor(rijndael.Key, rijndael.IV));
-
-    var decrypted = Reactor.File.WriteStream.Create("decrypted.txt");
-
-    readstream.Pipe(decryptor).Pipe(decrypted);
-}; 
 ```
