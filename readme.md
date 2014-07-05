@@ -51,7 +51,7 @@ leverage Reactor to both consume realtime network services, as well as expose re
 	* [socket](#udp_socket)
 
 <a name='getting_started' />
-### getting_started
+### getting started
 
 The following section describes setting up a Reactor application.
 
