@@ -19,7 +19,7 @@ Reactor is a evented, asynchronous io and networking framework written for the M
 platforms. Reactor is heavily influenced by libuv and nodejs, and aims to mirror both their feature set, and ultimately 
 provide easy interoperability between .net applications and real-time network services.
 
-Reactor is specifically written to target .net applications running versions of .net as low as 2.0. Developers can 
+Reactor is specifically written to target .net applications running versions as low as 2.0. Developers can 
 leverage Reactor to both consume realtime network services, as well as expose realtime services of their own.
 
 ### contents
@@ -59,7 +59,7 @@ The following section describes setting up a Reactor application.
 #### the event loop
 
 At its core, reactor requires that users start an event loop. The reactor event loop internally demultiplexes asynchronous callback 
-operations back to the main thread. The following describes recommended approaches to running a loop.
+operations back to the caller. The following describes recommended approaches to running a loop.
 
 <a name='getting_started_console_applications' />
 #### console applications
@@ -89,11 +89,11 @@ class Program
 <a name='getting_started_windows_forms_applications' />
 #### windows forms applications
 
-When developing UI applications, handling asynchronous callbacks typically requires the user to manage 
-synchronization back on applications UI thread by way of a SynchronizationContext. Reactor provides a 
-convienient overload for starting loops that accepts a SynchronizationContext as a argument. In the example
-below, the loop is started with System.Threading.SynchronizationContext.Current on OnLoad(). This ensures
-that all async completations are always returned to the UI thread.
+When developing UI applications, handling asynchronous callbacks typically requires the developer to manage 
+synchronization back on the application UI thread by way of a synchronization context. Reactor provides a 
+convienient overload for starting loops that accepts a System.Threading.SynchronizationContext as a argument. 
+In the example below, the loop is started with System.Threading.SynchronizationContext.Current on OnLoad(). 
+This ensures that all async completations are always returned to the UI thread.
 
 ```csharp
 public partial class Form1 : Form
