@@ -24,7 +24,7 @@ The following code will create a web socket server. The web socket server will b
 ws://localhost:5000 on the local machine. 
 
 ```csharp
-var wsserver = Reactor.Web.Sockets.Server.Create(5000, (socket) =>
+var wsserver = Reactor.Web.Socket.Server.Create(5000, (socket) =>
 {
 	Console.WriteLine("server got connection");
 
@@ -65,7 +65,7 @@ endpoint accessible at http://localhost:5000/mywebsocket
 //-----------------------------------------
 // setup web socket server
 //-----------------------------------------
-var wsserver = Reactor.Web.Sockets.Server.Create(server, "/mywebsocket", (socket) =>
+var wsserver = Reactor.Web.Socket.Server.Create(server, "/mywebsocket", (socket) =>
 {
 	Console.WriteLine("server got connection");
 
@@ -94,7 +94,7 @@ from the web socket endpoint.
 // run web socket server on http server.
 //-----------------------------------------
 
-var wsserver = Reactor.Web.Sockets.Server.Create(5000, (socket) => {
+var wsserver = Reactor.Web.Socket.Server.Create(5000, (socket) => {
 
 	Console.WriteLine("server got connection");
 
@@ -140,7 +140,7 @@ The following will create a web socket client which will connect to the server c
 // create web socket client
 //-----------------------------------------
 
-var client = Reactor.Web.Sockets.Socket.Create("http://localhost:5000/");
+var client = Reactor.Web.Socket.Socket.Create("http://localhost:5000/");
 
 client.OnOpen += () =>
 {
