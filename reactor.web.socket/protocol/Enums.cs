@@ -27,7 +27,7 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 
-namespace Reactor.Web.Sockets.Protocol
+namespace Reactor.Web.Socket.Protocol
 {
     internal enum Fin : byte
     {

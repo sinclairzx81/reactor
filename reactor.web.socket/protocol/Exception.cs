@@ -27,7 +27,7 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 using System;
 
-namespace Reactor.Web.Sockets.Protocol
+namespace Reactor.Web.Socket.Protocol
 {
     internal class WebSocketException : Exception
     {

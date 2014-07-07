@@ -31,7 +31,7 @@ using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Reactor.Web.Sockets
+namespace Reactor.Web.Socket
 {
     internal class ServerWebSocketUpgradeResponse
     {

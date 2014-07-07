@@ -26,27 +26,54 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using Reactor.Web.Sockets.Protocol;
+using System.Collections.Generic;
 
-namespace Reactor.Web.Sockets
+namespace Reactor.Web.Socket
 {
-    public class Message
+    public class Context
     {
-        public string Type     { get; set; }
+        public Reactor.Http.ServerRequest               Request           { get; set; }
 
-        public string Data     { get; set; }
+        public Reactor.Http.ServerResponse              Response          { get; set; }
 
-        public byte[] RawData  { get; set; }
+        public Reactor.Http.ServerConnection            Connection        { get; set; }
 
-        internal Message(Frame frame)
+        public System.Security.Principal.IPrincipal User              { get; set; }
+
+        private Dictionary<string, object>          userdata;
+
+        public Context(Reactor.Http.HttpContext context)
         {
-            this.Type    = frame.Opcode.ToString();
-            
-            this.RawData = frame.Payload.ApplicationData;
+            this.Request = context.Request;
 
-            if(this.Type == "TEXT")
+            this.Response = context.Response;
+
+            this.Connection = context.Connection;
+
+            this.User = context.User;
+
+            this.userdata = new Dictionary<string, object>();
+        }
+
+        public void Set<T>(string name, T value)
+        {
+            this.userdata[name] = value;
+        }
+
+        public T Get<T>(string name)
+        {
+            if (!this.userdata.ContainsKey(name))
             {
-                this.Data = System.Text.Encoding.UTF8.GetString(this.RawData);
+                return default(T);
+            }
+
+            try
+            {
+                return (T)this.userdata[name];
+            }
+            catch
+            {
+                return default(T);
             }
         }
     }

@@ -29,7 +29,7 @@ THE SOFTWARE.
 using System;
 using System.Collections.Generic;
 
-namespace Reactor.Web.Sockets
+namespace Reactor.Web.Socket
 {
     internal class WebSocketRequest
     {
@@ -120,7 +120,7 @@ namespace Reactor.Web.Sockets
 
                         this.socket.OnData -= ondata;
 
-                        var response = new Reactor.Web.Sockets.WebSocketResponse(this.socket, data);
+                        var response = new Reactor.Web.Socket.WebSocketResponse(this.socket, data);
 
                         callback(null, response);
                     };

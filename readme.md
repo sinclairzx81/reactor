@@ -13,8 +13,6 @@ var server = Reactor.Http.Server.Create(context => {
 }).Listen(8080);
 ```
 
-
-
 ### overview
 
 Reactor is a evented, asynchronous io and networking framework written for Microsoft.Net, Mono, Xamarin, and Unity3D

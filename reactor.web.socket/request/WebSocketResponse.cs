@@ -26,11 +26,11 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using Reactor.Web.Sockets.Protocol;
+using Reactor.Web.Socket.Protocol;
 using System;
 using System.Collections.Generic;
 
-namespace Reactor.Web.Sockets
+namespace Reactor.Web.Socket
 {
     internal class WebSocketResponse
     {
@@ -131,7 +131,7 @@ namespace Reactor.Web.Sockets
 
                         foreach (var item in framedatalist)
                         {
-                            var frame = Reactor.Web.Sockets.Protocol.Frame.Parse(item.ToArray(), true);
+                            var frame = Reactor.Web.Socket.Protocol.Frame.Parse(item.ToArray(), true);
 
                             this.Frames.Add(frame);
                         }

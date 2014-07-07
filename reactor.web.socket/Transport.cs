@@ -26,10 +26,10 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using Reactor.Web.Sockets.Protocol;
+using Reactor.Web.Socket.Protocol;
 using System;
 
-namespace Reactor.Web.Sockets
+namespace Reactor.Web.Socket
 {
     //----------------------------------------
     // class to help with byte[] operations. 

@@ -29,7 +29,7 @@ THE SOFTWARE.
 using System;
 using System.IO;
 
-namespace Reactor.Web.Sockets.Protocol
+namespace Reactor.Web.Socket.Protocol
 {
     internal static class Util
     {

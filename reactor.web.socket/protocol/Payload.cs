@@ -31,7 +31,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Reactor.Web.Sockets.Protocol
+namespace Reactor.Web.Socket.Protocol
 {
 
     internal class Payload : IEnumerable<byte>

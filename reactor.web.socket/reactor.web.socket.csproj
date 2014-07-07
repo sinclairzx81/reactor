@@ -7,8 +7,8 @@
     <ProjectGuid>{E2045D48-31A3-44F5-9E72-D5B094164A8B}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Reactor.Web.Sockets</RootNamespace>
-    <AssemblyName>Reactor.Web.Sockets</AssemblyName>
+    <RootNamespace>Reactor.Web.Socket</RootNamespace>
+    <AssemblyName>Reactor.Web.Socket</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>

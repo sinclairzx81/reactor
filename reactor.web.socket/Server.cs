@@ -28,11 +28,11 @@ THE SOFTWARE.
 
 using System;
 
-namespace Reactor.Web.Sockets
+namespace Reactor.Web.Socket
 {
     public class Server
     {
-        public Reactor.Action<Reactor.Web.Sockets.Context, Reactor.Action<bool, string>> OnUpgrade { get; set; }
+        public Reactor.Action<Reactor.Web.Socket.Context, Reactor.Action<bool, string>> OnUpgrade { get; set; }
 
         public Reactor.Action<Socket>                   OnSocket    { get; set; }
 
@@ -132,7 +132,7 @@ namespace Reactor.Web.Sockets
 
         #region Upgrade
 
-        private void Upgrade(Reactor.Http.HttpContext context, Reactor.Action<Exception, Reactor.Web.Sockets.Socket> callback)
+        private void Upgrade(Reactor.Http.HttpContext context, Reactor.Action<Exception, Reactor.Web.Socket.Socket> callback)
         {
             var request = ServerWebSocketUpgradeRequest.Create(context);
 
@@ -149,7 +149,7 @@ namespace Reactor.Web.Sockets
 
             var response       = ServerWebSocketUpgradeResponse.Create(request);
 
-            var socket_context = new Reactor.Web.Sockets.Context(context);
+            var socket_context = new Reactor.Web.Socket.Context(context);
 
             this.OnUpgrade(socket_context, (success, reason) => {
 

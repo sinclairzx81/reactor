@@ -29,7 +29,7 @@ THE SOFTWARE.
 using System;
 using System.Collections.Generic;
 
-namespace Reactor.Web.Sockets
+namespace Reactor.Web.Socket
 {
     public enum SocketState
     {
@@ -44,9 +44,9 @@ namespace Reactor.Web.Sockets
 
     public class Socket
     {
-        private Reactor.Web.Sockets.Transport         channel;
+        private Reactor.Web.Socket.Transport         channel;
 
-        public Reactor.Web.Sockets.Context      Context;
+        public Reactor.Web.Socket.Context      Context;
 
         public SocketState                        State { get; set; }
 
@@ -60,7 +60,7 @@ namespace Reactor.Web.Sockets
 
         #region Constructors
 
-        internal Socket (Reactor.Web.Sockets.Transport channel)
+        internal Socket (Reactor.Web.Socket.Transport channel)
         {
             this.channel = channel;
 

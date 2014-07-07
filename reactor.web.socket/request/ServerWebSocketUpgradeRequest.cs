@@ -31,7 +31,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Reactor.Web.Sockets
+namespace Reactor.Web.Socket
 {
     internal class ServerWebSocketUpgradeRequest
     {
