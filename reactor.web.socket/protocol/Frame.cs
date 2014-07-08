@@ -529,7 +529,7 @@ namespace Reactor.Web.Socket.Protocol
 
                 frame.Mask = Mask.Unmask;
 
-                frame.MaskingKey = new byte[] { };
+                //frame.MaskingKey = new byte[] { }; // why do this?
             }
 
             frame.Payload = payload;
