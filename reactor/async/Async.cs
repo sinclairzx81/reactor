@@ -363,7 +363,6 @@ namespace Reactor
 
         #endregion
 
-
         #region Map
 
         /// <summary>
@@ -395,6 +394,34 @@ namespace Reactor
             }
 
             return outputs;
+        }
+
+        #endregion
+
+        #region Filter
+
+        /// <summary>
+        /// Filter this enumerable.
+        /// </summary>
+        /// <typeparam name="TInput">The input enumerable</typeparam>
+        /// <param name="inputs">The output enumerable</param>
+        /// <param name="callback">The callback for filtering.</param>
+        /// <returns>The filtered enumerable.</returns>
+        public static IEnumerable<TInput> Filter<TInput>(IEnumerable<TInput> inputs, Func<TInput, int, IEnumerable<TInput>, bool> callback)
+        {
+            var list = new List<TInput>();
+
+            var idx  = 0;
+
+            foreach (var item in inputs)
+            {
+                if(callback(item, idx, inputs))
+                {
+                    list.Add(item);
+                }
+            }
+
+            return list;
         }
 
         #endregion
