@@ -57,7 +57,10 @@ namespace Reactor
 
         public void Signal()
         {
-            this.manualresetevent.Set();
+            if(this.started)
+            {
+                this.manualresetevent.Set();
+            }
         }
 
         public void Start()

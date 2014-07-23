@@ -46,6 +46,7 @@
     <Compile Include="delegates\DynamicAction.cs" />
     <Compile Include="gc\GC.cs" />
     <Compile Include="interfaces\IDuplexable.cs" />
+    <Compile Include="loop\Context.cs" />
     <Compile Include="loop\Loop.cs" />
     <Compile Include="loop\Messages.cs" />
     <Compile Include="loop\Runtime.cs" />

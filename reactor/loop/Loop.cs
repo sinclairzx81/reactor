@@ -31,60 +31,31 @@ using System.Threading;
 
 namespace Reactor
 {
-    public static class Loop
+    public class Loop
     {
-        private static Runtime runtime;
-
-        private static Messages messages;
-
-        static Loop()
-        {
-            messages = new Messages();
-        }
-
         public static void Post(Reactor.Action action)
         {
-            messages.Post(action);
-
-            if(runtime != null)
-            {
-                runtime.Signal();
-            }
+            Reactor.Context.Instance.Post(action);
         }
 
         public static IEnumerator Enumerator()
         {
-            return messages.Enumerator();
+            return Reactor.Context.Instance.Enumerator();
         }
 
         public static void Start()
         {
-            if(runtime == null)
-            {
-                runtime = new Runtime(null, messages);
-
-                runtime.Start();
-            }
+            Reactor.Context.Instance.Start();
         }
 
         public static void Start(SynchronizationContext context)
         {
-            if (runtime == null)
-            {
-                runtime = new Runtime(context, messages);
-
-                runtime.Start();
-            }
+            Reactor.Context.Instance.Start(context);
         }
 
-        public static void Stop()
+        public void Stop()
         {
-            if(runtime != null)
-            {
-                runtime.Stop();
-
-                runtime = null;
-            }
+            Reactor.Context.Instance.Stop();
         }
     }
 }
