@@ -29,17 +29,18 @@ namespace console
         {
             Reactor.Loop.Start();
 
-            var subset = Reactor.Async.Filter(new int[] { 0, 1, 2, 3, 4 }, (item, index, list) => {
-                
-                return item % 2 == 0;
-            });
-
-            Reactor.Http.Server.Create(context =>
+            Reactor.Http.Server.Create((context) =>
             {
-                context.Response.Write("hello world");
+                var readstreams = Reactor.File.ReadStream.Create("c:/input/image.jpg");
 
-                context.Response.End();
-            
+                context.Response.ContentType = "image/jpg";
+
+                context.Response.ContentLength = readstreams.Length;
+
+                readstreams.Pipe(context.Response);
+
+
+
             }).Listen(5000);
         }
     }

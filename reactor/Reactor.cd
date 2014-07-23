@@ -17,7 +17,7 @@
   <Class Name="Reactor.Async" Collapsed="true">
     <Position X="6" Y="0.5" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAAAAAAAABAAAAAAAAAAAAAAAAQAAAAAAEAAACAAAAE=</HashCode>
+      <HashCode>AAAAAAAAABAAAAAAAAAAAAAAABQAAAAAAEAAACAAAAE=</HashCode>
       <FileName>async\Async.cs</FileName>
     </TypeIdentifier>
   </Class>
@@ -74,15 +74,17 @@
   <Class Name="Reactor.Loop" Collapsed="true">
     <Position X="6" Y="4.5" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAAAAAEAISAAAAAAAAAAAAAACCLAAAAAYQAAIAAEgAA=</HashCode>
-      <FileName>Loop.cs</FileName>
+      <HashCode>AAAAAAEAACAIAAAAAAAAAAAACAAAAAABIAAAAAAAAAA=</HashCode>
+      <FileName>loop\Loop.cs</FileName>
+      <NewMemberFileName>Loop.cs</NewMemberFileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.IO" Collapsed="true">
     <Position X="14.75" Y="3.5" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AIQAQAAAQACAAACQAABAAIAgAAkEAAAQQCAAAAEAAAA=</HashCode>
-      <FileName>Loop.IO.cs</FileName>
+      <FileName>IO.cs</FileName>
+      <NewMemberFileName>io.cs</NewMemberFileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.File.ReadStream" Collapsed="true" BaseTypeListCollapsed="true">
