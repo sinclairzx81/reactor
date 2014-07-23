@@ -13,32 +13,23 @@ namespace console
         {
             Reactor.Loop.Start();
 
-            Reactor.Http.Server.Create((context) =>
+            var readstream = Reactor.File.ReadStream.Create("c:/input/input.mp4");
+
+            var writestream = Reactor.File.WriteStream.Create("c:/input/output.mp4");
+
+            readstream.Pipe(writestream);
+
+            readstream.OnData += (d) =>
             {
-                //var readstreams = Reactor.File.ReadStream.Create("c:/input/image.jpg");
+                Console.Write(".");
 
-                //context.Response.ContentType = "image/jpg";
+            };
 
-                //context.Response.ContentLength = readstreams.Length;
-
-                //readstreams.Pipe(context.Response);
-
-                context.Response.ContentLength = 5;
-
-                context.Response.Write("hello");
-
-                context.Response.End();
-
-            }).Listen(5000);
-
-            while(true)
+            readstream.OnEnd += () =>
             {
-                Console.ReadLine();
+                Console.WriteLine("end");
 
-                GC.Collect();
-
-                Console.WriteLine("collected");
-            }
+            };
         }
     }
 }

@@ -31,7 +31,7 @@ using System.Threading;
 
 namespace Reactor
 {
-    public class Loop
+    public static class Loop
     {
         public static void Post(Reactor.Action action)
         {
@@ -53,7 +53,7 @@ namespace Reactor
             Reactor.Context.Instance.Start(context);
         }
 
-        public void Stop()
+        public static void Stop()
         {
             Reactor.Context.Instance.Stop();
         }

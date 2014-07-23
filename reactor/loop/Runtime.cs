@@ -75,9 +75,12 @@ namespace Reactor
 
         public void Stop()
         {
-            this.started = false;
+            if(this.started)
+            {
+                this.started = false;
 
-            this.Signal();
+                this.manualresetevent.Set();
+            }
         }
 
         private void Process()
