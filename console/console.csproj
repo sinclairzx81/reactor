@@ -44,6 +44,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\reactor.web.socket\reactor.web.socket.csproj">
+      <Project>{e2045d48-31a3-44f5-9e72-d5b094164a8b}</Project>
+      <Name>reactor.web.socket</Name>
+    </ProjectReference>
     <ProjectReference Include="..\reactor.web\reactor.web.csproj">
       <Project>{3c36767d-9365-4a7e-ad8c-9b893216f2f2}</Project>
       <Name>reactor.web</Name>

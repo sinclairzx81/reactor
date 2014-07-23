@@ -13,22 +13,25 @@ namespace console
         {
             Reactor.Loop.Start();
 
-            var readstream = Reactor.File.ReadStream.Create("c:/input/input.mp4");
-
-            var writestream = Reactor.File.WriteStream.Create("c:/input/output.mp4");
-
-            readstream.Pipe(writestream);
-
-            readstream.OnData += (d) =>
+            Reactor.Web.Socket.Server.Create(5000, "/", socket =>
             {
-                Console.Write(".");
+                Console.WriteLine("have socket");
 
-            };
+                socket.OnMessage += (message) =>
+                {
+                    Console.WriteLine(message.Data);
+                };
+            });
 
-            readstream.OnEnd += () =>
+            var client = Reactor.Web.Socket.Socket.Create("ws://localhost:5000/");
+
+            client.OnOpen += () =>
             {
-                Console.WriteLine("end");
+                Reactor.Interval.Create(() =>
+                {
+                    client.Send("hello there");
 
+                }, 1);
             };
         }
     }
