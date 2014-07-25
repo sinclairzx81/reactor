@@ -29,32 +29,40 @@ namespace console
         {
             Reactor.Loop.Start();
 
-            var http = Reactor.Http.Server.Create().Listen(5000);
+            var headers = new Dictionary<string, string>();
 
-            var web  = Reactor.Web.Server.Create(http);
+            headers["Origin"] = "http://www.websocket.org";
 
-            web.Get("/", context => {
+            var socket = Reactor.Web.Socket.Socket.Create("http://echo.websocket.org", headers);
 
-                context.Response.Render("c:/input/templates/c.html");
-            });
-
-            web.Get("/other", context =>
+            socket.OnOpen += () =>
             {
-                var readstream = Reactor.File.ReadStream.Create(System.IO.Directory.GetCurrentDirectory() + "/image.jpg");
 
-                context.Response.ContentType = "image/jpeg";
+                Console.WriteLine("connected");
 
-                context.Response.ContentLength = readstream.Length;
+                Reactor.Interval.Create(() =>
+                {
+                    socket.Send("heelo");
 
-                readstream.Pipe(context.Response);
-            });
+                }, 100);
 
-            while(true)
-            {
-                Console.ReadLine();
                 
-                GC.Collect();
-            }
+
+
+            };
+
+            socket.OnMessage += (m) =>
+            {
+                Console.WriteLine(m.Data);
+
+            };
+
+            socket.OnError += (exception) =>
+            {
+                Console.WriteLine(exception);
+
+            };
+
         }
     }
 }

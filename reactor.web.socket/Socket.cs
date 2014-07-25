@@ -44,11 +44,11 @@ namespace Reactor.Web.Socket
 
     public class Socket
     {
-        private Reactor.Web.Socket.Transport         channel;
+        private Reactor.Web.Socket.Transport          channel;
 
-        public Reactor.Web.Socket.Context      Context;
+        public Reactor.Web.Socket.Context             Context;
 
-        public SocketState                        State { get; set; }
+        public SocketState                            State { get; set; }
 
         public event Reactor.Action                   OnOpen;
 
@@ -101,7 +101,7 @@ namespace Reactor.Web.Socket
             };
         }
 
-        public   Socket (string url, Dictionary<string, string> Headers)
+        public Socket (string url, Dictionary<string, string> Headers)
         {
             var request     = WebSocketRequest.Create(url);
 

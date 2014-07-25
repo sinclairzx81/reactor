@@ -68,8 +68,6 @@ namespace Reactor.Web.Socket
 
             this.Headers["Host"]                     = this.Uri.Authority;
 
-            this.Headers["Origin"]                   = "";
-
             this.Headers["Pragma"]                   = "no-cache";
 
             this.Headers["Sec-WebSocket-Extensions"] = "permessage-deflate";
