@@ -34,7 +34,7 @@ namespace Reactor.Web.Socket
 {
     internal class WebSocketResponse
     {
-        public Reactor.Tcp.Socket             Socket     { get; set; }
+        public Reactor.Tcp.Socket         Socket     { get; set; }
 
         public Dictionary<string, string> Headers    { get; set; }
 

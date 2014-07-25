@@ -96,10 +96,28 @@ namespace Reactor.Web.Socket
             buffer.Write("\r\n");
 
             //------------------------------------------
-            // send request
+            // resolve port
             //------------------------------------------
 
-            this.socket = Reactor.Tcp.Socket.Create(this.Uri.DnsSafeHost, this.Uri.Port);
+            var port = this.Uri.Port;
+
+            if (port == -1)
+            {
+                switch(this.Uri.Scheme)
+                {
+                    case "ws" : port = 80; break;
+
+                    case "wss": port = 443; break;
+
+                    default: break;
+                }
+            }
+
+            //------------------------------------------
+            // send request
+            //------------------------------------------
+            
+            this.socket = Reactor.Tcp.Socket.Create(this.Uri.DnsSafeHost, port);
 
             this.socket.OnConnect += () =>
             {
@@ -124,7 +142,6 @@ namespace Reactor.Web.Socket
                     };
 
                     this.socket.OnData += ondata;
-
                 });
             };
 

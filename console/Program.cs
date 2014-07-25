@@ -33,7 +33,7 @@ namespace console
 
             headers["Origin"] = "http://www.websocket.org";
 
-            var socket = Reactor.Web.Socket.Socket.Create("http://echo.websocket.org", headers);
+            var socket = Reactor.Web.Socket.Socket.Create("ws://echo.websocket.org", headers);
 
             socket.OnOpen += () =>
             {
