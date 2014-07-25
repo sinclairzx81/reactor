@@ -5,6 +5,24 @@ using System.Text;
 
 namespace console
 {
+    public static class Ext
+    {
+        public static void Render(this Reactor.Http.ServerResponse response, string filename)
+        {
+            var template = Reactor.Web.Templates.Template.Create(filename);
+
+            var buffer   = Reactor.Buffer.Create(template.Render());
+
+            response.ContentType = "text/html";
+
+            response.ContentLength = buffer.Length;
+
+            response.Write(buffer);
+
+            response.End();
+        }
+    }
+
     class Program
     {
         static void Main(string[] args)
@@ -17,19 +35,11 @@ namespace console
 
             web.Get("/", context => {
 
-                var readstream = Reactor.File.ReadStream.Create(System.IO.Directory.GetCurrentDirectory() + "/index.html");
-
-                context.Response.ContentType   = "text/html";
-
-                context.Response.ContentLength = readstream.Length;
-
-                readstream.Pipe(context.Response);
+                context.Response.Render("c:/input/templates/c.html");
             });
 
             web.Get("/other", context =>
             {
-                
-
                 var readstream = Reactor.File.ReadStream.Create(System.IO.Directory.GetCurrentDirectory() + "/image.jpg");
 
                 context.Response.ContentType = "image/jpeg";
@@ -39,49 +49,12 @@ namespace console
                 readstream.Pipe(context.Response);
             });
 
-
-
-            var sockets = new List<Reactor.Web.Socket.Socket>();
-
-            var ws = Reactor.Web.Socket.Server.Create(http, "/", socket => {
-                
-                sockets.Add(socket);
-
-                Console.WriteLine("connected");
-
-                socket.OnClose += () => {
-
-                    Console.WriteLine("disconnected");
-
-                    sockets.Remove(socket);
-                };
-            });
-
-
-            var x = 0.0;
-
-            var y = 0.0;
-
-            var angle = 0.0;
-
-            Reactor.Interval.Create(() =>
+            while(true)
             {
-                angle += 1;
-
-                x = Math.Cos(angle * Math.PI / 180.0);
-
-                y = Math.Sin(angle * Math.PI / 180.0);
-
-                var state = "{'x': " + x + ", 'y': " + y + "}";
-
-                state = state.Replace("'", "\"");
-
-                foreach(var socket in sockets)
-                {
-                    socket.Send(state);
-                }
-
-            }, 1000 / 60);
+                Console.ReadLine();
+                
+                GC.Collect();
+            }
         }
     }
 }
