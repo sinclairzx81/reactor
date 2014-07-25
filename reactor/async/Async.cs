@@ -58,47 +58,6 @@ namespace Reactor
 
     public class Async
     {
-        #region Wait
-
-        /// <summary>
-        /// Synchronously awaits on a asynchronous operation. 
-        /// </summary>
-        /// <typeparam name="TInput">The input type</typeparam>
-        /// <typeparam name="TOutput">The output type</typeparam>
-        /// <param name="action">The method or action encapsulating the async operation</param>
-        /// <param name="input">The method or action input argument.</param>
-        /// <returns>The async operation result value.</returns>
-        public static TOutput Wait<TInput, TOutput>(Reactor.Action<TInput, Reactor.Action<Exception, TOutput>> action, TInput input)
-        {
-            var manual = new ManualResetEvent(false);
-
-            AsyncResult<TOutput> result = null;
-
-            Reactor.Async.Task<object, object>((a) => {
-
-                action(input, (exception, output) => {
-
-                    result = new AsyncResult<TOutput>(exception, output);
-
-                    manual.Set();
-                });
-
-                return null;
-
-            }) (null, (exception, ret) => { });
-
-            manual.WaitOne();
-
-            if(result.Exception != null)
-            {
-                throw result.Exception;
-            }
-
-            return result.Result;            
-        }
-
-        #endregion
-
         #region Parallel
 
         /// <summary>
@@ -159,61 +118,6 @@ namespace Reactor
             }
         }
 
-        /// <summary>
-        /// Runs a asynchronous operation synchronously in parallel.
-        /// </summary>
-        /// <typeparam name="TInput">The input type.</typeparam>
-        /// <typeparam name="TOutput">The output type.</typeparam>
-        /// <param name="action">The method or action encapsulating the async operation</param>
-        /// <param name="inputs">The method or action input array.</param>
-        /// <returns>The async results</returns>
-        public static IEnumerable<TOutput> Parallel <TInput, TOutput>(Reactor.Action<TInput, Reactor.Action<Exception, TOutput>> action, IEnumerable<TInput> inputs)
-        {
-            var manual = new ManualResetEvent(false);
-
-            IEnumerable<AsyncResult<TOutput>> asyncResults = null;
-
-            Async.Task<object, object>((a) => {
-
-                Async.Parallel<TInput, TOutput>(action, inputs, (outputs) => {
-
-                    asyncResults = outputs;
-
-                    manual.Set();
-                });
-
-                return null;
-
-            }) (null, (exception, result) => { });
-
-            manual.WaitOne();
-
-            //----------------------------------
-            // gather operation
-            //----------------------------------
-
-            var exceptions = new List<Exception>();
-
-            var results    = new List<TOutput>();
-
-            foreach(var result in asyncResults) {
-
-                if (result.Exception != null) {
-
-                    exceptions.Add(result.Exception);
-                }
-
-                results.Add(result.Result);
-            }
-
-            if(exceptions.Count > 0) {
-
-                throw new AsyncException(exceptions);
-            }
-
-            return results;
-        }
-
         #endregion
 
         #region Series
@@ -266,61 +170,6 @@ namespace Reactor
             };
 
             container();
-        }
-
-        /// <summary>
-        /// Runs a asynchronous operation synchronously in series.
-        /// </summary>
-        /// <typeparam name="TInput">The input type.</typeparam>
-        /// <typeparam name="TOutput">The output type.</typeparam>
-        /// <param name="action">The method or action encapsulating the async operation</param>
-        /// <param name="inputs">The method or action input array.</param>
-        /// <returns>The async results</returns>
-        public static IEnumerable<TOutput> Series<TInput, TOutput>(Reactor.Action<TInput, Reactor.Action<Exception, TOutput>> action, IEnumerable<TInput> inputs)
-        {
-            var manual = new ManualResetEvent(false);
-
-            IEnumerable<AsyncResult<TOutput>> asyncResults = null;
-
-            Async.Task<object, object>((a) => {
-
-                Async.Series<TInput, TOutput>(action, inputs, (outputs) => {
-
-                    asyncResults = outputs;
-
-                    manual.Set();
-                });
-
-                return null;
-
-            }) (null, (exception, result) => { });
-
-            manual.WaitOne();
-
-            //----------------------------------
-            // gather operation
-            //----------------------------------
-
-            var exceptions = new List<Exception>();
-
-            var results    = new List<TOutput>();
-
-            foreach(var result in asyncResults) {
-
-                if (result.Exception != null) {
-
-                    exceptions.Add(result.Exception);
-                }
-
-                results.Add(result.Result);
-            }
-
-            if(exceptions.Count > 0) {
-
-                throw new AsyncException(exceptions);
-            }
-
-            return results;
         }
 
         #endregion
