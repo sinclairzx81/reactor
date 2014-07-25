@@ -48,6 +48,18 @@
     <Compile Include="Route.cs" />
     <Compile Include="Server.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="templates\lexer\Lexer.cs" />
+    <Compile Include="templates\lexer\tokens\CommentToken.cs" />
+    <Compile Include="templates\lexer\tokens\ContentToken.cs" />
+    <Compile Include="templates\lexer\tokens\DocumentToken.cs" />
+    <Compile Include="templates\lexer\tokens\ImportToken.cs" />
+    <Compile Include="templates\lexer\tokens\RenderToken.cs" />
+    <Compile Include="templates\lexer\tokens\SectionToken.cs" />
+    <Compile Include="templates\lexer\tokens\Token.cs" />
+    <Compile Include="templates\loader\Loader.cs" />
+    <Compile Include="templates\loader\Pathing.cs" />
+    <Compile Include="templates\Template.cs" />
+    <Compile Include="templates\transform\Transform.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\reactor\reactor.csproj">
