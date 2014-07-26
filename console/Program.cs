@@ -29,39 +29,29 @@ namespace console
         {
             Reactor.Loop.Start();
 
-            var headers = new Dictionary<string, string>();
+            var server = Reactor.Web.Socket.Server.Create(5000);
 
-            headers["Origin"] = "http://www.websocket.org";
-
-            var socket = Reactor.Web.Socket.Socket.Create("ws://echo.websocket.org", headers);
-
-            socket.OnOpen += () =>
+            server.OnSocket += (socket) =>
             {
-
-                Console.WriteLine("connected");
-
-                Reactor.Interval.Create(() =>
+                socket.OnMessage += (m) =>
                 {
-                    socket.Send("heelo");
+                    Console.Write("["+m.Data.Length+"]");
 
-                }, 100);
+                    socket.Send(m.Data);
+                };
 
-                
-
-
+                socket.OnClose += () =>
+                {
+                    Console.Write("closed");
+                };
             };
 
-            socket.OnMessage += (m) =>
+            while(true)
             {
-                Console.WriteLine(m.Data);
+                Console.ReadLine();
 
-            };
-
-            socket.OnError += (exception) =>
-            {
-                Console.WriteLine(exception);
-
-            };
+                GC.Collect();
+            }
 
         }
     }

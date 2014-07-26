@@ -33,15 +33,15 @@ namespace Reactor.Http
 {
     public class HttpContext
     {
-        private Reactor.Net.HttpListenerContext httpListenerContext    { get; set; }
+        private Reactor.Net.HttpListenerContext httpListenerContext  { get; set; }
 
-        public IPrincipal                   User                   { get; set; }
+        public IPrincipal                   User                     { get; set; }
 
-        public ServerConnection             Connection             { get; set; }
+        public ServerConnection             Connection               { get; set; }
 
-        public ServerRequest                Request                { get; set; }
+        public ServerRequest                Request                  { get; set; }
 
-        public ServerResponse               Response               { get; set; }
+        public ServerResponse               Response                 { get; set; }
 
         internal HttpContext(Reactor.Net.HttpListenerContext HttpListenerContext)
         {
@@ -49,7 +49,7 @@ namespace Reactor.Http
 
             this.User                   = this.httpListenerContext.User;
 
-            this.Connection             = new ServerConnection (this, HttpListenerContext.Connection);
+            this.Connection             = new ServerConnection (this, this.httpListenerContext.Connection);
 
             this.Request                = new ServerRequest    (this, this.httpListenerContext.Request);
 
