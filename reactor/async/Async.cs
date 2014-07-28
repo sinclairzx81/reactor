@@ -268,6 +268,8 @@ namespace Reactor
                 {
                     list.Add(item);
                 }
+
+                idx += 1;
             }
 
             return list;
