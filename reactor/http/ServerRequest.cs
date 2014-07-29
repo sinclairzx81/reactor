@@ -110,7 +110,13 @@ namespace Reactor.Http
             }
         }
 
-
+        public Net.CookieCollection Cookies
+        {
+            get
+            {
+                return this.httplistenerrequest.Cookies;
+            }
+        }
 
         public bool HasEntityBody
         {
