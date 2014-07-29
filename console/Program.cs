@@ -25,33 +25,34 @@ namespace console
 
     class Program
     {
+        public static void Do(int n, Reactor.Action<Exception, int> callback)
+        {
+            var task = Reactor.Async.Task<int, int>((input) =>
+            {
+                var random = new Random();
+
+                System.Threading.Thread.Sleep(random.Next(100, 101));
+
+                return input;
+            });
+
+            task(n, callback);
+        }
+
         static void Main(string[] args)
         {
             Reactor.Loop.Start();
 
-            var server = Reactor.Web.Socket.Server.Create(5000);
+            var method = Reactor.Async.Throttle<int, int>(Do, 50);
 
-            server.OnSocket += (socket) =>
+            for (int i = 0; i < 100000; i++)
             {
-                socket.OnMessage += (m) =>
+                method(i, (ecc, n) =>
                 {
-                    Console.Write("["+m.Data.Length+"]");
-
-                    socket.Send(m.Data);
-                };
-
-                socket.OnClose += () =>
-                {
-                    Console.Write("closed");
-                };
-            };
-
-            while(true)
-            {
-                Console.ReadLine();
-
-                GC.Collect();
+                    Console.Write(n + ",");
+                });                
             }
+
 
         }
     }

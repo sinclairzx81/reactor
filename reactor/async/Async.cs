@@ -174,44 +174,6 @@ namespace Reactor
 
         #endregion
 
-        #region Task
-
-        /// <summary>
-        /// Creates a asynchronous threaded task executed on the .net thread pool.
-        /// </summary>
-        /// <typeparam name="TIn">The task input type.</typeparam>
-        /// <typeparam name="TOut">The task output type.</typeparam>
-        /// <param name="Func">The task function body.</param>
-        /// <returns>A delegate action encapsulating the task.</returns>
-        public static Action<TIn, Action<Exception, TOut>> Task<TIn, TOut>(Func<TIn, TOut> Func)
-        {
-            return new Action<TIn, Action<Exception, TOut>>((TIn input, Action<Exception, TOut> callback) =>
-            {
-                ThreadPool.QueueUserWorkItem((state) => {
-                
-                    try {
-
-                        var result = Func(input);
-
-                        Loop.Post(() =>
-                        {
-                            callback(null, result);
-                        });
-                    }
-                    catch (Exception exception)
-                    {
-                        Loop.Post(() =>
-                        {
-                            callback(exception, default(TOut));
-                        });
-                    }
-
-                }, null);
-            });
-        }
-
-        #endregion
-
         #region Map
 
         /// <summary>
@@ -273,6 +235,131 @@ namespace Reactor
             }
 
             return list;
+        }
+
+        #endregion
+
+        #region Task
+
+        /// <summary>
+        /// Creates a asynchronous threaded task executed on the .net thread pool.
+        /// </summary>
+        /// <typeparam name="TIn">The task input type.</typeparam>
+        /// <typeparam name="TOut">The task output type.</typeparam>
+        /// <param name="Func">The task function body.</param>
+        /// <returns>A delegate action encapsulating the task.</returns>
+        public static Action<TIn, Action<Exception, TOut>> Task<TIn, TOut>(Func<TIn, TOut> Func)
+        {
+            return new Action<TIn, Action<Exception, TOut>>((TIn input, Action<Exception, TOut> callback) =>
+            {
+                ThreadPool.QueueUserWorkItem((state) => {
+                
+                    try {
+
+                        var result = Func(input);
+
+                        Loop.Post(() =>
+                        {
+                            callback(null, result);
+                        });
+                    }
+                    catch (Exception exception)
+                    {
+                        Loop.Post(() =>
+                        {
+                            callback(exception, default(TOut));
+                        });
+                    }
+
+                }, null);
+            });
+        }
+
+        #endregion
+
+        #region Throttle
+
+        internal class ThrottlePool<TRequest, TResponse>
+        {
+            #region Worker
+
+            internal class Worker
+            {
+                public TRequest  Request  { get; set; }
+
+                public Reactor.Action<System.Exception, TResponse> Callback { get; set; }
+            }
+
+            #endregion
+
+            private Reactor.Action<TRequest, Reactor.Action<Exception, TResponse>> process;
+
+            private int concurrency;
+
+            private int running;
+
+            private Queue<Worker> workers;
+
+            public ThrottlePool(Reactor.Action<TRequest, Reactor.Action<Exception, TResponse>> process, int concurrency)
+            {
+                this.process     = process;
+
+                this.concurrency = concurrency;
+
+                this.running     = 0;
+
+                this.workers     = new Queue<Worker>();
+            }
+
+            public void Run(TRequest request, Reactor.Action<Exception, TResponse> callback)
+            {
+                var worker      = new Worker();
+
+                worker.Request  = request;
+
+                worker.Callback = callback;
+
+                this.workers.Enqueue(worker);
+
+                this.Process();
+            }
+
+            private void Process()
+            {
+                if (this.workers.Count > 0) {
+
+                    if (this.running < this.concurrency) {
+
+                        var worker = this.workers.Dequeue();
+
+                        this.running++;
+
+                        this.process(worker.Request, (exception, response) => {
+
+                            this.running--;
+
+                            worker.Callback(exception, response);
+
+                            this.Process();
+                        });
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Creates a async throttle. Limits the amount of concurrent async operations.
+        /// </summary>
+        /// <typeparam name="TRequest">The Request Type</typeparam>
+        /// <typeparam name="TResponse">The Response Type</typeparam>
+        /// <param name="action">The action or method.</param>
+        /// <param name="concurrency">The maximum allowed number of concurrent operations.</param>
+        /// <returns>A delegate to the pool.</returns>
+        public static Reactor.Action<TRequest, Reactor.Action<Exception, TResponse>> Throttle<TRequest, TResponse>(Reactor.Action<TRequest, Reactor.Action<Exception, TResponse>> action, int concurrency)
+        {
+            var taskpool = new ThrottlePool<TRequest, TResponse>(action, concurrency);
+
+            return taskpool.Run;
         }
 
         #endregion
