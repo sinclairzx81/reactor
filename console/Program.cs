@@ -42,18 +42,6 @@ namespace console
         static void Main(string[] args)
         {
             Reactor.Loop.Start();
-
-            var method = Reactor.Async.Throttle<int, int>(Do, 50);
-
-            for (int i = 0; i < 100000; i++)
-            {
-                method(i, (ecc, n) =>
-                {
-                    Console.Write(n + ",");
-                });                
-            }
-
-
         }
     }
 }

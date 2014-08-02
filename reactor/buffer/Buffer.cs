@@ -456,7 +456,5 @@ namespace Reactor
         }
 
         #endregion
-
-
     }
 }

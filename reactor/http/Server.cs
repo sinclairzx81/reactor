@@ -82,9 +82,12 @@ namespace Reactor.Http
         {
             return this.Listen(port, (exception) => {
 
-                if (this.OnError != null) {
+                if(exception != null) {
 
-                    this.OnError(exception);
+                    if (this.OnError != null) {
+
+                        this.OnError(exception);
+                    }
                 }
             });
         }
