@@ -49,14 +49,9 @@ namespace Reactor.File
 
         #region Constructor
 
-        public ReadStream(string filename) : this(filename, 0, long.MaxValue)
+        public ReadStream(string filename, long index, long count, System.IO.FileMode mode, System.IO.FileShare share)
         {
-
-        }
-
-        public ReadStream(string filename, long index, long count)
-        {
-            this.stream     = System.IO.File.Open(filename, FileMode.OpenOrCreate, FileAccess.Read, FileShare.Read);
+            this.stream = System.IO.File.Open(filename, mode, FileAccess.Read, share);
 
             this.reading    = false;
 
@@ -358,14 +353,49 @@ namespace Reactor.File
 
         #region Statics
 
+        public static ReadStream Create(string filename, FileMode mode, FileShare share)
+        {
+            return new ReadStream(filename, 0, long.MaxValue, mode, share);
+        }
+
+        public static ReadStream Create(string filename, long index, FileMode mode, FileShare share)
+        {
+            return new ReadStream(filename, index, long.MaxValue, mode, share);
+        }
+
+        public static ReadStream Create(string filename, long index, long count, FileMode mode, FileShare share)
+        {
+            return new ReadStream(filename, index, count, mode, share);
+        }
+
+        public static ReadStream Create(string filename, FileMode mode)
+        {
+            return new ReadStream(filename, 0, long.MaxValue, mode, FileShare.Read);
+        }
+
+        public static ReadStream Create(string filename, long index, FileMode mode)
+        {
+            return new ReadStream(filename, index, long.MaxValue, mode, FileShare.Read);
+        }
+
+        public static ReadStream Create(string filename, long index, long count, FileMode mode)
+        {
+            return new ReadStream(filename, index, count, mode, FileShare.Read);
+        }
+
         public static ReadStream Create(string filename)
         {
-            return new ReadStream(filename);
+            return new ReadStream(filename, 0, long.MaxValue, FileMode.OpenOrCreate, FileShare.Read);
+        }
+
+        public static ReadStream Create(string filename, long index)
+        {
+            return new ReadStream(filename, index, long.MaxValue, FileMode.OpenOrCreate, FileShare.Read);
         }
 
         public static ReadStream Create(string filename, long index, long count)
         {
-            return new ReadStream(filename, index, count);
+            return new ReadStream(filename, index, count, FileMode.OpenOrCreate, FileShare.Read);
         }
 
         #endregion

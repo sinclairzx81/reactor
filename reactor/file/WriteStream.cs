@@ -34,39 +34,6 @@ namespace Reactor.File
 {
     public class WriteStream : IWriteable
     {
-        #region FileMode
-
-        public enum FileMode
-        {
-            Open,
-
-            Create,
-
-            CreateNew,
-
-            OpenOrCreate,
-
-            Append,
-
-            Truncate
-        }
-
-
-        #endregion
-
-        #region FileShare
-
-        public enum FileShare
-        {
-            Read,
-
-            Write,
-
-            ReadWrite
-        }
-
-        #endregion
-
         #region Command
 
         internal class Command
@@ -108,53 +75,27 @@ namespace Reactor.File
 
         private Queue<Command> commands;
 
+        private long index;
+
         private bool writing;
 
         private bool ended;
 
         #region Constructor
 
-        public WriteStream(string Filename, WriteStream.FileMode Mode, WriteStream.FileShare Share)
+        public WriteStream(string filename, long index, System.IO.FileMode mode, System.IO.FileShare share)
         {
-            System.IO.FileMode mode;
+            this.stream = System.IO.File.Open(filename, mode, FileAccess.Write, share);
 
-            switch (Mode)
-            {
-                case FileMode.Open: mode = System.IO.FileMode.Open; break;
+            this.index  = (index > this.stream.Length) ? this.stream.Length : index;
 
-                case FileMode.Create: mode = System.IO.FileMode.Create; break;
-
-                case FileMode.CreateNew: mode = System.IO.FileMode.CreateNew; break;
-
-                case FileMode.Append: mode = System.IO.FileMode.Append; break;
-
-                case FileMode.OpenOrCreate: mode = System.IO.FileMode.OpenOrCreate; break;
-
-                case FileMode.Truncate: mode = System.IO.FileMode.Truncate; break;
-
-                default: mode = System.IO.FileMode.OpenOrCreate; break;
-            }
-
-            System.IO.FileShare share;
-
-            switch (Share)
-            {
-                case FileShare.Read: share = System.IO.FileShare.Read; break;
-
-                case FileShare.Write: share = System.IO.FileShare.Write; break;
-
-                case FileShare.ReadWrite: share = System.IO.FileShare.ReadWrite; break;
-
-                default: share = System.IO.FileShare.Write; break;
-            }
-
-            this.stream = System.IO.File.Open(Filename, mode, FileAccess.Write, share);
+            this.stream.Seek(this.index, SeekOrigin.Begin);
 
             this.commands = new Queue<Command>();
 
-            this.ended = false;
+            this.ended    = false;
 
-            this.writing = false;
+            this.writing  = false;
         }
 
         #endregion
@@ -335,19 +276,34 @@ namespace Reactor.File
 
         #region Statics
 
-        public static WriteStream Create(string Filename, WriteStream.FileMode Mode, WriteStream.FileShare Share)
+        public static WriteStream Create(string filename, long index, FileMode mode, FileShare share)
         {
-            return new WriteStream(Filename, Mode, Share);
+            return new WriteStream(filename, index, mode, share);
         }
 
-        public static WriteStream Create(string Filename, WriteStream.FileMode Mode)
+        public static WriteStream Create(string filename, long index, FileMode mode)
         {
-            return new WriteStream(Filename, Mode, FileShare.Write);
+            return new WriteStream(filename, index, mode, FileShare.Write);
         }
 
-        public static WriteStream Create(string Filename)
+        public static WriteStream Create(string filename, long index)
         {
-            return new WriteStream(Filename, WriteStream.FileMode.OpenOrCreate, WriteStream.FileShare.Write);
+            return new WriteStream(filename, index, FileMode.OpenOrCreate, FileShare.Write);
+        }
+
+        public static WriteStream Create(string filename, FileMode mode, FileShare share)
+        {
+            return new WriteStream(filename, 0, mode, share);
+        }
+
+        public static WriteStream Create(string filename, FileMode mode)
+        {
+            return new WriteStream(filename, 0, mode, FileShare.Write);
+        }
+
+        public static WriteStream Create(string filename)
+        {
+            return new WriteStream(filename, 0, FileMode.OpenOrCreate, FileShare.Write);
         }
 
         #endregion
