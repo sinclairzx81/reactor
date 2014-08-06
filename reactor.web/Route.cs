@@ -34,36 +34,36 @@ namespace Reactor.Web
 {
     public class Route
     {
-        public string                                 Method     { get; set; }
+        private string                        Method  { get; set; }
 
-        private List<Reactor.Web.Middleware>              Middleware { get; set; }
+        private string                        Pattern { get; set; }
 
-        public Action<Context>                        Handler    { get; set; }
+        private List<Reactor.Web.Middleware>  middleware;
 
-        public string                                 Pattern    { get; set; }
+        private Action<Context>               handler;
 
-        public List<string>                           Names      { get; set; }
+        private List<string>                  names;
 
-        public Regex                                  Regex      { get; set; }
+        private Regex                         regex;
 
-        public Route(string Pattern, string Method, Action<Context> Handler) : this(Pattern, Method, new Reactor.Web.Middleware [0], Handler)
+        public Route(string pattern, string method, Action<Context> handler): this(pattern, method, new Reactor.Web.Middleware[0], handler)
         {
-            
+
         }
 
-        public Route(string Pattern, string Method, Reactor.Web.Middleware [] middleware, Action<Context> Handler)
+        public Route(string pattern, string method, Reactor.Web.Middleware[] middleware, Action<Context> handler)
         {
-            this.Method     = Method;
+            this.Method     = method;
 
-            this.Middleware = new List<Reactor.Web.Middleware>(middleware);
+            this.middleware = new List<Reactor.Web.Middleware>(middleware);
 
-            this.Handler    = Handler;
+            this.handler    = handler;
 
-            this.Pattern    = Pattern;
+            this.Pattern    = pattern;
 
-            this.Names      = this.ComputeNames();
+            this.names      = this.ComputeNames();
 
-            this.Regex      = this.ComputeRegex();
+            this.regex      = this.ComputeRegex();
         }
 
 
@@ -71,12 +71,8 @@ namespace Reactor.Web
 
         public void Invoke(Reactor.Web.Context context)
         {
-            Reactor.Web.MiddlewareProcessor.Process(context, this.Middleware, () => {
-
-                this.Handler(context);
-            });
+            Reactor.Web.MiddlewareProcessor.Process(context, this.middleware, () => this.handler(context));
         }
-
 
         #endregion
 
@@ -88,9 +84,11 @@ namespace Reactor.Web
 
         internal bool Match(Http.ServerRequest serverRequest)
         {
-            if(string.Equals(serverRequest.Method, this.Method, StringComparison.InvariantCultureIgnoreCase))
+            if (string.Equals(serverRequest.Method, this.Method, StringComparison.InvariantCultureIgnoreCase))
             {
-                var match = this.Regex.IsMatch(serverRequest.Url.AbsolutePath);
+                var path = Reactor.Net.HttpUtility.UrlDecode(serverRequest.Url.AbsolutePath);
+
+                var match = this.regex.IsMatch(path);
 
                 return match;
             }
@@ -104,17 +102,19 @@ namespace Reactor.Web
 
         internal Dictionary<string, string> ComputeParams(Http.ServerRequest serverRequest)
         {
-            var dict       = new Dictionary<string, string>();
+            var dict = new Dictionary<string, string>();
 
-            var match      = this.Regex.Match(serverRequest.Url.AbsolutePath);
+            var path = Reactor.Net.HttpUtility.UrlDecode(serverRequest.Url.AbsolutePath);
 
-            int index      = -1;
+            var match = this.regex.Match(path);
 
-            foreach(var group in match.Groups)
+            int index = -1;
+
+            foreach (var group in match.Groups)
             {
-                if(index >= 0)
+                if (index >= 0)
                 {
-                    dict[this.Names[index]] = group.ToString();
+                    dict[this.names[index]] = group.ToString();
                 }
 
                 index++;
@@ -130,12 +130,12 @@ namespace Reactor.Web
         //----------------------------------------
         // computes the names from a pattern.
         //----------------------------------------
-        
+
         private List<string> ComputeNames()
         {
             bool open = false;
 
-            var buf   = string.Empty;
+            var buf = string.Empty;
 
             var names = new List<string>();
 
@@ -184,9 +184,9 @@ namespace Reactor.Web
         {
             var expression = this.Pattern;
 
-            foreach (var item in this.Names)
+            foreach (var item in this.names)
             {
-                expression = expression.Replace(":" + item, "([a-z|A-Z|0-9|-]+)");
+                expression = expression.Replace(":" + item, "([^/]*)");
             }
 
             return new Regex("^" + expression + "$");

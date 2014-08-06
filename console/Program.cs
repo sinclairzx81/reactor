@@ -42,6 +42,22 @@ namespace console
         static void Main(string[] args)
         {
             Reactor.Loop.Start();
+
+            var server = Reactor.Web.Server.Create();
+
+            server.Get("/:a/:b", context =>
+            {
+                Console.WriteLine(context.Params["a"]);
+
+                Console.WriteLine(context.Params["b"]);
+
+                context.Response.Write("hello");
+
+                context.Response.End();
+            });
+
+            server.Listen(5000);
+
         }
     }
 }
