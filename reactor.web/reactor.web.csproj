@@ -78,10 +78,8 @@
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="media\script\index.ts" />
-    <TypeScriptCompile Include="media\script\IReadStream.ts" />
-    <TypeScriptCompile Include="media\script\IWriteStream.ts" />
-    <TypeScriptCompile Include="media\script\ReadStream.ts" />
-    <TypeScriptCompile Include="media\script\WriteStream.ts" />
+    <TypeScriptCompile Include="media\script\Segment.ts" />
+    <TypeScriptCompile Include="media\script\Upload.ts" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resource.resx">

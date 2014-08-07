@@ -26,5 +26,35 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-/// <reference path="WriteStream.ts" />
-/// <reference path="ReadStream.ts" />
+/// <reference path="Upload.ts" />
+/// <reference path="Segment.ts" />
+
+module reactor {
+
+    export function segment(file:File, endpoint:string, size:number) : reactor.Segment [] {
+        var segments = []
+        var index    = 0
+        for(var i = 0; i < Math.floor(file.size / size); i++) {
+            segments.push(new reactor.Segment(endpoint, 
+                                              file, 
+                                              index,
+                                              index + size))
+            index += size
+        }
+        var remainder = file.size % size
+        if(remainder > 0) {
+            segments.push(new reactor.Segment(endpoint, 
+                                              file, 
+                                              index,
+                                              index + remainder))
+        }
+        return segments;          
+    }
+
+    export function upload(file: File, endpoint: string, size?: number) : reactor.Upload {
+
+        size = size || 1048576 * 10
+
+        return new reactor.Upload( segment(file, endpoint, size) )
+    }
+}

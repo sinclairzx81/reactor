@@ -1,151 +1,143 @@
 ﻿var reactor;
 (function (reactor) {
-    var WriteStream = (function () {
-        function WriteStream(endpoint, onprogress) {
+    var Segment = (function () {
+        function Segment(endpoint, file, start, end) {
             this.endpoint = endpoint;
-            this.onprogress = onprogress;
-            this.xhr = new XMLHttpRequest();
-            this.offset = 0;
+            this.file = file;
+            this.start = start;
+            this.end = end;
         }
-        WriteStream.prototype.write = function (array, callback) {
+        Segment.prototype.process = function (callback) {
             var _this = this;
-            this.xhr.upload.onprogress = function (e) {
+            this.read(function (error, array) {
+                if (error) {
+                    callback(error);
+                    return;
+                }
+                _this.write(array, callback);
+            });
+        };
+        Segment.prototype.write = function (array, callback) {
+            var _this = this;
+            var xhr = new XMLHttpRequest();
+            xhr.upload.onprogress = function (e) {
                 if (_this.onprogress) {
+                    var sent = (e.loaded + _this.start);
                     _this.onprogress({
-                        sent: e.loaded + _this.offset,
-                        total: e.total + _this.offset
+                        sent: sent,
+                        total: _this.file.size,
+                        percent: Math.round((sent * 100) / _this.file.size),
+                        scalar: (sent / _this.file.size)
                     });
                 }
             };
-            this.xhr.onreadystatechange = function () {
-                if (_this.xhr.readyState == 1) {
-                    var start = _this.offset.toString();
-                    var end = (_this.offset + array.byteLength).toString();
-                    _this.xhr.setRequestHeader('Range', ['bytes=', start, '-', end].join(''));
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState == 1) {
+                    xhr.setRequestHeader('Range', ['bytes=', _this.start, '-', _this.end].join(''));
                 }
-                if (_this.xhr.readyState == 4) {
-                    if (_this.xhr.status == 200) {
-                        _this.offset += array.byteLength;
-                        if (callback) {
-                            callback();
-                        }
+                if (xhr.readyState == 4) {
+                    if (xhr.status == 200) {
+                        callback(null);
                         return;
                     }
-                    setTimeout(function () {
-                        _this.write(array, callback);
-                    }, 4000);
+                    callback(new Error('unable to send chunk ' + _this.start + '-' + _this.end));
                 }
             };
-            this.xhr.open('POST', this.endpoint, true);
-            this.xhr.send(array);
+            xhr.open('POST', this.endpoint, true);
+            xhr.send(array);
         };
-
-        WriteStream.prototype.end = function (callback) {
-            if (callback) {
-                callback();
-            }
+        Segment.prototype.read = function (callback) {
+            var reader = new FileReader();
+            reader.onloadend = function (e) {
+                if (e.target.readyState == 2) {
+                    var array = new Uint8Array(e.target.result);
+                    callback(null, array);
+                }
+            };
+            var blob = this.file.slice(this.start, this.end);
+            reader.readAsArrayBuffer(blob);
         };
-        return WriteStream;
+        return Segment;
     })();
-    reactor.WriteStream = WriteStream;
+    reactor.Segment = Segment;
 })(reactor || (reactor = {}));
 var reactor;
 (function (reactor) {
-    var ReadStream = (function () {
-        function ReadStream(file, options) {
-            this.file = file;
-            this.options = options;
-            var default_chunk_size = 1048576 * 10;
-            if (!this.options) {
-                this.options = {
-                    chunksize: default_chunk_size
-                };
-            }
-
-            if (!this.options.chunksize) {
-                this.options.chunksize = default_chunk_size;
-            }
-
-            this.reader = new FileReader();
-            this.chunks = [];
-            this.paused = false;
-            this.reading = false;
-            this.closed = false;
-
-            var index = 0;
-            for (var i = 0; i < Math.floor(this.file.size / this.options.chunksize); i++) {
-                this.chunks.push({ start: index, end: index + this.options.chunksize });
-                index += this.options.chunksize;
-            }
-
-            var remainder = this.file.size % this.options.chunksize;
-            if (remainder > 0) {
-                this.chunks.push({ start: index, end: index + remainder });
-            }
+    var Upload = (function () {
+        function Upload(segments) {
+            this.segments = segments;
+            this.running = false;
+            this.paused = true;
+            this.index = 0;
         }
-        ReadStream.prototype.pipe = function (writeable) {
-            var _this = this;
-            this.ondata = function (buffer) {
-                _this.pause();
-                writeable.write(buffer, function () {
-                    _this.resume();
-                });
-            };
-
-            this.onend = function () {
-                writeable.end();
-            };
-
+        Upload.prototype.restart = function () {
+            this.index = 0;
             this.resume();
         };
-
-        ReadStream.prototype.pause = function () {
-            this.paused = true;
-        };
-
-        ReadStream.prototype.resume = function () {
+        Upload.prototype.resume = function () {
             this.paused = false;
-            if (!this.reading) {
-                if (!this.closed) {
-                    this.read();
+            if (this.index < this.segments.length) {
+                if (!this.running) {
+                    this.process();
                 }
             }
         };
-
-        ReadStream.prototype.read = function () {
+        Upload.prototype.pause = function () {
+            this.paused = true;
+        };
+        Upload.prototype.process = function () {
             var _this = this;
-            this.reading = true;
-            var chunk = this.chunks.shift();
-            this._read(chunk, function (buffer) {
-                _this.reading = false;
-                if (_this.ondata) {
-                    _this.ondata(buffer);
-                }
-                if (_this.chunks.length == 0) {
-                    _this.closed = true;
-                    if (_this.onend) {
-                        _this.onend();
+            var action = function () {
+                var segment = _this.segments[_this.index];
+                segment.onprogress = _this.onprogress;
+                _this.running = true;
+                segment.process(function (error) {
+                    _this.running = false;
+                    if (error) {
+                        if (_this.onerror) {
+                            _this.onerror(error);
+                        }
+                        return;
                     }
-                    return;
-                }
-                if (!_this.paused) {
-                    if (!_this.closed) {
-                        _this.read();
+                    _this.index = _this.index + 1;
+                    if (_this.index < _this.segments.length) {
+                        if (!_this.paused) {
+                            action();
+                        }
+                    } else {
+                        if (_this.oncomplete) {
+                            _this.oncomplete();
+                        }
                     }
-                }
-            });
-        };
-
-        ReadStream.prototype._read = function (chunk, callback) {
-            this.reader.onloadend = function (e) {
-                if (e.target.readyState == 2) {
-                    callback(new Uint8Array(e.target.result));
-                }
+                });
             };
-            var blob = this.file.slice(chunk.start, chunk.end);
-            this.reader.readAsArrayBuffer(blob);
+            action();
         };
-        return ReadStream;
+        return Upload;
     })();
-    reactor.ReadStream = ReadStream;
+    reactor.Upload = Upload;
+})(reactor || (reactor = {}));
+var reactor;
+(function (reactor) {
+    function segment(file, endpoint, size) {
+        var segments = [];
+        var index = 0;
+        for (var i = 0; i < Math.floor(file.size / size); i++) {
+            segments.push(new reactor.Segment(endpoint, file, index, index + size));
+            index += size;
+        }
+        var remainder = file.size % size;
+        if (remainder > 0) {
+            segments.push(new reactor.Segment(endpoint, file, index, index + remainder));
+        }
+        return segments;
+    }
+    reactor.segment = segment;
+
+    function upload(file, endpoint, size) {
+        size = size || 1048576 * 10;
+
+        return new reactor.Upload(segment(file, endpoint, size));
+    }
+    reactor.upload = upload;
 })(reactor || (reactor = {}));
