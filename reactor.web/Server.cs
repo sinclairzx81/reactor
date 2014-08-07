@@ -33,27 +33,31 @@ namespace Reactor.Web
 {
     public class Server
     {
-        private Reactor.Http.Server          server;
+        private Reactor.Http.Server                      httpserver;
 
-        private Reactor.Web.Router           router;
+        private Reactor.Web.Router                       router;
 
-        public  event Action<Exception>  OnError;
+        private Reactor.Action<Reactor.Http.HttpContext> servercb;
+
+        public event Action<Exception>                   OnError;
 
         public Server(Reactor.Http.Server httpserver)
         {
-            this.server           = httpserver;
+            this.router               = new Router();
 
-            this.server.OnContext = this.OnHttpContext;
+            this.httpserver           = httpserver;
 
-            this.server.OnError += (error) =>
+            this.servercb             = this.httpserver.OnContext;
+
+            this.httpserver.OnContext = this.OnHttpContext;
+
+            this.httpserver.OnError += (error) =>
             {
                 if (this.OnError != null) {
 
                     this.OnError(error);
                 }
             };
-
-            this.router = new Router();
         }
 
         public Server(): this(Reactor.Http.Server.Create())
@@ -61,17 +65,24 @@ namespace Reactor.Web
 
         }
 
-        private void OnHttpContext(HttpContext HttpContext)
+        private void OnHttpContext(HttpContext context)
         {
-            this.router.Handler(new Web.Context(HttpContext), () =>
+            this.router.Handler(new Web.Context(context), () =>
             {
-                HttpContext.Response.StatusCode  = 404;
+                if(this.servercb != null)
+                {
+                    this.servercb(context);
 
-                HttpContext.Response.ContentType = "text/plain";
+                    return;
+                }
 
-                HttpContext.Response.Write(Reactor.Buffer.Create(System.Text.Encoding.UTF8.GetBytes(HttpContext.Request.Url.AbsolutePath + " not found")));
+                context.Response.StatusCode  = 404;
 
-                HttpContext.Response.End();
+                context.Response.ContentType = "text/plain";
+
+                context.Response.Write(Reactor.Buffer.Create(System.Text.Encoding.UTF8.GetBytes(context.Request.Url.AbsolutePath + " not found")));
+
+                context.Response.End();
             });
         }
 
@@ -136,21 +147,21 @@ namespace Reactor.Web
 
         public Server Listen(int Port, Action<Exception> callback)
         {
-            this.server.Listen(Port, callback);
+            this.httpserver.Listen(Port, callback);
 
             return this;
         }
 
         public Server Listen(int Port)
         {
-            this.server.Listen(Port);
+            this.httpserver.Listen(Port);
 
             return this;
         }
 
         public Server Stop()
         {
-            this.server.Stop();
+            this.httpserver.Stop();
 
             return this;
         }

@@ -1,20 +1,28 @@
 ﻿var reactor;
 (function (reactor) {
     var WriteStream = (function () {
-        function WriteStream(endpoint) {
+        function WriteStream(endpoint, onprogress) {
             this.endpoint = endpoint;
+            this.onprogress = onprogress;
             this.xhr = new XMLHttpRequest();
             this.offset = 0;
         }
         WriteStream.prototype.write = function (array, callback) {
             var _this = this;
+            this.xhr.upload.onprogress = function (e) {
+                if (_this.onprogress) {
+                    _this.onprogress({
+                        sent: e.loaded + _this.offset,
+                        total: e.total + _this.offset
+                    });
+                }
+            };
             this.xhr.onreadystatechange = function () {
                 if (_this.xhr.readyState == 1) {
                     var start = _this.offset.toString();
                     var end = (_this.offset + array.byteLength).toString();
                     _this.xhr.setRequestHeader('Range', ['bytes=', start, '-', end].join(''));
                 }
-
                 if (_this.xhr.readyState == 4) {
                     if (_this.xhr.status == 200) {
                         _this.offset += array.byteLength;
@@ -23,13 +31,11 @@
                         }
                         return;
                     }
-
                     setTimeout(function () {
                         _this.write(array, callback);
                     }, 4000);
                 }
             };
-
             this.xhr.open('POST', this.endpoint, true);
             this.xhr.send(array);
         };

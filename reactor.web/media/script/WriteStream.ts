@@ -28,36 +28,44 @@ THE SOFTWARE.
 
 module reactor {
 
+    export interface IWriteStreamProgress {
+        total      : number
+        sent       : number
+    }
+
     export class WriteStream {
         private xhr    : XMLHttpRequest
         private offset : number
-
-        constructor(public endpoint: string) {
-            this.xhr    = new XMLHttpRequest()
+        constructor(public endpoint: string, public onprogress?:(progress: IWriteStreamProgress) => void) {
+            this.xhr = new XMLHttpRequest()
             this.offset = 0
         }
-
         public write(array: Uint8Array, callback?: () => void) : void {
+            this.xhr.upload.onprogress = (e:any) => {
+                if(this.onprogress) {
+                    this.onprogress({
+                        sent    : <number>e.loaded + this.offset,
+                        total   : <number>e.total  + this.offset
+                    })
+                }
+            }
             this.xhr.onreadystatechange = () => {
                 if(this.xhr.readyState == 1) {
                     var start : string =  this.offset.toString()
                     var end   : string = (this.offset + array.byteLength).toString()
                     this.xhr.setRequestHeader('Range', ['bytes=', start, '-', end].join('') )
                 }
-
                 if (this.xhr.readyState == 4) {
                     if(this.xhr.status == 200) {
                         this.offset += array.byteLength
                         if(callback) { callback() }
                         return
                     }
-
                     setTimeout(() => {
                         this.write(array, callback)
                     }, 4000)
                 }
             }
-
             this.xhr.open('POST', this.endpoint, true)
             this.xhr.send(array)
         }
