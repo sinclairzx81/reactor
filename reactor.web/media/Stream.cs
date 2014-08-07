@@ -30,15 +30,14 @@ using System.IO;
 
 namespace Reactor.Web.Media
 {
-    public static class Streams
+    public static class Stream
     {
         /// <summary>
-        /// Streams this media out to the http response buffer by analyzing the http request. This is done be checking the
-        /// Http Request Content-Range header and checking for the
+        /// Streams media from this file to the http response stream.
         /// </summary>
         /// <param name="context">The reactor web context</param>
         /// <param name="filename">The filename to stream.</param>
-        public static void Download (Reactor.Web.Context context, string filename)
+        public static void From (Reactor.Web.Context context, string filename)
         {
             //--------------------------------------------------------
             // if file not found, 404 response.
@@ -134,12 +133,12 @@ namespace Reactor.Web.Media
         }
 
         /// <summary>
-        /// Streams this media to the supplied file. Will response with a callback containing any errors for the caller to handle the response.
+        /// Streams media from the http request stream to file. Provides a callback on response.
         /// </summary>
         /// <param name="context">The reactor web context</param>
         /// <param name="filename">The filename to stream this file to.</param>
         /// <param name="callback">The callback fired on complete.</param>
-        public static void Upload   (Reactor.Web.Context context, string filename, Reactor.Action<System.Exception> callback)
+        public static void To   (Reactor.Web.Context context, string filename, Reactor.Action<System.Exception> callback)
         {
             Reactor.File.WriteStream writestream;
 
@@ -272,7 +271,7 @@ namespace Reactor.Web.Media
         /// Serves client streaming script.
         /// </summary>
         /// <param name="context">The reactor web http context.</param>
-        public static void ClientScript   (Reactor.Web.Context context)
+        public static void Script   (Reactor.Web.Context context)
         {
             var buffer = Reactor.Buffer.Create(Reactor.Web.Resource.Client);
 
