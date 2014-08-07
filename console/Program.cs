@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 
 namespace console
 {
-    public static class Ext
+    public static class MediaStream
     {
         /// <summary>
         /// Streams this media out to the http response buffer by analyzing the http request. This is done be checking the
@@ -78,7 +78,7 @@ namespace console
             // if ranged, compute parameters.
             //-----------------------------------------------
 
-            var info = new System.IO.FileInfo(filename);
+            var info  = new System.IO.FileInfo(filename);
 
             var split = range.Replace("bytes=", "").Split(new char[] { '-' });
 
@@ -95,11 +95,11 @@ namespace console
             // stream ranged request
             //---------------------------------------------
 
-            response.ContentType = Reactor.Web.Media.Mime.Lookup(filename);
+            response.ContentType   = Reactor.Web.Media.Mime.Lookup(filename);
 
             response.ContentLength = (end - start) + 1;
 
-            response.StatusCode = 206;
+            response.StatusCode    = 206;
 
             response.AppendHeader("Content-Disposition", "inline; filename=" + disposition);
 
@@ -112,6 +112,11 @@ namespace console
             streamed.Pipe(response);
         }
 
+
+        public static void Stream(this Reactor.Http.ServerRequest request, string filename, Reactor.Action<Exception> callback)
+        {
+
+        }
     }
 
     class Program
@@ -120,44 +125,153 @@ namespace console
         {
             var server = Reactor.Web.Server.Create();
 
-            server.Get("/reactor.js", context =>
-            {
-                var readstream = Reactor.File.ReadStream.Create("c:/input/bstream/reactor.js");
+            server.Get("/reactor.js", context => {
 
-                context.Response.ContentType = "text/javascript";
-
-                context.Response.ContentLength = readstream.Length;
-
-                readstream.Pipe(context.Response);
-
+                Reactor.Web.Media.Streams.ClientScript(context);
             });
 
+            server.Get("/download", context => {
 
-            server.Get("/download", context =>
-            {
-                context.Response.Stream(context.Request, "c:/input/upload.mp4");
+                Reactor.Web.Media.Streams.Download(context, "c:/input/upload.mp4");
             });
 
             server.Post("/upload", context => {
 
-                var index       = long.Parse(context.Request.Headers["index"]);
+                Reactor.Web.Media.Streams.Upload(context, "c:/input/upload.mp4", (exception) => {
 
-                var writestream = Reactor.File.WriteStream.Create("c:/input/upload.mp4", index, FileMode.OpenOrCreate, FileShare.ReadWrite);
+                    if (exception != null) {
 
-                context.Request.Pipe(writestream);
+                        context.Response.StatusCode = 500;
 
-                context.Request.OnData += (d) =>
-                {
-                    Console.Write(".");
-                };
-                
-                context.Request.OnEnd += () =>
-                {
-                    Console.Write("e");
+                        context.Response.Write(exception.Message);
+
+                        context.Response.End();
+
+                        return;
+                    }
+
+                    context.Response.StatusCode = 200;
+
+                    context.Response.Write("ok");
 
                     context.Response.End();
-                };
+                });
             });
+
+            #region OldCode
+
+            //server.Post("/upload", context => {
+
+            //    Reactor.Action<string> error = (message) => {
+
+            //        context.Response.StatusCode = 500;
+
+            //        context.Response.ContentType = "text/plain";
+
+            //        var buffer = Reactor.Buffer.Create(message);
+
+            //        context.Response.Write(buffer);
+
+            //        context.Response.End();
+            //    };
+
+            //    Reactor.Action<string> success = (message) => {
+
+            //        context.Response.StatusCode = 200;
+
+            //        context.Response.ContentType = "text/plain";
+
+            //        var buffer = Reactor.Buffer.Create(message);
+
+            //        context.Response.Write(buffer);
+
+            //        context.Response.End();
+            //    };
+
+            //    string filename = "c:/input/upload.mp4";
+
+            //    long   offset = 0;
+
+            //    Console.WriteLine(context.Request.Headers["Content-Range"]);
+
+            //    //------------------------------------
+            //    // compute range
+            //    //------------------------------------
+            //    if(context.Request.Headers["offset"] != null) {
+
+            //        if(!long.TryParse(context.Request.Headers["offset"], out offset)) {
+
+            //            error("unable to parse offset");
+
+            //            return;
+            //        }
+            //    }
+
+            //    //------------------------------------
+            //    // validate range
+            //    //------------------------------------
+
+            //    if (offset > 0)
+            //    {
+            //        if (System.IO.File.Exists(filename))
+            //        {
+            //            var info = new System.IO.FileInfo(filename);
+
+            //            if (offset > info.Length)
+            //            {
+            //                error("offset exceeds the range of the file.");
+
+            //                return;
+            //            }
+            //        }
+            //        else
+            //        {
+            //            error("offset exceeds the range of the file.");
+
+            //            return;
+            //        }
+            //    }
+
+            //    //------------------------------------
+            //    // create writestream
+            //    //------------------------------------
+
+            //    Reactor.File.WriteStream writestream;
+
+            //    if (offset == 0)  {
+
+            //        if (System.IO.File.Exists(filename))
+            //        {
+            //            writestream = Reactor.File.WriteStream.Create(filename, offset, FileMode.Truncate, FileShare.ReadWrite);
+            //        }
+            //        else
+            //        {
+            //            writestream = Reactor.File.WriteStream.Create(filename, offset, FileMode.Create, FileShare.ReadWrite);
+            //        }
+                    
+            //    }
+            //    else {
+
+            //        writestream = Reactor.File.WriteStream.Create(filename, offset, FileMode.OpenOrCreate, FileShare.ReadWrite);
+            //    }
+
+            //    //------------------------------------
+            //    // stream request
+            //    //------------------------------------
+
+            //    context.Request.Pipe(writestream);
+
+            //    context.Request.OnData += (d) => Console.Write(".");
+                
+            //    context.Request.OnEnd  += () => {
+
+            //        Console.Write("e");
+
+            //        success("ok");
+            //    };
+            //});
+
+            #endregion
 
             server.Get("/", context =>
             {

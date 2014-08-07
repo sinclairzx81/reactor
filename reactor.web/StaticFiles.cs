@@ -78,7 +78,6 @@ namespace Reactor.Web
 
                 readstream.Pipe(context.Response);
             };
-
         }
     }
 }

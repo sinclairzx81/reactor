@@ -42,7 +42,13 @@
   <ItemGroup>
     <Compile Include="Context.cs" />
     <Compile Include="media\Mime.cs" />
+    <Compile Include="media\Stream.cs" />
     <Compile Include="Middleware.cs" />
+    <Compile Include="Resource.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resource.resx</DependentUpon>
+    </Compile>
     <Compile Include="Router.cs" />
     <Compile Include="StaticFiles.cs" />
     <Compile Include="Route.cs" />
@@ -66,6 +72,25 @@
       <Project>{313a33d5-3743-4610-8e37-225f0376bcc9}</Project>
       <Name>reactor</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="media\script\build.bat" />
+  </ItemGroup>
+  <ItemGroup>
+    <TypeScriptCompile Include="media\script\index.ts" />
+    <TypeScriptCompile Include="media\script\IReadStream.ts" />
+    <TypeScriptCompile Include="media\script\IWriteStream.ts" />
+    <TypeScriptCompile Include="media\script\ReadStream.ts" />
+    <TypeScriptCompile Include="media\script\WriteStream.ts" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resource.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resource.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="media\script\Client.js" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
