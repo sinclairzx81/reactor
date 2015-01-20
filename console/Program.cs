@@ -7,53 +7,37 @@ namespace console
         {
             Reactor.Loop.Start();
 
-            var server = Reactor.Web.Server.Create();
+            var server = Reactor.Web.Socket.Server.Create(5000);
 
-            server.Get("/reactor.js", context => {
-
-                Reactor.Web.Media.Stream.Script(context);
-            });
-
-            server.Get("/download", context => {
-
-                Reactor.Web.Media.Stream.From(context, "c:/input/upload.mp4");
-            });
-
-            server.Post("/upload", context => {
-
-                Reactor.Web.Media.Stream.To(context, "c:/input/upload.mp4", (exception) => {
-
-                    if (exception != null) {
-
-                        context.Response.StatusCode = 500;
-
-                        context.Response.Write(exception.Message);
-
-                        context.Response.End();
-
-                        return;
-                    }
-
-                    context.Response.StatusCode = 200;
-
-                    context.Response.Write("ok");
-
-                    context.Response.End();
-                });
-            });
-
-            server.Get("/", context =>
+            server.OnSocket = socket =>
             {
-                var readstream = Reactor.File.ReadStream.Create("c:/input/bstream/index.html");
+                System.Console.Write(".");
 
-                context.Response.ContentType = "text/html";
+                //Reactor.Interval.Create(() =>
+                //{
+                //    socket.Send("message");
 
-                context.Response.ContentLength = readstream.Length;
+                //}, 1);
 
-                readstream.Pipe(context.Response);
-            });
+                socket.OnMessage += message =>
+                {
+                    System.Console.Write("e");
 
-            server.Listen(5000);
+                    socket.Send(message.RawData);
+                };
+
+                socket.OnClose += () =>
+                {
+                    System.Console.WriteLine("close");
+
+                };
+            };
+
+            server.OnError = (error) =>
+            {
+                System.Console.Write(error);
+
+            };
         }
     }
 }

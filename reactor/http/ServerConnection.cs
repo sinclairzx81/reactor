@@ -65,11 +65,11 @@ namespace Reactor.Http
 
         #endregion
 
-        private HttpContext    context;
+        private   HttpContext    context;
 
-        private HttpConnection connection;
+        private   HttpConnection connection;
 
-        private Stream         stream;
+        private   Stream         stream;
 
         public ServerConnection(HttpContext context, HttpConnection connection)
         {
@@ -198,7 +198,7 @@ namespace Reactor.Http
             }
         }
 
-        public event  Action        OnEnd;
+        public event  Action         OnEnd;
 
         public IReadable Pipe(IWriteable writeable)
         {
@@ -295,12 +295,12 @@ namespace Reactor.Http
             this.Write(buffer, exception => { });
         }
 
-        public void Flush(Action<Exception> callback)
+        public void Flush (Action<Exception> callback)
         {
             callback(null);
         }
 
-        public void Flush()
+        public void Flush ()
         {
             this.Flush(exception => { });
         }
@@ -352,7 +352,15 @@ namespace Reactor.Http
 
                     try
                     {
-                        this.stream.Dispose();
+                        //--------------------------------
+                        // special case close as we need 
+                        // to clean up more than the 
+                        // underlying stream.
+                        //--------------------------------
+
+                        this.connection.Close();
+
+                        //this.stream.Close();
                     }
                     catch (Exception _exception)
                     {
@@ -381,7 +389,15 @@ namespace Reactor.Http
 
                     try
                     {
-                        this.stream.Dispose();
+                        //--------------------------------
+                        // special case close as we need 
+                        // to clean up more than the 
+                        // underlying stream.
+                        //--------------------------------
+
+                        this.connection.Close();
+
+                        //this.stream.Dispose();
                     }
                     catch (Exception _exception)
                     {
@@ -480,7 +496,15 @@ namespace Reactor.Http
 
                 try
                 {
-                    this.stream.Close();
+                    //--------------------------------
+                    // special case close as we need 
+                    // to clean up more than the 
+                    // underlying stream.
+                    //--------------------------------
+
+                    this.connection.Close();
+
+                    //this.stream.Close();
                 }
                 catch(Exception exception)
                 {
