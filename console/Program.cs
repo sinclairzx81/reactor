@@ -7,37 +7,19 @@ namespace console
         {
             Reactor.Loop.Start();
 
-            var server = Reactor.Web.Socket.Server.Create(5000);
+            var redirect = Reactor.Divert.Capture.Create((packet, next) => {
+                
+                System.Console.WriteLine("{0}: {1} -> {2} - {3}", packet.Type, packet.Source, packet.Destination, packet.Data.Length);
 
-            server.OnSocket = socket =>
-            {
-                System.Console.Write(".");
+                next(packet);
 
-                //Reactor.Interval.Create(() =>
-                //{
-                //    socket.Send("message");
+            }).Start();
 
-                //}, 1);
+            System.Console.ReadLine();
 
-                socket.OnMessage += message =>
-                {
-                    System.Console.Write("e");
+            redirect.Stop();
 
-                    socket.Send(message.RawData);
-                };
-
-                socket.OnClose += () =>
-                {
-                    System.Console.WriteLine("close");
-
-                };
-            };
-
-            server.OnError = (error) =>
-            {
-                System.Console.Write(error);
-
-            };
+            Reactor.Loop.Stop();
         }
     }
 }
