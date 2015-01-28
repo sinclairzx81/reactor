@@ -59,17 +59,17 @@ namespace Reactor.Web.Socket
 
     public class Transport
     {
-        private Reactor.IDuplexable            duplexable;
+        private Reactor.IDuplexable      duplexable;
 
-        public event Reactor.Action            OnOpen;
+        public Reactor.Action            OnOpen    { get; set; }
 
-        public event Reactor.Action<Message>   OnMessage;
+        public Reactor.Action<Message>   OnMessage { get; set; }
 
-        public event Reactor.Action<Exception> OnError;
+        public Reactor.Action<Exception> OnError   { get; set; }
 
-        public event Reactor.Action            OnClose;
+        public Reactor.Action            OnClose   { get; set; }
 
-        private byte[] unprocessed;
+        private byte[]               unprocessed;
 
         #region Constructor
 
@@ -89,8 +89,8 @@ namespace Reactor.Web.Socket
                 // if we have any leftovers...join to data..
                 //-------------------------------------------------
 
-                if(this.unprocessed != null)
-                {
+                if(this.unprocessed != null) {
+
                     data = ByteData.Join(this.unprocessed, data);
 
                     this.unprocessed = null;
@@ -162,16 +162,16 @@ namespace Reactor.Web.Socket
 
             var writeable = duplexable as IWriteable;
 
-            writeable.OnError += (exception) =>
-            {
+            writeable.OnError += (exception) => {
+
                 if (this.OnError != null)
                 {
                     this.OnError(exception);
                 }
             };
 
-            if (this.OnOpen != null)
-            {
+            if (this.OnOpen != null) {
+
                 this.OnOpen();
             }
         }
@@ -186,25 +186,19 @@ namespace Reactor.Web.Socket
             // if close, terminate connection
             //-----------------------------------
             
-            if (frame.IsClose)
-            {
-                this.duplexable.End((exception) =>
-                {
-                    if (exception != null)
-                    {
-                        if (this.OnError != null)
-                        {
+            if (frame.IsClose) {
+
+                this.duplexable.End(exception => {
+
+                    if (exception != null) {
+
+                        if (this.OnError != null) {
+
                             this.OnError(exception);
                         }
                     }
 
-                    if (this.OnClose != null)
-                    {
-                        if (this.OnClose != null)
-                        {
-                            this.OnClose();
-                        }
-                    }
+                    this.Close();
                 });
 
                 return;
@@ -248,20 +242,12 @@ namespace Reactor.Web.Socket
 
             var buffer = Reactor.Buffer.Create(frame.ToByteArray());
 
-            this.duplexable.Write(buffer, (exception) =>
-            {
-                if (callback != null)
-                {
+            this.duplexable.Write(buffer, exception => {
+
+                if (callback != null) {
+
                     callback(exception);
                 }
-            });
-        }
-
-        public void Send(string message)
-        {
-            this.Send(message, (exception) =>
-            {
-
             });
         }
 
@@ -271,38 +257,54 @@ namespace Reactor.Web.Socket
 
             var buffer = Reactor.Buffer.Create(frame.ToByteArray());
 
-            this.duplexable.Write(buffer, (exception) =>
-            {
-                if (callback != null)
-                {
+            this.duplexable.Write(buffer, exception => {
+
+                if (callback != null) {
+
                     callback(exception);
                 }
             });
         }
 
+        public void Send(string message)
+        {
+            this.Send(message, exception =>  { });
+        }
+
         public void Send(byte[] message)
         {
-            this.Send(message, (exception) => { });
+            this.Send(message, exception => { });
         }
 
         public void Close(Action<Exception> callback)
         {
-            var frame = Frame.CreateCloseFrame(Mask.Unmask, CloseStatusCode.Normal, "");
+            var frame  = Frame.CreateCloseFrame(Mask.Unmask, CloseStatusCode.Normal, "");
 
             var buffer = Reactor.Buffer.Create(frame.ToByteArray());
 
-            this.duplexable.Write(buffer, (exception) =>
-            {
-                if (callback != null)
-                {
-                    callback(exception);
-                }
+            //---------------------------
+            // write close to stream
+            //---------------------------
+
+            this.duplexable.Write(buffer, exception => {
+
+                //---------------------------
+                // end the stream
+                //---------------------------
+
+                this.duplexable.End();
+
+                //---------------------------
+                // callback
+                //---------------------------
+
+                callback(exception);
             });
         }
 
         public void Close()
         {
-            this.Close((exception) => { });
+            this.Close(exception => { });
         }
 
         #endregion

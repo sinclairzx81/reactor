@@ -44,37 +44,37 @@ namespace Reactor.Web.Socket
 
     public class Socket
     {
-        private Reactor.Web.Socket.Transport          channel;
+        private Reactor.Web.Socket.Transport transport;
 
-        public Reactor.Web.Socket.Context             Context;
+        public Reactor.Web.Socket.Context Context   { get; set; }
 
-        public SocketState                            State { get; set; }
+        public SocketState                State     { get; set; }
 
-        public event Reactor.Action                   OnOpen;
+        public Reactor.Action             OnOpen    { get; set; }
 
-        public event Reactor.Action<Message>          OnMessage;
+        public Reactor.Action<Message>    OnMessage { get; set; }
 
-        public event Reactor.Action<Exception>        OnError;
+        public Reactor.Action<Exception>  OnError   { get; set; }
 
-        public event Reactor.Action                   OnClose;
+        public Reactor.Action             OnClose   { get; set; }
 
         #region Constructors
 
-        internal Socket (Reactor.Web.Socket.Transport channel)
+        internal Socket(Reactor.Web.Socket.Transport transport)
         {
-            this.channel = channel;
+            this.transport = transport;
 
-            this.State   = SocketState.Open;
+            this.State = SocketState.Open;
 
-            this.channel.OnOpen += () =>
+            this.transport.OnOpen = () =>
             {
-                if(this.OnOpen != null)
+                if (this.OnOpen != null)
                 {
                     this.OnOpen();
                 }
             };
 
-            this.channel.OnError += (exception) =>
+            this.transport.OnError = (exception) =>
             {
                 if (this.OnError != null)
                 {
@@ -82,9 +82,11 @@ namespace Reactor.Web.Socket
                 }
             };
 
-            this.channel.OnClose += () =>
+            this.transport.OnClose = () =>
             {
                 this.State = SocketState.Closed;
+
+                this.Close();
 
                 if (this.OnClose != null)
                 {
@@ -92,27 +94,27 @@ namespace Reactor.Web.Socket
                 }
             };
 
-            this.channel.OnMessage += (message) =>
+            this.transport.OnMessage = (message) =>
             {
-                if(this.OnMessage != null)
+                if (this.OnMessage != null)
                 {
                     this.OnMessage(message);
                 }
             };
         }
 
-        public Socket (string url, Dictionary<string, string> Headers)
+        internal Socket(string url, Dictionary<string, string> Headers)
         {
-            var request     = WebSocketRequest.Create(url);
+            var request = WebSocketRequest.Create(url);
 
             request.Headers = Headers;
 
-            request.GetResponse((exception, response) =>
-            {
+            request.GetResponse((exception, response) => {
+
                 //---------------------------------------
                 // check for handshake error
                 //---------------------------------------
-                
+
                 if (exception != null)
                 {
                     if (this.OnError != null)
@@ -141,7 +143,7 @@ namespace Reactor.Web.Socket
                 // configure events
                 //---------------------------------------
 
-                this.channel           = new Transport(response.Socket);
+                this.transport = new Transport(response.Socket);
 
                 //---------------------------------------
                 // emit open
@@ -152,7 +154,7 @@ namespace Reactor.Web.Socket
                     this.OnOpen();
                 }
 
-                this.channel.OnError += (error) =>
+                this.transport.OnError += (error) =>
                 {
                     if (this.OnError != null)
                     {
@@ -160,7 +162,7 @@ namespace Reactor.Web.Socket
                     }
                 };
 
-                this.channel.OnClose += () =>
+                this.transport.OnClose += () =>
                 {
                     this.State = SocketState.Closed;
 
@@ -170,9 +172,9 @@ namespace Reactor.Web.Socket
                     }
                 };
 
-                this.channel.OnMessage += (message) =>
+                this.transport.OnMessage += (message) =>
                 {
-                    if(this.OnMessage != null)
+                    if (this.OnMessage != null)
                     {
                         this.OnMessage(message);
                     }
@@ -184,7 +186,7 @@ namespace Reactor.Web.Socket
 
                 foreach (var frame in response.Frames)
                 {
-                    this.channel.AcceptFrame(frame);
+                    this.transport.AcceptFrame(frame);
                 }
             });
         }
@@ -195,52 +197,42 @@ namespace Reactor.Web.Socket
 
         public void Send(string message, Action<Exception> complete)
         {
-            if (this.channel != null)
+            if (this.transport != null)
             {
-                this.channel.Send(message, complete);
+                this.transport.Send(message, complete);
             }
         }
 
         public void Send(string message)
         {
-            if (this.channel != null)
+            if (this.transport != null)
             {
-                this.channel.Send(message, (exception) => {
-
-                });
+                this.transport.Send(message, exception => { });
             }
         }
 
         public void Send(byte[] message, Action<Exception> complete)
         {
-            if (this.channel != null)
+            if (this.transport != null)
             {
-                this.channel.Send(message, complete);
+                this.transport.Send(message, complete);
             }
         }
 
-        public void Send(byte [] message)
+        public void Send(byte[] message)
         {
-            if (this.channel != null)
+            if (this.transport != null)
             {
-                this.channel.Send(message, (exception) => { });
-            }
-        }
-
-        public void Close(Action<Exception> callback)
-        {
-            if (this.channel != null)
-            {
-                this.channel.Close(callback);
+                this.transport.Send(message, exception => { });
             }
         }
 
         public void Close()
         {
-            if (this.channel != null)
+            if (this.transport != null)
             {
-                this.channel.Close((exvception) => { });
-            }            
+                this.transport.Close(exception => { });
+            }
         }
 
         #endregion
