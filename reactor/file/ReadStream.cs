@@ -31,7 +31,7 @@ using System.IO;
 
 namespace Reactor.File
 {
-    public class ReadStream : IReadable
+    public class ReadStream : IReadable<Reactor.Buffer>
     {
         private FileStream stream;
 
@@ -104,7 +104,7 @@ namespace Reactor.File
 
         public event Action OnEnd;
 
-        public IReadable Pipe(IWriteable writeable)
+        public IReadable<Reactor.Buffer> Pipe(IWriteable<Reactor.Buffer> writeable)
         {
             this.OnData += data =>
             {
@@ -144,9 +144,9 @@ namespace Reactor.File
                 writeable.End();
             };
 
-            if (writeable is IReadable)
+            if (writeable is IReadable<Reactor.Buffer>)
             {
-                return writeable as IReadable;
+                return writeable as IReadable<Reactor.Buffer>;
             }
 
             return null;

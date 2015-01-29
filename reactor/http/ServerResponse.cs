@@ -33,7 +33,7 @@ using System.Text;
 
 namespace Reactor.Http
 {
-    public class ServerResponse : IWriteable
+    public class ServerResponse : IWriteable<Reactor.Buffer>
     {
         #region Command
 

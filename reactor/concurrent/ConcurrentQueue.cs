@@ -31,9 +31,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace Reactor
+namespace Reactor.Concurrent
 {
-    internal class ConcurrentQueue<T> : IEnumerable<T>, ICollection, IEnumerable
+    public class ConcurrentQueue<T> : IEnumerable<T>, ICollection, IEnumerable
     {
         #region Node
 

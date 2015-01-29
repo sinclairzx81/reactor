@@ -1,25 +1,45 @@
 ﻿
+using System;
+
 namespace console
 {
     class Program
     {
-        static void Main(string[] args)
-        {
-            Reactor.Loop.Start();
+        static void Main(string[] args) {
 
-            var redirect = Reactor.Divert.Capture.Create((packet, next) => {
+            Reactor.Domain.Create(() => {
+
+                var server = Reactor.Web.Server.Create();
                 
-                System.Console.WriteLine("{0}: {1} -> {2} - {3}", packet.Type, packet.Source, packet.Destination, packet.Data.Length);
+                server.Get("/", context => {
 
-                next(packet);
+                    context.Response.Write("hi there");
 
-            }).Start();
+                    context.Response.End();
+                });
 
-            System.Console.ReadLine();
+                server.Listen(5000);
+            });
 
-            redirect.Stop();
+            Reactor.Domain.Create(() => 
+                    
+                Reactor.Interval.Create(() => 
+                        
+                    Console.Write("A"), 1));
 
-            Reactor.Loop.Stop();
+            Reactor.Domain.Create(() =>
+
+                Reactor.Interval.Create(() =>
+
+                    Console.Write("B"), 1));
+
+            Reactor.Domain.Create(() =>
+
+                Reactor.Interval.Create(() =>
+
+                    Console.Write("C"), 1));
+
+            Console.ReadLine();
         }
     }
 }

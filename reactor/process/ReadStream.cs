@@ -32,7 +32,7 @@ using System.Net;
 
 namespace Reactor.Process
 {
-    public class ReadStream : IReadable
+    public class ReadStream : IReadable<Reactor.Buffer>
     {
         private Stream stream;
 
@@ -79,7 +79,7 @@ namespace Reactor.Process
 
         public event Action OnEnd;
 
-        public IReadable Pipe(IWriteable writeable)
+        public IReadable<Reactor.Buffer> Pipe(IWriteable<Reactor.Buffer> writeable)
         {
             this.OnData += data =>
             {
@@ -119,9 +119,9 @@ namespace Reactor.Process
                 writeable.End();
             };
 
-            if (writeable is IReadable)
+            if (writeable is IReadable<Reactor.Buffer>)
             {
-                return writeable as IReadable;
+                return writeable as IReadable<Reactor.Buffer>;
             }
 
             return null;

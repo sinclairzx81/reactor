@@ -35,7 +35,7 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace Reactor.Http
 {
-    public class Request : IWriteable
+    public class Request : IWriteable<Reactor.Buffer>
     {
         #region Command
 

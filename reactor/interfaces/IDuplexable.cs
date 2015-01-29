@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Reactor
 {
-    public interface IDuplexable : IReadable, IWriteable
+    public interface IDuplexable<T> : IReadable<T>, IWriteable<T>
     {
 
     }

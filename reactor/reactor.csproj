@@ -43,7 +43,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="async\Async.cs" />
+    <Compile Include="concurrent\ConcurrentStack.cs" />
     <Compile Include="delegates\DynamicAction.cs" />
+    <Compile Include="domain\Domain.cs" />
     <Compile Include="gc\GC.cs" />
     <Compile Include="interfaces\IDuplexable.cs" />
     <Compile Include="loop\Context.cs" />
@@ -85,7 +87,7 @@
     <Compile Include="ip\Socket.cs" />
     <Compile Include="process\Process.cs" />
     <Compile Include="process\WriteStream.cs" />
-    <Compile Include="bridge\concurrent\ConcurrentQueue.cs" />
+    <Compile Include="concurrent\ConcurrentQueue.cs" />
     <Compile Include="settings\Settings.cs" />
     <Compile Include="tls\Server.cs" />
     <Compile Include="tls\Socket.cs" />

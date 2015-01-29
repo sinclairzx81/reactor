@@ -32,7 +32,7 @@ using System.IO;
 
 namespace Reactor.File
 {
-    public class WriteStream : IWriteable
+    public class WriteStream : IWriteable<Reactor.Buffer>
     {
         #region Command
 

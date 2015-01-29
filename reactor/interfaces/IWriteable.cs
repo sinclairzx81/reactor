@@ -30,11 +30,11 @@ using System;
 
 namespace Reactor
 {
-    public interface IWriteable
+    public interface IWriteable<T>
     {
-        void Write(Buffer buffer, Action<Exception> callback);
+        void Write(T buffer, Action<Exception> callback);
 
-        void Write(Buffer buffer);
+        void Write(T buffer);
 
         void Flush(Action<Exception> callback);
 

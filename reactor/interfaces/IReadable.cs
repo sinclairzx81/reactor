@@ -30,15 +30,15 @@ using System;
 
 namespace Reactor
 {
-    public interface IReadable
+    public interface IReadable<T>
     {
         event Action<Exception> OnError;
         
-        event Action<Buffer>    OnData;
+        event Action<T>         OnData;
 
         event Action            OnEnd;
 
-        IReadable               Pipe(IWriteable writeable);
+        IReadable<T>            Pipe(IWriteable<T> writeable);
 
         void                    Pause();
 

@@ -34,7 +34,7 @@ using System.Net;
 
 namespace Reactor.Http
 {
-    public class ServerConnection : IDuplexable
+    public class ServerConnection : IDuplexable<Reactor.Buffer>
     {
         #region Command
 
@@ -200,7 +200,7 @@ namespace Reactor.Http
 
         public event  Action         OnEnd;
 
-        public IReadable Pipe(IWriteable writeable)
+        public IReadable<Reactor.Buffer> Pipe(IWriteable<Reactor.Buffer> writeable)
         {
             this.OnData += data =>
             {
@@ -240,9 +240,9 @@ namespace Reactor.Http
                 writeable.End();
             };
 
-            if (writeable is IReadable)
+            if (writeable is IReadable<Reactor.Buffer>)
             {
-                return writeable as IReadable;
+                return writeable as IReadable<Reactor.Buffer>;
             }
 
             return null;

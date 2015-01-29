@@ -82,7 +82,7 @@ namespace Reactor.Divert
             };
         }
 
-        public Capture Start()
+        public Capture Start ()
         {
             this.handle = WinDivert.WinDivertOpen(this.filter, WINDIVERT_LAYER.WINDIVERT_LAYER_NETWORK, 0, 0);
 
@@ -102,7 +102,7 @@ namespace Reactor.Divert
             return this;
         }
 
-        public Capture Stop()
+        public Capture Stop  ()
         {
             this.started = false;
 

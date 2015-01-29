@@ -38,7 +38,7 @@ namespace Reactor.Tls
     /// <summary>
     /// A Reactor TcpSocket.
     /// </summary>
-    public class Socket: IDuplexable
+    public class Socket: IDuplexable<Reactor.Buffer>
     {
         #region Command
 
@@ -599,7 +599,7 @@ namespace Reactor.Tls
 
         public event  Action        OnEnd;
 
-        public IReadable Pipe(IWriteable writeable)
+        public IReadable<Reactor.Buffer> Pipe(IWriteable<Reactor.Buffer> writeable)
         {
             this.OnData += data =>
             {
@@ -639,9 +639,9 @@ namespace Reactor.Tls
                 writeable.End();
             };
 
-            if (writeable is IReadable)
+            if (writeable is IReadable<Reactor.Buffer>)
             {
-                return writeable as IReadable;
+                return writeable as IReadable<Reactor.Buffer>;
             }
 
             return null;

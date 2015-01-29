@@ -32,11 +32,11 @@ namespace Reactor
 {
     internal class Messages
     {
-        private ConcurrentQueue<Reactor.Action> actions;
+        private Reactor.Concurrent.ConcurrentQueue<Reactor.Action> actions;
 
         public Messages()
         {
-            this.actions = new ConcurrentQueue<Reactor.Action>();
+            this.actions = new Reactor.Concurrent.ConcurrentQueue<Reactor.Action>();
         }
 
         public void Post(Reactor.Action message)

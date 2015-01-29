@@ -59,7 +59,7 @@ namespace Reactor.Web.Socket
 
     public class Transport
     {
-        private Reactor.IDuplexable      duplexable;
+        private Reactor.IDuplexable<Reactor.Buffer> duplexable;
 
         public Reactor.Action            OnOpen    { get; set; }
 
@@ -73,7 +73,7 @@ namespace Reactor.Web.Socket
 
         #region Constructor
 
-        internal Transport(Reactor.IDuplexable duplexable)
+        internal Transport(Reactor.IDuplexable<Reactor.Buffer> duplexable)
         {
             this.duplexable = duplexable;
 
@@ -150,7 +150,7 @@ namespace Reactor.Web.Socket
                 }
             };
 
-            var readable = duplexable as IReadable;
+            var readable = duplexable as IReadable<Reactor.Buffer>;
 
             readable.OnError += (exception) =>
             {
@@ -160,7 +160,7 @@ namespace Reactor.Web.Socket
                 }
             };
 
-            var writeable = duplexable as IWriteable;
+            var writeable = duplexable as IWriteable<Reactor.Buffer>;
 
             writeable.OnError += (exception) => {
 
@@ -311,7 +311,7 @@ namespace Reactor.Web.Socket
 
         #region Statics
 
-        public static Transport Create(Reactor.IDuplexable duplexable)
+        public static Transport Create(Reactor.IDuplexable<Reactor.Buffer> duplexable)
         {
             return new Transport(duplexable);
         }

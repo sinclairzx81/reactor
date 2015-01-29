@@ -35,7 +35,7 @@ using System.Text;
 
 namespace Reactor.Http
 {
-    public class ServerRequest : IReadable
+    public class ServerRequest : IReadable<Reactor.Buffer>
     {
         private HttpContext          context;
 
@@ -303,7 +303,7 @@ namespace Reactor.Http
 
         public event Action OnEnd;
 
-        public IReadable Pipe(IWriteable writeable)
+        public IReadable<Reactor.Buffer> Pipe(IWriteable<Reactor.Buffer> writeable)
         {
             this.OnData += data =>
             {
@@ -343,9 +343,9 @@ namespace Reactor.Http
                 writeable.End();
             };
 
-            if (writeable is IReadable)
+            if (writeable is IReadable<Reactor.Buffer>)
             {
-                return writeable as IReadable;
+                return writeable as IReadable<Reactor.Buffer>;
             }
 
             return null;
