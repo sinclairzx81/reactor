@@ -4,7 +4,7 @@ Reactor.Divert
 
 The MIT License (MIT)
 
-Copyright (c) 2014 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
+Copyright (c) 2015 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,14 +28,14 @@ THE SOFTWARE.
 
 namespace Reactor.Divert
 {
-    public enum PacketType
+    public interface ISocket
     {
-        IP,
+        void Write  (byte[] data);
 
-        UDP,
+        void Read   (Reactor.Action<byte[]> callback);
 
-        TCP,
+        void End    ();
 
-        Unknown
+        void Error  (Reactor.Action<System.Exception> callback);
     }
 }

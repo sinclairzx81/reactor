@@ -7,37 +7,35 @@ namespace console
     {
         static void Main(string[] args) {
 
-            Reactor.Domain.Create(() => {
+            Reactor.Loop.Start();
 
-                var server = Reactor.Web.Server.Create();
-                
-                server.Get("/", context => {
+            var socket = Reactor.Divert.Socket.Create("(inbound or outbound) and ip");
+            
+            socket.Read(data => {
 
-                    context.Response.Write("hi there");
+                var ip  = Reactor.Divert.Parsers.IpHeader.Create(data);
 
-                    context.Response.End();
-                });
+                var tcp = Reactor.Divert.Parsers.TcpHeader.Create(ip);
 
-                server.Listen(5000);
+                Console.WriteLine("{0}:{1} -> {2}:{3}", ip.SourceAddress,
+ 
+                                                        tcp.SourcePort,
+
+                                                        ip.DestinationAddress,
+
+                                                        tcp.DestinationPort);
+
+                socket.Write(data);
             });
 
-            Reactor.Domain.Create(() => 
-                    
-                Reactor.Interval.Create(() => 
-                        
-                    Console.Write("A"), 1));
+            Reactor.Timeout.Create(() =>
+            {
+                Console.WriteLine("ended");
 
-            Reactor.Domain.Create(() =>
+                socket.End();
 
-                Reactor.Interval.Create(() =>
-
-                    Console.Write("B"), 1));
-
-            Reactor.Domain.Create(() =>
-
-                Reactor.Interval.Create(() =>
-
-                    Console.Write("C"), 1));
+            }, 10000);
+            
 
             Console.ReadLine();
         }
