@@ -690,9 +690,12 @@ namespace Reactor.Tcp
 
                 if (exception != null)
                 {
-                    if (this.OnError != null)
+                    if (!ended) // duplexable (check the stream hasn't been ended)
                     {
-                        this.OnError(exception);
+                        if (this.OnError != null)
+                        {
+                            this.OnError(exception);
+                        }
                     }
 
                     if (this.OnEnd != null)
