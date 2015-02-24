@@ -33,6 +33,7 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="queues\ByteQueue.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="protocol\Ack.cs" />
     <Compile Include="protocol\FinAck.cs" />

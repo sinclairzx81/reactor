@@ -66,6 +66,8 @@ namespace Reactor.Fusion
         // queues
         //----------------------------------
 
+        private ByteQueue                       byte_queue;
+
         private SendQueue                       send_queue;
 
         private RecvQueue                       recv_queue;
@@ -120,9 +122,11 @@ namespace Reactor.Fusion
 
         private void Setup  (uint sequenceNumber, uint acknowlegementNumber)
         {
-            this.send_queue  = new SendQueue(acknowlegementNumber, 1400);
+            this.send_queue  = new SendQueue(acknowlegementNumber, Socket.packet_size);
 
             this.recv_queue  = new RecvQueue(sequenceNumber, 1);
+
+            this.byte_queue  = new ByteQueue();
 
             this.OnConnect();
         }
@@ -236,10 +240,7 @@ namespace Reactor.Fusion
 
             var data = this.recv_queue.Dequeue();
 
-            if (data.Length > 0) {
-
-                this.OnData(Reactor.Buffer.Create(data));
-            }
+            this.OnData(Reactor.Buffer.Create(data));
 
             var ack = new DataAck(this.recv_queue.SequenceNumber, this.recv_queue.WindowSize);
 
