@@ -9,33 +9,22 @@ namespace console
 
             Reactor.Loop.Start();
 
-            var socket = Reactor.Divert.Socket.Create("(inbound or outbound) and ip");
-            
-            socket.Read(data => {
+            Reactor.Fusion.Server.Create(socket => {
 
-                var ip  = Reactor.Divert.Parsers.IpHeader.Create(data);
-
-                var tcp = Reactor.Divert.Parsers.TcpHeader.Create(ip);
-
-                Console.WriteLine("{0}:{1} -> {2}:{3}", ip.SourceAddress,
- 
-                                                        tcp.SourcePort,
-
-                                                        ip.DestinationAddress,
-
-                                                        tcp.DestinationPort);
-
-                socket.Write(data);
-            });
-
-            Reactor.Timeout.Create(() =>
-            {
-                Console.WriteLine("ended");
+                socket.Send(System.Text.Encoding.UTF8.GetBytes("hello udp"));
 
                 socket.End();
 
-            }, 10000);
-            
+            }).Listen(5000);
+
+            var client = Reactor.Fusion.Socket.Create(5000);
+
+            client.OnConnect += () => {
+
+                client.OnData += data => Console.WriteLine(data.ToString("utf8"));
+
+                client.OnEnd  += () => Console.WriteLine("client got disconnected");
+            };
 
             Console.ReadLine();
         }

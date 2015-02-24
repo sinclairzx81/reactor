@@ -4,17 +4,15 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{07835FE9-CCC9-4DB2-A5E4-EA0B952AC233}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <ProjectGuid>{80CAE9BC-CFFC-4FBC-837B-0BA3940504E1}</ProjectGuid>
+    <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>console</RootNamespace>
-    <AssemblyName>console</AssemblyName>
+    <RootNamespace>reactor.fusion</RootNamespace>
+    <AssemblyName>reactor.fusion</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>x86</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -22,52 +20,43 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
-  <PropertyGroup />
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="protocol\Ack.cs" />
+    <Compile Include="protocol\FinAck.cs" />
+    <Compile Include="protocol\FinSyn.cs" />
+    <Compile Include="protocol\Packet.cs" />
+    <Compile Include="protocol\Parser.cs" />
+    <Compile Include="protocol\PayloadAck.cs" />
+    <Compile Include="protocol\PayloadSyn.cs" />
+    <Compile Include="protocol\Syn.cs" />
+    <Compile Include="protocol\SynAck.cs" />
+    <Compile Include="queues\RecvQueue.cs" />
+    <Compile Include="queues\SendQueue.cs" />
+    <Compile Include="random\Random.cs" />
+    <Compile Include="Server.cs" />
+    <Compile Include="Socket.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\reactor.divert\reactor.divert.csproj">
-      <Project>{a7825b43-014d-4612-83e3-40d2a064aa29}</Project>
-      <Name>reactor.divert</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\reactor.fusion\reactor.fusion.csproj">
-      <Project>{80cae9bc-cffc-4fbc-837b-0ba3940504e1}</Project>
-      <Name>reactor.fusion</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\reactor.web.socket\reactor.web.socket.csproj">
-      <Project>{e2045d48-31a3-44f5-9e72-d5b094164a8b}</Project>
-      <Name>reactor.web.socket</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\reactor.web\reactor.web.csproj">
-      <Project>{3c36767d-9365-4a7e-ad8c-9b893216f2f2}</Project>
-      <Name>reactor.web</Name>
-    </ProjectReference>
     <ProjectReference Include="..\reactor\reactor.csproj">
       <Project>{313a33d5-3743-4610-8e37-225f0376bcc9}</Project>
       <Name>reactor</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="app.config" />
+    <None Include="readme.md" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
