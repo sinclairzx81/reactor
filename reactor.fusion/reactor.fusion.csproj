@@ -39,8 +39,8 @@
     <Compile Include="protocol\FinSyn.cs" />
     <Compile Include="protocol\Packet.cs" />
     <Compile Include="protocol\Parser.cs" />
-    <Compile Include="protocol\PayloadAck.cs" />
-    <Compile Include="protocol\PayloadSyn.cs" />
+    <Compile Include="protocol\DataAck.cs" />
+    <Compile Include="protocol\DataSyn.cs" />
     <Compile Include="protocol\Syn.cs" />
     <Compile Include="protocol\SynAck.cs" />
     <Compile Include="queues\RecvQueue.cs" />
