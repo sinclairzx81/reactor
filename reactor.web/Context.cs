@@ -36,21 +36,21 @@ namespace Reactor.Web
     {
         public IPrincipal                   User     { get; set; }
 
-        public Reactor.Http.ServerRequest       Request  { get; set; }
+        public Reactor.Http.ServerRequest   Request  { get; set; }
 
-        public Reactor.Http.ServerResponse      Response { get; set; }
+        public Reactor.Http.ServerResponse  Response { get; set; }
 
         public Dictionary<string, string>   Params   { get; set; }
 
         private Dictionary<string, object>  Items    { get; set; }
 
-        public Context(HttpContext HttpServerContext)
+        public Context(Reactor.Http.Context context)
         {
-            this.User     = HttpServerContext.User;
+            this.User     = context.User;
 
-            this.Request  = HttpServerContext.Request;
+            this.Request  = context.Request;
 
-            this.Response = HttpServerContext.Response;
+            this.Response = context.Response;
 
             this.Items    = new Dictionary<string, object>();
 

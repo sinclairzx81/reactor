@@ -35,7 +35,7 @@ namespace Reactor.Http
     {
         private Reactor.Net.HttpListener httplistener;
 
-        public Action<HttpContext> OnContext { get; set; }
+        public Action<Context> OnContext { get; set; }
 
         public Action<Exception>   OnError   { get; set; }
 
@@ -44,7 +44,7 @@ namespace Reactor.Http
             
         }
 
-        public Server(Action<HttpContext> OnContext)
+        public Server(Action<Context> OnContext)
         {
             this.OnContext = OnContext;
         }
@@ -119,7 +119,7 @@ namespace Reactor.Http
 
                 if(this.OnContext != null)
                 {
-                    this.OnContext(new HttpContext(context));   
+                    this.OnContext(new Context(context));   
                 }
 
                 this.GetContext();
@@ -135,7 +135,7 @@ namespace Reactor.Http
             return new Server();
         }
 
-        public static Server Create(Action<HttpContext> OnContext)
+        public static Server Create(Action<Context> OnContext)
         {
             return new Server(OnContext);
         }

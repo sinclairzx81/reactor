@@ -72,7 +72,7 @@ namespace Reactor.Http
 
         #endregion
 
-        private HttpContext                    context;
+        private Context                    context;
 
         private Reactor.Net.HttpListenerResponse   httplistenerresponse;
 
@@ -84,7 +84,7 @@ namespace Reactor.Http
 
         private bool                           ended;
 
-        internal ServerResponse(HttpContext context, Reactor.Net.HttpListenerResponse httplistenerresponse)
+        internal ServerResponse(Context context, Reactor.Net.HttpListenerResponse httplistenerresponse)
         {
             this.context              = context;
 

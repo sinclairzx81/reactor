@@ -35,7 +35,7 @@ namespace Reactor.Web.Socket
 {
     internal class ServerWebSocketUpgradeRequest
     {
-        public Reactor.Http.HttpContext Context  { get; set; }
+        public Reactor.Http.Context Context  { get; set; }
 
         public string SecWebSocketExtensions { get; set; }
 
@@ -43,7 +43,7 @@ namespace Reactor.Web.Socket
 
         public string SecWebSocketVersion    { get; set; }
 
-        private ServerWebSocketUpgradeRequest(Reactor.Http.HttpContext context)
+        private ServerWebSocketUpgradeRequest(Reactor.Http.Context context)
         {
             this.Context                = context;
 
@@ -56,7 +56,7 @@ namespace Reactor.Web.Socket
 
         #region Statics
 
-        public static ServerWebSocketUpgradeRequest Create(Reactor.Http.HttpContext context)
+        public static ServerWebSocketUpgradeRequest Create(Reactor.Http.Context context)
         {
             try
             {

@@ -43,11 +43,22 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="async\Async.cs" />
+    <Compile Include="async\Channel.cs" />
+    <Compile Include="async\Deferred.cs" />
+    <Compile Include="async\Future.cs" />
+    <Compile Include="async\FutureThrottle.cs" />
+    <Compile Include="async\Subject.cs" />
     <Compile Include="concurrent\ConcurrentStack.cs" />
     <Compile Include="delegates\DynamicAction.cs" />
     <Compile Include="domain\Domain.cs" />
+    <Compile Include="file\ReadStream2.cs" />
+    <Compile Include="file\WriteStream2.cs" />
     <Compile Include="gc\GC.cs" />
+    <Compile Include="http\Server2.cs" />
     <Compile Include="interfaces\IDuplexable.cs" />
+    <Compile Include="interfaces\IDuplexable2.cs" />
+    <Compile Include="interfaces\IReadable2.cs" />
+    <Compile Include="interfaces\IWriteable2.cs" />
     <Compile Include="loop\Context.cs" />
     <Compile Include="loop\Loop.cs" />
     <Compile Include="loop\Messages.cs" />
@@ -91,7 +102,7 @@
     <Compile Include="settings\Settings.cs" />
     <Compile Include="tls\Server.cs" />
     <Compile Include="tls\Socket.cs" />
-    <Compile Include="udp\Socket.cs" />
+    <Compile Include="dgram\Socket.cs" />
     <Compile Include="net\Dns.cs" />
     <Compile Include="file\ReadStream.cs" />
     <Compile Include="file\WriteStream.cs" />
@@ -108,7 +119,7 @@
     <Compile Include="tcp\Socket.cs" />
     <Compile Include="timer\Interval.cs" />
     <Compile Include="timer\Timeout.cs" />
-    <Compile Include="udp\Socket.Stun.cs" />
+    <Compile Include="dgram\Socket.Stun.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="process\ReadStream.cs" />

@@ -37,7 +37,7 @@ namespace Reactor.Web
 
         private Reactor.Web.Router                       router;
 
-        private Reactor.Action<Reactor.Http.HttpContext> servercb;
+        private Reactor.Action<Reactor.Http.Context> servercb;
 
         public event Action<Exception>                   OnError;
 
@@ -65,9 +65,9 @@ namespace Reactor.Web
 
         }
 
-        private void OnHttpContext(HttpContext context)
+        private void OnHttpContext(Reactor.Http.Context context)
         {
-            this.router.Handler(new Web.Context(context), () =>
+            this.router.Handler(new Reactor.Web.Context(context), () =>
             {
                 if(this.servercb != null)
                 {

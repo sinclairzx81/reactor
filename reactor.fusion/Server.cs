@@ -33,7 +33,7 @@ namespace Reactor.Fusion
 {
     public class Server
     {
-        private Reactor.Udp.Socket socket;
+        private Reactor.Dgram.Socket socket;
 
         private Reactor.Action<Reactor.Fusion.Socket> onsocket;
 
@@ -41,7 +41,7 @@ namespace Reactor.Fusion
 
         public Server()
         {
-            this.socket   = Reactor.Udp.Socket.Create();
+            this.socket   = Reactor.Dgram.Socket.Create();
 
             this.onsocket = socket => { };
 

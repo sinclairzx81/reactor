@@ -1,6 +1,6 @@
 ﻿/*--------------------------------------------------------------------------
 
-Reactor.Web.Sockets
+Reactor
 
 The MIT License (MIT)
 
@@ -26,55 +26,22 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using System.Collections.Generic;
+using System;
 
-namespace Reactor.Web.Socket
+namespace Reactor
 {
-    public class Context
+    public interface IReadable2<T>
     {
-        public Reactor.Http.ServerRequest               Request           { get; set; }
+        void Read   (Reactor.Action<T>         callback);
 
-        public Reactor.Http.ServerResponse              Response          { get; set; }
+        void Error  (Reactor.Action<Exception> callback);
 
-        public Reactor.Http.ServerConnection            Connection        { get; set; }
+        void End    (Reactor.Action            callback);
 
-        public System.Security.Principal.IPrincipal User              { get; set; }
+        void Pause  ();
 
-        private Dictionary<string, object>          userdata;
+        void Resume ();
 
-        public Context(Reactor.Http.Context context)
-        {
-            this.Request = context.Request;
-
-            this.Response = context.Response;
-
-            this.Connection = context.Connection;
-
-            this.User = context.User;
-
-            this.userdata = new Dictionary<string, object>();
-        }
-
-        public void Set<T>(string name, T value)
-        {
-            this.userdata[name] = value;
-        }
-
-        public T Get<T>(string name)
-        {
-            if (!this.userdata.ContainsKey(name))
-            {
-                return default(T);
-            }
-
-            try
-            {
-                return (T)this.userdata[name];
-            }
-            catch
-            {
-                return default(T);
-            }
-        }
+        Reactor.IReadable2<T> Pipe (Reactor.IWriteable2<T> writeable);
     }
 }

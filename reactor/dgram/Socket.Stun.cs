@@ -31,7 +31,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Text;
 
-namespace Reactor.Udp
+namespace Reactor.Dgram
 {
     #region ChangeRequest
 

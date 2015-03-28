@@ -38,11 +38,11 @@ namespace Reactor.Web.Socket
 
         public Reactor.Action<Exception>                OnError     { get; set; }
 
-        private string                              path;
+        private string                                  path;
 
         private Reactor.Http.Server                     server;
 
-        private Reactor.Action<Reactor.Http.HttpContext>    servercb;
+        private Reactor.Action<Reactor.Http.Context>    servercb;
 
         #region Constructors
 
@@ -98,7 +98,7 @@ namespace Reactor.Web.Socket
 
         #endregion
 
-        public void  OnContext(Reactor.Http.HttpContext context)
+        public void  OnContext(Reactor.Http.Context context)
         {
             if(this.path != context.Request.Url.AbsolutePath)
             {
@@ -127,12 +127,11 @@ namespace Reactor.Web.Socket
                     }
                 }
             });
-
         }
 
         #region Upgrade
 
-        private void Upgrade(Reactor.Http.HttpContext context, Reactor.Action<Exception, Reactor.Web.Socket.Socket> callback)
+        private void Upgrade(Reactor.Http.Context context, Reactor.Action<Exception, Reactor.Web.Socket.Socket> callback)
         {
             var request = ServerWebSocketUpgradeRequest.Create(context);
 

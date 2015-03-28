@@ -1,6 +1,6 @@
 ﻿/*--------------------------------------------------------------------------
 
-Reactor.Web.Sockets
+Reactor
 
 The MIT License (MIT)
 
@@ -26,55 +26,67 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using System.Collections.Generic;
+using System;
 
-namespace Reactor.Web.Socket
+namespace Reactor
 {
-    public class Context
+    public class Deferred<T>
     {
-        public Reactor.Http.ServerRequest               Request           { get; set; }
+        public Future<T>          Future  { get; private set; }
 
-        public Reactor.Http.ServerResponse              Response          { get; set; }
+        private Action<T>         resolve;
 
-        public Reactor.Http.ServerConnection            Connection        { get; set; }
+        private Action<Exception> reject;
 
-        public System.Security.Principal.IPrincipal User              { get; set; }
-
-        private Dictionary<string, object>          userdata;
-
-        public Context(Reactor.Http.Context context)
+        public Deferred()
         {
-            this.Request = context.Request;
+            this.Future = new Future<T>((resolve, reject) =>
+            {
+                this.resolve = resolve;
 
-            this.Response = context.Response;
-
-            this.Connection = context.Connection;
-
-            this.User = context.User;
-
-            this.userdata = new Dictionary<string, object>();
+                this.reject  = reject;
+            });
         }
 
-        public void Set<T>(string name, T value)
+        public void Resolve(T value)
         {
-            this.userdata[name] = value;
+            this.resolve(value);
+        }
+        
+        public void Reject(Exception error)
+        {
+            this.reject(error);
         }
 
-        public T Get<T>(string name)
-        {
-            if (!this.userdata.ContainsKey(name))
-            {
-                return default(T);
-            }
+        
+    }
 
-            try
+    public class Deferred
+    {
+        public Future            Future  { get; private set; }
+
+        public Action            resolve;
+
+        public Action<Exception> reject;
+
+        public Deferred()
+        {
+            this.Future = new Future((resolve, reject) =>
             {
-                return (T)this.userdata[name];
-            }
-            catch
-            {
-                return default(T);
-            }
+                this.resolve = resolve;
+
+                this.reject = reject;
+            });
+        }
+
+        public void Resolve()
+        {
+            this.resolve();
+        }
+
+        public void Reject(Exception error)
+        {
+            this.reject(error);
         }
     }
 }

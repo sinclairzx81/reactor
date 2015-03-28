@@ -1,6 +1,6 @@
 ﻿/*--------------------------------------------------------------------------
 
-Reactor.Web.Sockets
+Reactor
 
 The MIT License (MIT)
 
@@ -26,55 +26,68 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
+using System;
 using System.Collections.Generic;
 
-namespace Reactor.Web.Socket
+namespace Reactor
 {
-    public class Context
+    public class Channel<T> : IDisposable
     {
-        public Reactor.Http.ServerRequest               Request           { get; set; }
+        private List<Action<T>> callbacks;
 
-        public Reactor.Http.ServerResponse              Response          { get; set; }
-
-        public Reactor.Http.ServerConnection            Connection        { get; set; }
-
-        public System.Security.Principal.IPrincipal User              { get; set; }
-
-        private Dictionary<string, object>          userdata;
-
-        public Context(Reactor.Http.Context context)
+        public Channel()
         {
-            this.Request = context.Request;
-
-            this.Response = context.Response;
-
-            this.Connection = context.Connection;
-
-            this.User = context.User;
-
-            this.userdata = new Dictionary<string, object>();
+            this.callbacks = new List<Action<T>>();
         }
 
-        public void Set<T>(string name, T value)
+        public void Recv(Action<T> callback)
         {
-            this.userdata[name] = value;
+            this.callbacks.Add(callback);
         }
 
-        public T Get<T>(string name)
+        public void Send(T data)
         {
-            if (!this.userdata.ContainsKey(name))
+            foreach (var callback in this.callbacks)
             {
-                return default(T);
+                callback(data);
             }
+        }
 
-            try
+        public void Dispose()
+        {
+            this.callbacks.Clear();
+
+            this.callbacks = null;
+        }
+    }
+
+    public class Channel : IDisposable
+    {
+        private List<Action> callbacks;
+
+        public Channel()
+        {
+            this.callbacks = new List<Action>();
+        }
+
+        public void Recv(Action callback)
+        {
+            this.callbacks.Add(callback);
+        }
+
+        public void Send()
+        {
+            foreach (var callback in this.callbacks)
             {
-                return (T)this.userdata[name];
+                callback();
             }
-            catch
-            {
-                return default(T);
-            }
+        }
+
+        public void Dispose()
+        {
+            this.callbacks.Clear();
+
+            this.callbacks = null;
         }
     }
 }

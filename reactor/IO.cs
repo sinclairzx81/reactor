@@ -35,9 +35,37 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace Reactor
 {
-    internal static class IO
+    public static class IO
     {
         #region Stream
+
+        public static Future<int> Read(Stream stream, byte[] readbuffer)
+        {
+            return new Future<int>((resolve, reject) =>
+            {
+                try
+                {
+                    stream.BeginRead(readbuffer, 0, readbuffer.Length, (result) =>
+                    {
+                        try
+                        {
+                            int read = stream.EndRead(result);
+
+                            Loop.Post(() => resolve(read));
+                        }
+                        catch(Exception error)
+                        {
+                            Loop.Post(() => reject(error));
+                        }
+
+                    }, null);
+                }
+                catch(Exception error)
+                {
+                    Loop.Post(() => reject(error));
+                }
+            });
+        }
 
         public static void Read(Stream stream, byte [] readbuffer, Action<Exception, int> callback)
         {
@@ -69,6 +97,35 @@ namespace Reactor
             {
                 callback(exception, 0);
             }
+        }
+
+
+        public static Future Write(Stream stream, byte[] writebuffer)
+        {
+            return new Future((resolve, reject) =>
+            {
+                try
+                {
+                    stream.BeginWrite(writebuffer, 0, writebuffer.Length, (result) =>
+                    {
+                        try
+                        {
+                            stream.EndWrite(result);
+
+                            Loop.Post(() => resolve());
+                        }
+                        catch (Exception error)
+                        {
+                            Loop.Post(() => reject(error));
+                        }
+
+                    }, null);
+                }
+                catch (Exception error)
+                {
+                    reject(error);
+                }
+            });
         }
 
         public static void Write(Stream stream, byte [] writebuffer, Action<Exception> callback)
@@ -640,6 +697,36 @@ namespace Reactor
                 callback(exception, null);
             }
         }
+
+        public static Future<Reactor.Net.HttpListenerContext> GetContext(Reactor.Net.HttpListener listener)
+        {
+            return new Future<Reactor.Net.HttpListenerContext>((resolve, reject) =>
+            {
+                try
+                {
+                    listener.BeginGetContext(result =>
+                    {
+                        try
+                        {
+                            var context = listener.EndGetContext(result);
+
+                            Loop.Post(() => resolve(context));
+
+                        }
+                        catch (Exception error)
+                        {
+                            Loop.Post(() => reject(error));
+                        }
+
+                    }, null);
+                }
+                catch (Exception error)
+                {
+                    Loop.Post(() => reject(error));
+                }
+            });
+        }
+
 
         public static void GetContext(Reactor.Net.HttpListener listener, Action<Exception, Reactor.Net.HttpListenerContext> callback)
         {

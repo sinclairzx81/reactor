@@ -37,9 +37,9 @@ namespace Reactor.Http
 {
     public class ServerRequest : IReadable<Reactor.Buffer>
     {
-        private HttpContext          context;
+        private Reactor.Http.Context             context;
 
-        private Reactor.Net.HttpListenerRequest  httplistenerrequest;
+        private Reactor.Net.HttpListenerRequest  request;
 
         private Stream               stream;
 
@@ -51,13 +51,13 @@ namespace Reactor.Http
 
         private bool                 closed;
 
-        internal ServerRequest(HttpContext context, Reactor.Net.HttpListenerRequest httplistenerrequest)
+        internal ServerRequest(Reactor.Http.Context context, Reactor.Net.HttpListenerRequest request)
         {
             this.context                = context;
 
-            this.httplistenerrequest    = httplistenerrequest;
+            this.request                = request;
 
-            this.stream                 = this.httplistenerrequest.InputStream;
+            this.stream                 = this.request.InputStream;
 
             this.received               = 0;
 
@@ -74,7 +74,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.AcceptTypes;
+                return this.request.AcceptTypes;
             }
         }
 
@@ -82,7 +82,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.ClientCertificateError;
+                return this.request.ClientCertificateError;
             }
         }
 
@@ -90,7 +90,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.ContentEncoding;
+                return this.request.ContentEncoding;
             }
         }
 
@@ -98,7 +98,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.ContentLength64;
+                return this.request.ContentLength64;
             }
         }
 
@@ -106,7 +106,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.ContentType;
+                return this.request.ContentType;
             }
         }
 
@@ -114,7 +114,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.Cookies;
+                return this.request.Cookies;
             }
         }
 
@@ -122,7 +122,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.HasEntityBody;
+                return this.request.HasEntityBody;
             }
         }
 
@@ -130,7 +130,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.Headers;
+                return this.request.Headers;
             }
         }
 
@@ -138,7 +138,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.HttpMethod;
+                return this.request.HttpMethod;
             }
         }
 
@@ -146,7 +146,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.IsAuthenticated;
+                return this.request.IsAuthenticated;
             }
         }
 
@@ -154,7 +154,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.IsLocal;
+                return this.request.IsLocal;
             }
         }
 
@@ -162,7 +162,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.IsSecureConnection;
+                return this.request.IsSecureConnection;
             }
         }
 
@@ -170,7 +170,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.KeepAlive;
+                return this.request.KeepAlive;
             }
         }
 
@@ -178,7 +178,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.LocalEndPoint;
+                return this.request.LocalEndPoint;
             }
         }
 
@@ -186,7 +186,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.ProtocolVersion;
+                return this.request.ProtocolVersion;
             }
         }
 
@@ -194,7 +194,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.QueryString;
+                return this.request.QueryString;
             }
         }
 
@@ -202,7 +202,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.RawUrl;
+                return this.request.RawUrl;
             }
         }
 
@@ -210,7 +210,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.RemoteEndPoint;
+                return this.request.RemoteEndPoint;
             }
         }
 
@@ -218,7 +218,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.RequestTraceIdentifier;
+                return this.request.RequestTraceIdentifier;
             }
         }
 
@@ -226,7 +226,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.Url;
+                return this.request.Url;
             }
         }
 
@@ -234,7 +234,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.UrlReferrer;
+                return this.request.UrlReferrer;
             }
         }
 
@@ -242,7 +242,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.UserAgent;
+                return this.request.UserAgent;
             }
         }
 
@@ -250,7 +250,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.UserHostAddress;
+                return this.request.UserHostAddress;
             }
         }
 
@@ -258,7 +258,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.UserHostName;
+                return this.request.UserHostName;
             }
         }
 
@@ -266,7 +266,7 @@ namespace Reactor.Http
         {
             get
             {
-                return this.httplistenerrequest.UserLanguages;
+                return this.request.UserLanguages;
             }
         }
 

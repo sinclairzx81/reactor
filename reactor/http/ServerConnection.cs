@@ -65,13 +65,13 @@ namespace Reactor.Http
 
         #endregion
 
-        private   HttpContext    context;
+        private Reactor.Http.Context       context;
 
-        private   HttpConnection connection;
+        private Reactor.Net.HttpConnection connection;
 
-        private   Stream         stream;
+        private System.IO.Stream           stream;
 
-        public ServerConnection(HttpContext context, HttpConnection connection)
+        public ServerConnection(Reactor.Http.Context context, HttpConnection connection)
         {
             this.context    = context;
 

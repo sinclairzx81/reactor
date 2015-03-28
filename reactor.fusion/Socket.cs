@@ -56,7 +56,7 @@ namespace Reactor.Fusion
         // state
         //----------------------------------
 
-        private Reactor.Udp.Socket              socket;
+        private Reactor.Dgram.Socket              socket;
 
         private System.Net.EndPoint             endpoint;
 
@@ -72,7 +72,7 @@ namespace Reactor.Fusion
 
         private RecvQueue                       recv_queue;
 
-        public Socket(Reactor.Udp.Socket socket, System.Net.EndPoint endpoint)
+        public Socket(Reactor.Dgram.Socket socket, System.Net.EndPoint endpoint)
         {
             this.OnConnect += ()    => { };
 
@@ -103,7 +103,7 @@ namespace Reactor.Fusion
 
             this.endpoint   = new System.Net.IPEndPoint(address, port);
 
-            this.socket     = Reactor.Udp.Socket.Create();
+            this.socket     = Reactor.Dgram.Socket.Create();
 
             this.socket.Bind(System.Net.IPAddress.Any, 0);
 

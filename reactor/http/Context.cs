@@ -31,9 +31,9 @@ using System.Security.Principal;
 
 namespace Reactor.Http
 {
-    public class HttpContext
+    public class Context
     {
-        private Reactor.Net.HttpListenerContext httpListenerContext  { get; set; }
+        private Reactor.Net.HttpListenerContext listener  { get; set; }
 
         public IPrincipal                   User                     { get; set; }
 
@@ -43,17 +43,17 @@ namespace Reactor.Http
 
         public ServerResponse               Response                 { get; set; }
 
-        internal HttpContext(Reactor.Net.HttpListenerContext HttpListenerContext)
+        public Context(Reactor.Net.HttpListenerContext listener)
         {
-            this.httpListenerContext    = HttpListenerContext;
+            this.listener               = listener;
 
-            this.User                   = this.httpListenerContext.User;
+            this.User                   = this.listener.User;
 
-            this.Connection             = new ServerConnection (this, this.httpListenerContext.Connection);
+            this.Connection             = new ServerConnection (this, this.listener.Connection);
 
-            this.Request                = new ServerRequest    (this, this.httpListenerContext.Request);
+            this.Request                = new ServerRequest    (this, this.listener.Request);
 
-            this.Response               = new ServerResponse   (this, this.httpListenerContext.Response);
+            this.Response               = new ServerResponse   (this, this.listener.Response);
         }
     }
 }

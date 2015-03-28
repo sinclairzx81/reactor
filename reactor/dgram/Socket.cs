@@ -30,7 +30,7 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 
-namespace Reactor.Udp
+namespace Reactor.Dgram
 {
     /// <summary>
     /// A User Datagram Protocol Socket.
