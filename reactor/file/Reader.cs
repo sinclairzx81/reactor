@@ -45,28 +45,28 @@ namespace Reactor.File {
             /// <summary>
             /// The initial state of this stream. A stream
             /// in a pending state signals that the stream
-			/// is waiting on the caller to issue a read request
-			/// the the underlying resource, by attaching a
-			/// OnRead, OnReadable, or calling Read().
+            /// is waiting on the caller to issue a read request
+            /// the the underlying resource, by attaching a
+            /// OnRead, OnReadable, or calling Read().
             /// </summary>
             Pending,
             /// <summary>
             /// A stream in a reading state signals that the
-			/// stream is currently requesting data from the
-			/// underlying resource and is waiting on a 
-			/// response.
+            /// stream is currently requesting data from the
+            /// underlying resource and is waiting on a 
+            /// response.
             /// </summary>
             Reading,
             /// <summary>
             /// A stream in a paused state will bypass attempts
-			/// to read on the underlying resource. A paused
-			/// stream must be resumed by the caller.
+            /// to read on the underlying resource. A paused
+            /// stream must be resumed by the caller.
             /// </summary>
             Paused,
             /// <summary>
             /// Indicates this stream has ended. Streams can end
-			/// by way of reaching the end of the stream, or through
-			/// error.
+            /// by way of reaching the end of the stream, or through
+            /// error.
             /// </summary>
             Ended
         }
@@ -136,10 +136,10 @@ namespace Reactor.File {
 
         /// <summary>
         /// Subscribes this action to the OnReadable event. When a chunk of 
-		/// data can be read from the stream, it will emit a 'readable' event.
-		/// In some cases, listening for a 'readable' event will cause some 
-		/// data to be read into the internal buffer from the underlying 
-		/// system, if it hadn't already.
+        /// data can be read from the stream, it will emit a 'readable' event.
+        /// In some cases, listening for a 'readable' event will cause some 
+        /// data to be read into the internal buffer from the underlying 
+        /// system, if it hadn't already.
         /// </summary>
         /// <param name="callback"></param>
         public void OnReadable (Reactor.Action callback) {
@@ -158,9 +158,9 @@ namespace Reactor.File {
 
         /// <summary>
         /// Subscribes this action to the OnRead event. Attaching a data event 
-		/// listener to a stream that has not been explicitly paused will 
-		/// switch the stream into flowing mode. Data will then be passed 
-		/// as soon as it is available.
+        /// listener to a stream that has not been explicitly paused will 
+        /// switch the stream into flowing mode. Data will then be passed 
+        /// as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
         public void OnRead (Reactor.Action<Reactor.Buffer> callback) {
@@ -216,8 +216,8 @@ namespace Reactor.File {
 
         /// <summary>
         /// The Read(count) method pulls some data out of the internal buffer 
-		/// and returns it. If there is no data available, then it will return
-		/// a zero length buffer. If the internal buffer is empty, then this 
+        /// and returns it. If there is no data available, then it will return
+        /// a zero length buffer. If the internal buffer is empty, then this 
         /// method will begin reading from the resource again in non-flowing mode.
         /// </summary>
         /// <param name="count">The number of bytes to read.</param>
@@ -226,7 +226,6 @@ namespace Reactor.File {
             this.mode = Mode.NonFlowing; 
             var result = Reactor.Buffer.Create(this.buffer.Read(count));
             if (this.buffer.Length == 0) {
-                Console.WriteLine("calling _read");
                 this._Read();
             }
             return result;
@@ -234,8 +233,8 @@ namespace Reactor.File {
 
         /// <summary>
         /// The Read() method pulls all data out of the internal buffer 
-		/// and returns it. If there is no data available, then it will return
-		/// a zero length buffer. If the internal buffer is empty, then this 
+        /// and returns it. If there is no data available, then it will return
+        /// a zero length buffer. If the internal buffer is empty, then this 
         /// method will begin reading from the resource again in non-flowing mode.
         /// </summary>
         /// <returns></returns>
@@ -253,9 +252,9 @@ namespace Reactor.File {
 
         /// <summary>
         /// Pauses this stream. This method will cause a 
-		/// stream in flowing mode to stop emitting data events, 
-		/// switching out of flowing mode. Any data that becomes 
-		/// available will remain in the internal buffer.
+        /// stream in flowing mode to stop emitting data events, 
+        /// switching out of flowing mode. Any data that becomes 
+        /// available will remain in the internal buffer.
         /// </summary>
         public void Pause() {
 			this.mode  = Mode.NonFlowing;
@@ -264,9 +263,9 @@ namespace Reactor.File {
 
         /// <summary>
         /// This method will cause the readable stream to resume emitting data events.
-		/// This method will switch the stream into flowing mode. If you do not want 
-		/// to consume the data from a stream, but you do want to get to its end event, 
-		/// you can call readable.resume() to open the flow of data.
+        /// This method will switch the stream into flowing mode. If you do not want 
+        /// to consume the data from a stream, but you do want to get to its end event, 
+        /// you can call readable.resume() to open the flow of data.
         /// </summary>
         public void Resume() {
             this.mode = Mode.Flowing;
