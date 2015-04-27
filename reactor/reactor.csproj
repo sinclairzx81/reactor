@@ -42,90 +42,74 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="async\Async.cs" />
-    <Compile Include="async\Channel.cs" />
-    <Compile Include="async\Deferred.cs" />
+    <Compile Include="async\Event.cs" />
     <Compile Include="async\Future.cs" />
-    <Compile Include="async\FutureThrottle.cs" />
-    <Compile Include="async\Subject.cs" />
-    <Compile Include="concurrent\ConcurrentStack.cs" />
+    <Compile Include="async\Spool.cs" />
+    <Compile Include="async\Racer.cs" />
+    <Compile Include="buffer\Buffer.cs" />
+    <Compile Include="collections\ConcurrentStack.cs" />
     <Compile Include="delegates\DynamicAction.cs" />
-    <Compile Include="domain\Domain.cs" />
-    <Compile Include="file\ReadStream2.cs" />
-    <Compile Include="file\WriteStream2.cs" />
-    <Compile Include="gc\GC.cs" />
-    <Compile Include="http\Server2.cs" />
+    <Compile Include="dns\Dns.cs" />
+    <Compile Include="enumerable\Enumerable.cs" />
+    <Compile Include="http\components\Query.cs" />
+    <Compile Include="http\parsers\HttpParser.cs" />
+    <Compile Include="http\components\Cookies.cs" />
+    <Compile Include="http\components\Headers.cs" />
+    <Compile Include="http\Request.cs" />
+    <Compile Include="http\Server.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="http\Context.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="http\IncomingMessage.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="http\ServerResponse.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="http\utility\Utility.cs" />
+    <Compile Include="ip\Message.cs" />
+    <Compile Include="process\Current.cs" />
+    <Compile Include="stream\Reader.cs" />
+    <Compile Include="stream\Writer.cs" />
+    <Compile Include="tcp\Socket.cs" />
+    <Compile Include="udp\Message.cs" />
+    <Compile Include="udp\Socket.cs" />
+    <Compile Include="domains\Domain.cs" />
+    <Compile Include="file\Reader.cs" />
+    <Compile Include="file\Writer.cs" />
     <Compile Include="interfaces\IDuplexable.cs" />
-    <Compile Include="interfaces\IDuplexable2.cs" />
-    <Compile Include="interfaces\IReadable2.cs" />
-    <Compile Include="interfaces\IWriteable2.cs" />
+    <Compile Include="interfaces\IReadable.cs" />
+    <Compile Include="interfaces\IWriteable.cs" />
     <Compile Include="loop\Context.cs" />
     <Compile Include="loop\Loop.cs" />
     <Compile Include="loop\Messages.cs" />
     <Compile Include="loop\Runtime.cs" />
-    <Compile Include="net\AuthenticationSchemes.cs" />
-    <Compile Include="net\AuthenticationSchemeSelector.cs" />
-    <Compile Include="net\ChunkedInputStream.cs" />
-    <Compile Include="net\ChunkStream.cs" />
-    <Compile Include="net\Cookie.cs" />
-    <Compile Include="net\CookieCollection.cs" />
-    <Compile Include="net\CookieException.cs" />
-    <Compile Include="net\EndPointListener.cs" />
-    <Compile Include="net\EndPointManager.cs" />
-    <Compile Include="net\HttpBasicIdentity.cs" />
-    <Compile Include="net\HttpConnection.cs" />
-    <Compile Include="net\HttpListener.cs" />
-    <Compile Include="net\HttpListenerContext.cs" />
-    <Compile Include="net\HttpListenerException.cs" />
-    <Compile Include="net\HttpListenerPrefixCollection.cs" />
-    <Compile Include="net\HttpListenerRequest.cs" />
-    <Compile Include="net\HttpListenerResponse.cs" />
-    <Compile Include="net\HttpStatusCode.cs" />
-    <Compile Include="net\HttpStreamAsyncResult.cs" />
-    <Compile Include="net\HttpUtility.cs" />
-    <Compile Include="net\HttpVersion.cs" />
-    <Compile Include="net\ListenerAsyncResult.cs" />
-    <Compile Include="net\ListenerPrefix.cs" />
-    <Compile Include="net\NetworkCredential.cs" />
-    <Compile Include="net\RequestStream.cs" />
-    <Compile Include="net\ResponseStream.cs" />
-    <Compile Include="net\WebHeaderCollection.cs" />
-    <Compile Include="buffer\Buffer.cs" />
-    <Compile Include="IO.cs" />
     <Compile Include="delegates\Action.cs" />
     <Compile Include="delegates\Func.cs" />
-    <Compile Include="http\ServerConnection.cs" />
     <Compile Include="ip\Socket.cs" />
     <Compile Include="process\Process.cs" />
-    <Compile Include="process\WriteStream.cs" />
-    <Compile Include="concurrent\ConcurrentQueue.cs" />
+    <Compile Include="process\Writer.cs" />
+    <Compile Include="collections\ConcurrentQueue.cs" />
     <Compile Include="settings\Settings.cs" />
-    <Compile Include="tls\Server.cs" />
-    <Compile Include="tls\Socket.cs" />
-    <Compile Include="dgram\Socket.cs" />
-    <Compile Include="net\Dns.cs" />
-    <Compile Include="file\ReadStream.cs" />
-    <Compile Include="file\WriteStream.cs" />
-    <Compile Include="http\Request.cs" />
-    <Compile Include="http\Response.cs" />
-    <Compile Include="http\Server.cs" />
-    <Compile Include="http\Context.cs" />
-    <Compile Include="http\ServerRequest.cs" />
-    <Compile Include="http\ServerResponse.cs" />
-    <Compile Include="interfaces\IReadable.cs" />
-    <Compile Include="interfaces\IWriteable.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="tcp\Server.cs" />
-    <Compile Include="tcp\Socket.cs" />
-    <Compile Include="timer\Interval.cs" />
-    <Compile Include="timer\Timeout.cs" />
-    <Compile Include="dgram\Socket.Stun.cs" />
+    <Compile Include="fibers\Fiber.cs" />
+    <Compile Include="tls\Server.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="timers\Interval.cs" />
+    <Compile Include="timers\Timeout.cs" />
+    <Compile Include="tls\Socket.cs" />
+    <Compile Include="udp\stun\Packet.cs" />
+    <Compile Include="udp\stun\Stun.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="process\ReadStream.cs" />
+    <Compile Include="process\Reader.cs" />
     <None Include="Reactor.cd" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Content Include="todo.txt" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

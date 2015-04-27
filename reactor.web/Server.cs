@@ -33,54 +33,75 @@ namespace Reactor.Web
 {
     public class Server
     {
-        private Reactor.Http.Server                      httpserver;
+        private Reactor.Http.Server                             http;
 
-        private Reactor.Web.Router                       router;
+        private Reactor.Web.Router                              router;
 
-        private Reactor.Action<Reactor.Http.Context> servercb;
+        private Reactor.Async.Event<System.Exception>           onerror;
 
-        public event Action<Exception>                   OnError;
+        private Reactor.Async.Event<Reactor.Http.Context> oncontext;
 
-        public Server(Reactor.Http.Server httpserver)
-        {
+        public Server(Reactor.Http.Server http) {
+            
+            this.oncontext            = new Async.Event<Reactor.Http.Context>();
+
+            this.onerror              = new Async.Event<Exception>();
+            
             this.router               = new Router();
+            
+            this.http                 = http;
+            
+            this.http.OnError   (this.onerror.Emit);
 
-            this.httpserver           = httpserver;
+            //-------------------------------------
+            // reassign events
+            //-------------------------------------
 
-            this.servercb             = this.httpserver.OnContext;
-
-            this.httpserver.OnContext = this.OnHttpContext;
-
-            this.httpserver.OnError += (error) =>
-            {
-                if (this.OnError != null) {
-
-                    this.OnError(error);
-                }
+            var events = this.http.GetEvents();
+            
+            foreach (var listener in events.Context.Subscribers()) {
+                
+                events.Context.Remove(listener);
+                
+                this.oncontext.On(listener);
             };
+
+            this.http.OnContext (this._Context);
         }
 
-        public Server(): this(Reactor.Http.Server.Create())
-        {
+        public Server(): this(Reactor.Http.Server.Create()) {
 
+            
         }
 
-        private void OnHttpContext(Reactor.Http.Context context)
+        private void _Context(Reactor.Http.Context context)
         {
-            this.router.Handler(new Reactor.Web.Context(context), () =>
-            {
-                if(this.servercb != null)
-                {
-                    this.servercb(context);
+            var _context = new Reactor.Web.Context(context);
+
+            //-----------------------------------------
+            // try handle request
+            //-----------------------------------------
+            this.router.Handler(_context, () => {
+
+                //-----------------------------------------
+                // if we have external subscribers
+                //-----------------------------------------
+                if (Reactor.Enumerable.Create(this.oncontext.Subscribers()).Count() > 0) {
+
+                    this.oncontext.Emit(context);
 
                     return;
                 }
+
+                //-----------------------------------------
+                // otherwise, emit 404
+                //-----------------------------------------
 
                 context.Response.StatusCode  = 404;
 
                 context.Response.ContentType = "text/plain";
 
-                context.Response.Write(Reactor.Buffer.Create(System.Text.Encoding.UTF8.GetBytes(context.Request.Url.AbsolutePath + " not found")));
+                context.Response.Write(context.Request.Url.AbsolutePath + " not found");
 
                 context.Response.End();
             });
@@ -145,36 +166,29 @@ namespace Reactor.Web
 
         #endregion
 
-        public Server Listen(int Port, Action<Exception> callback)
-        {
-            this.httpserver.Listen(Port, callback);
+        public Server Listen(int port) {
+
+            this.http.Listen(port);
 
             return this;
         }
 
-        public Server Listen(int Port)
-        {
-            this.httpserver.Listen(Port);
+        public Server Stop() {
 
-            return this;
-        }
-
-        public Server Stop()
-        {
-            this.httpserver.Stop();
+            this.http.Stop();
 
             return this;
         }
 
         #region Statics
 
-        public static Server Create(Reactor.Http.Server httpserver)
-        {
-            return new Server(httpserver);
+        public static Server Create(Reactor.Http.Server http) {
+
+            return new Server(http);
         }
 
-        public static Server Create()
-        {
+        public static Server Create() {
+
             return new Server();
         }
 

@@ -27,534 +27,447 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
-using System.Collections.Generic;
-using System.IO;
+using System.Globalization;
 using System.Text;
 
-namespace Reactor.Http
-{
-    public class ServerResponse : IWriteable<Reactor.Buffer>
-    {
-        #region Command
+namespace Reactor.Http {
 
-        internal class Command
-        {
-            public Action<Exception> Callback { get; set; }
-        }
-
-        internal class WriteCommand : Command
-        {
-            public Buffer Buffer { get; set; }
-
-            public WriteCommand(Buffer buffer, Action<Exception> callback)
-            {
-                this.Buffer = buffer;
-
-                this.Callback = callback;
-            }
-        }
-
-        internal class FlushCommand : Command
-        {
-            public FlushCommand(Action<Exception> callback)
-            {
-                this.Callback = callback;
-            }
-        }
-
-        internal class EndCommand : Command
-        {
-            public EndCommand(Action<Exception> callback)
-            {
-                this.Callback = callback;
-            }
-        }
-
-        #endregion
-
-        private Context                    context;
-
-        private Reactor.Net.HttpListenerResponse   httplistenerresponse;
-
-        private Stream                         stream;
-
-        private Queue<Command>                 commands;
-
-        private bool                           writing;
-
-        private bool                           ended;
-
-        internal ServerResponse(Context context, Reactor.Net.HttpListenerResponse httplistenerresponse)
-        {
-            this.context              = context;
-
-            this.httplistenerresponse = httplistenerresponse;
-
-            this.stream               = this.httplistenerresponse.OutputStream;
-
-            this.commands             = new Queue<Command>();
-
-            this.ended                = false;
-
-            this.writing              = false;
-        }
-
-        #region HttpListenerResponse
+    /// <summary>
+    /// Reactor HTTP Server Response.
+    /// </summary>
+    public class ServerResponse : Reactor.IWritable {
         
-        public Encoding ContentEncoding 
-        {
-            get
-            {
-                return this.httplistenerresponse.ContentEncoding;
-            }
-            set
-            {
-                this.httplistenerresponse.ContentEncoding = value;
-            }
-        }
+        #region Channels
 
-        public long ContentLength
-        {
-            get
-            {
-                return this.httplistenerresponse.ContentLength64;
-            }
-            set
-            {
-                this.httplistenerresponse.ContentLength64 = value;
-            }
-        }
+        public class Channels {
 
-        public string ContentType
-        {
-            get
-            {
-                return this.httplistenerresponse.ContentType;
-            }
-            set
-            {
-                this.httplistenerresponse.ContentType = value;
-            }
-        }
-
-        public Reactor.Net.CookieCollection Cookies
-        {
-            get
-            {
-                return this.httplistenerresponse.Cookies;
-            }
-            set
-            {
-                this.httplistenerresponse.Cookies = value;
-            }
-        }
-
-        public Reactor.Net.WebHeaderCollection Headers
-        {
-            get
-            {
-                return this.httplistenerresponse.Headers;
-            }
-            set
-            {
-                this.httplistenerresponse.Headers = value;
-            }
-        }
-
-        public bool KeepAlive
-        {
-            get
-            {
-                return this.httplistenerresponse.KeepAlive;
-            }
-            set
-            {
-                this.httplistenerresponse.KeepAlive = value;
-            }
-        }
-
-        public Version ProtocolVersion
-        {
-            get
-            {
-                return this.httplistenerresponse.ProtocolVersion;
-            }
-            set
-            {
-                this.httplistenerresponse.ProtocolVersion = value;
-            }
-        }
-
-        public string RedirectLocation
-        {
-            get
-            {
-                return this.httplistenerresponse.RedirectLocation;
-            }
-            set
-            {
-                this.httplistenerresponse.RedirectLocation = value;
-            }
-        }
-
-        //public bool SendChunked
-        //{
-        //    get
-        //    {
-        //        return this.HttpListenerResponse.SendChunked;
-        //    }
-        //    set
-        //    {
-        //        this.HttpListenerResponse.SendChunked = value;
-        //    }
-        //}
-
-        public int StatusCode
-        {
-            get
-            {
-                return this.httplistenerresponse.StatusCode;
-            }
-            set
-            {
-                this.httplistenerresponse.StatusCode = value;
-            }
-        }
-
-        public string StatusDescription
-        {
-            get
-            {
-                return this.httplistenerresponse.StatusDescription;
-            }
-            set
-            {
-                this.httplistenerresponse.StatusDescription = value;
-            }
-        }
-
-        public void AddHeader(string name, string value)
-        {
-            this.httplistenerresponse.AddHeader(name, value);
-        }
-
-        public void AppendCookie(Reactor.Net.Cookie cookie)
-        {
-            this.httplistenerresponse.AppendCookie(cookie);
-        }
-
-        public void AppendHeader(string name, string value)
-        {
-            this.httplistenerresponse.AppendHeader(name, value);
-        }
-
-        public void Redirect(string url)
-        {
-            this.httplistenerresponse.Redirect(url);
-        }
-
-        public void SetCookie(Reactor.Net.Cookie cookie)
-        {
-            this.httplistenerresponse.SetCookie(cookie);
+            public Reactor.Async.Event<Exception> Error {  get; set; }
         }
 
         #endregion
 
-        #region IWriteable
+        private Reactor.Tcp.Socket    socket;
+        private Reactor.Http.Headers  headers;
+        private Reactor.Http.Cookies  cookies;
+        private Version               version;
+        private string                connection;
+        private string                cache_control;
+        private Encoding              content_encoding;
+        private long                  content_length;
+        private string                content_type;
+        private int                   status_code;
+        private string                status_description;
+        private string                location;
+        private bool                  header_sent;
 
-        public void Write(Buffer buffer, Action<Exception> callback)
+        public ServerResponse(Reactor.Tcp.Socket socket) {
+
+            this.socket             = socket;
+            this.headers            = new Reactor.Http.Headers();
+            this.cookies            = new Reactor.Http.Cookies();
+            this.version            = new Version(1, 1);
+            this.status_code        = 200;
+            this.connection         = "close";
+            this.cache_control      = "no-cache"; 
+            this.content_encoding   = Encoding.Default;
+            this.status_description = "OK";
+            this.content_type       = string.Empty;
+            this.location           = string.Empty;
+            this.header_sent        = false;
+        }
+
+        #region Properties
+
+        public Reactor.Http.Headers Headers           
         {
-            this.commands.Enqueue(new WriteCommand(buffer, callback));
-
-            if (!this.writing)
+            get
             {
-                this.writing = true;
-
-                if (!this.ended)
-                {
-                    this.Write();
-                }
+                return this.headers;
             }
         }
 
-        public void Write(Buffer buffer)
+        public Reactor.Http.Cookies Cookies           
         {
-            this.Write(buffer, exception => { });
-        }
-
-        public void Flush(Action<Exception> callback)
-        {
-            this.commands.Enqueue(new FlushCommand(callback));
-
-            if (!this.writing)
+            get
             {
-                this.writing = true;
-
-                if (!this.ended)
-                {
-                    this.Write();
-                }
+                return this.cookies;
             }
         }
 
-        public void Flush()
+        public string               Connection        
         {
-            this.Flush(exception => { });
-        }
-
-        public void End(Action<Exception> callback)
-        {
-            this.commands.Enqueue(new EndCommand(callback));
-
-            if (!this.writing)
+            get
             {
-                this.writing = true;
-
-                if (!this.ended)
-                {
-                    this.Write();
-                }
+                return this.connection;
+            }
+            set
+            {
+                this.connection = value;
             }
         }
 
-        public void End()
+        public Encoding             ContentEncoding   
         {
-            this.End(exception => { });
+            get
+            {
+                return this.ContentEncoding;
+            }
+            set
+            {
+                this.ContentEncoding = value;
+            }
         }
 
-        public event Action<Exception> OnError;
+        public long                 ContentLength     
+        {
+            get 
+            {
+                return this.content_length; 
+            }
+            set 
+            {
+                this.content_length = value;
+            }
+        }
+
+        public string               ContentType       
+        {
+            get
+            {
+                return this.content_type;
+            }
+            set
+            {
+                this.content_type = value;
+            }
+        }
+
+        public int                  StatusCode        
+        {
+            get
+            {
+                return this.status_code;
+            }
+            set
+            {
+                this.status_code = value;
+            }
+        }
+
+        public string               StatusDescription 
+        {
+            get
+            {
+                return this.status_description;
+            }
+            set
+            {
+                this.status_description = value;
+            }
+        }
 
         #endregion
 
-        private void Write()
-        {
-            //----------------------------------
-            // command: write
-            //----------------------------------
+        #region IWritable
 
-            var command = this.commands.Dequeue();
-
-            //----------------------------------
-            // command: write
-            //----------------------------------
-
-            if (command is WriteCommand)
-            {
-                var write = command as WriteCommand;
-
-                IO.Write(this.stream, write.Buffer.ToArray(), (exception) =>
-                {
-                    command.Callback(exception);
-
-                    if (exception != null)
-                    {
-                        if (this.OnError != null)
-                        {
-                            this.OnError(exception);
-                        }
-
-                        this.ended = true;
-
-                        return;
-                    }
-
-                    if (this.commands.Count > 0)
-                    {
-                        this.Write();
-
-                        return;
-                    }
-
-                    this.writing = false;
-                });
+        public Reactor.Async.Future Write (Reactor.Buffer buffer) {
+            if (!this.header_sent) {
+                this.header_sent = true;
+                this._WriteHeaders();
+            }
+            //-----------------------------------
+            // chunked
+            //-----------------------------------
+            if (this.content_length == 0) {
+                socket.Write(String.Format("{0:x}\r\n", buffer.Length));
+                buffer.Write(Encoding.ASCII.GetBytes("\r\n"));
             }
 
-            //----------------------------------
-            // command: flush
-            //----------------------------------
+            return this.socket.Write(buffer);
+        }
 
-            if (command is FlushCommand)
-            {
-                try
-                {
-                    this.stream.Flush();
+        public Reactor.Async.Future Flush() {
+            if (!this.header_sent) {
+                this.header_sent = true;
+                this._WriteHeaders();
+            }
+            return this.socket.Flush();
+        }
 
-                    command.Callback(null);
-                }
-                catch (Exception exception)
-                {
-                    command.Callback(exception);
+        public Reactor.Async.Future End () {
+            if (!this.header_sent) {
+                this.header_sent = true;
+                this._WriteHeaders();
+            }
+            //-----------------------------------
+            // chunked
+            //-----------------------------------
+            if (this.content_length == 0) {          
+                this.socket.Write("0\r\n");
+                this.socket.Write("\r\n");
+            }
+            return this.socket.End();
+        }
 
-                    if (this.OnError != null)
-                    {
-                        this.OnError(exception);
-                    }
+        public void OnError     (Reactor.Action<Exception> callback)
+        {
+            this.socket.OnError(callback);
+        }
 
-                    this.ended = true;
-                }
-                if (this.commands.Count > 0)
-                {
-                    this.Write();
+        public void RemoveError (Reactor.Action<Exception> callback) {
 
-                    return;
-                }
+            this.socket.RemoveError(callback);
+        }
 
-                this.writing = false;
+        #endregion
+
+        #region Channels
+
+        
+        #endregion
+
+        #region Internal
+
+        private void _WriteHeaders() {
+
+            var culture_info = CultureInfo.InvariantCulture;
+
+            //-------------------------------------
+            // server:
+            //-------------------------------------
+            if (headers["Server"] == null) {
+
+                headers.Set_Internal("Server", "Reactor-HTTP/0.9");
             }
 
-            //----------------------------------
-            // command: end
-            //----------------------------------
+            //-------------------------------------
+            // connection:
+            //-------------------------------------
+            if (this.connection.Length > 0) {
 
-            if (command is EndCommand)
-            {
-                var end = command as EndCommand;
-
-                try
-                {
-                    this.stream.Dispose();
-
-                    end.Callback(null);
-                }
-                catch (Exception exception)
-                {
-                    end.Callback(exception);
-
-                    if (this.OnError != null)
-                    {
-                        this.OnError(exception);
-                    }
-                }
-
-                this.writing = false;
-
-                this.ended   = true;
+                headers.Set_Internal("Connection", this.connection);
             }
+
+            //-------------------------------------
+            // cache-control:
+            //-------------------------------------
+            if (this.cache_control.Length > 0) {
+
+                headers.Set_Internal("Cache-Control", this.cache_control);
+            }
+
+            //-------------------------------------
+            // date:
+            //-------------------------------------
+
+            if (headers["Date"] == null) {
+
+                headers.Set_Internal("Date", DateTime.UtcNow.ToString("r", culture_info));
+            }
+
+            //-------------------------------------
+            // content-type:
+            //-------------------------------------
+            if (this.content_type.Length > 0) {
+
+                headers.Set_Internal("Content-Type", content_type);
+            }
+
+            //-------------------------------------
+            // content-length | transfer-encoding
+            //-------------------------------------
+            if (this.content_length == 0) {
+
+                headers.Set_Internal("Transfer-Encoding", "chunked");
+            }
+            else {
+
+                headers.Set_Internal("Content-Length", content_length.ToString(culture_info));
+            }
+            
+            //-------------------------------------
+            // location:
+            //-------------------------------------
+            if (this.location.Length > 0) {
+
+                headers.Set_Internal("Location", location);
+            }
+
+            //-------------------------------------
+            // cookies:
+            //-------------------------------------
+            foreach (Cookie cookie in cookies) {
+
+                headers.Set_Internal("Set-Cookie", cookie.ToClientString());
+            }
+
+            //-------------------------------------
+            // write:
+            //-------------------------------------
+
+            var buffer = Reactor.Buffer.Create(128);
+
+            buffer.Write("HTTP/{0} {1} {2}\r\n", version, status_code, status_description);
+
+            buffer.Write(this.headers.ToString());
+
+            this.socket.Write(buffer);
         }
 
-        #region IWritables
+        #endregion
 
-        public void Write(byte[] buffer)
-        {
-            this.Write(Reactor.Buffer.Create(buffer));
+        #region Buffer
+
+        /// <summary>
+        /// Writes this data to the stream.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="index"></param>
+        /// <param name="count"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Async.Future Write (byte[] buffer, int index, int count) {
+            return this.Write(Reactor.Buffer.Create(buffer, 0, count));
         }
 
-        public void Write(byte[] buffer, int index, int count)
-        {
-            this.Write(Reactor.Buffer.Create(buffer, 0, count));
+        /// <summary>
+        /// Writes this data to the stream.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Async.Future Write (byte[] buffer) {
+            return this.Write(Reactor.Buffer.Create(buffer));
         }
 
-        public void Write(string data)
-        {
-            var buffer = System.Text.Encoding.UTF8.GetBytes(data);
-
-            this.Write(buffer);
+        /// <summary>
+        /// Writes this data to the stream.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Async.Future Write (string data) {
+            return this.Write(System.Text.Encoding.UTF8.GetBytes(data));
         }
 
-        public void Write(string format, object arg0)
-        {
-            format = string.Format(format, arg0);
-
-            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
-
-            this.Write(buffer);
-        }
-
-        public void Write(string format, params object[] args)
-        {
+        /// <summary>
+        /// Writes this data to the stream.
+        /// </summary>
+        /// <param name="format"></param>
+        /// <param name="args"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Async.Future Write (string format, params object[] args) {
             format = string.Format(format, args);
-
-            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
-
-            this.Write(buffer);
+            return this.Write(System.Text.Encoding.UTF8.GetBytes(format));
         }
 
-        public void Write(string format, object arg0, object arg1)
-        {
-            format = string.Format(format, arg0, arg1);
-
-            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
-
-            this.Write(buffer);
+        /// <summary>
+        /// Writes this data to the stream.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Async.Future Write (byte data) {
+            return this.Write(new byte[1] { data });
         }
 
-        public void Write(string format, object arg0, object arg1, object arg2)
-        {
-            format = string.Format(format, arg0, arg1, arg2);
-
-            var buffer = System.Text.Encoding.UTF8.GetBytes(format);
-
-            this.Write(buffer);
+        /// <summary>
+        /// Writes a System.Boolean value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Async.Future Write (bool value) {
+            return this.Write(BitConverter.GetBytes(value));
         }
 
-        public void Write(byte data)
-        {
-            this.Write(new byte[1] { data });
+        /// <summary>
+        /// Writes a System.Int16 value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Async.Future Write (short value) {
+            return this.Write(BitConverter.GetBytes(value));
         }
 
-        public void Write(bool value)
-        {
-            var buffer = BitConverter.GetBytes(value);
-
-            this.Write(buffer);
+        /// <summary>
+        /// Writes a System.UInt16 value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Async.Future Write (ushort value) {
+            return this.Write(BitConverter.GetBytes(value));
         }
 
-        public void Write(short value)
-        {
-            var buffer = BitConverter.GetBytes(value);
-
-            this.Write(buffer);
+        /// <summary>
+        /// Writes a System.Int32 value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Async.Future Write (int value) {
+            return this.Write(BitConverter.GetBytes(value));
         }
 
-        public void Write(ushort value)
-        {
-            var buffer = BitConverter.GetBytes(value);
-
-            this.Write(buffer);
+        /// <summary>
+        /// Writes a System.UInt32 value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Async.Future Write (uint value) {
+            return this.Write(BitConverter.GetBytes(value));
         }
 
-        public void Write(int value)
-        {
-            var buffer = BitConverter.GetBytes(value);
-
-            this.Write(buffer);
+        /// <summary>
+        /// Writes a System.Int64 value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Async.Future Write (long value) {
+            return this.Write(BitConverter.GetBytes(value));
         }
 
-        public void Write(uint value)
-        {
-            var buffer = BitConverter.GetBytes(value);
-
-            this.Write(buffer);
+        /// <summary>
+        /// Writes a System.UInt64 value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Async.Future Write (ulong value) {
+            return this.Write(BitConverter.GetBytes(value));
         }
 
-        public void Write(long value)
-        {
-            var buffer = BitConverter.GetBytes(value);
-
-            this.Write(buffer);
+        /// <summary>
+        /// Writes a System.Single value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Async.Future Write (float value) {
+            return this.Write(BitConverter.GetBytes(value));
         }
 
-        public void Write(ulong value)
-        {
-            var buffer = BitConverter.GetBytes(value);
-
-            this.Write(buffer);
-        }
-
-        public void Write(float value)
-        {
-            var buffer = BitConverter.GetBytes(value);
-
-            this.Write(buffer);
-        }
-
-        public void Write(double value)
-        {
-            var buffer = BitConverter.GetBytes(value);
-
-            this.Write(buffer);
+        /// <summary>
+        /// Writes a System.Double value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Async.Future Write (double value) {
+            return this.Write(BitConverter.GetBytes(value));
         }
 
         #endregion
+
+        public void OnDrain(Action callback)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveDrain(Action callback)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void OnEnd(Action callback)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveEnd(Action callback)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

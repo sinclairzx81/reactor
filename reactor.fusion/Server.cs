@@ -33,7 +33,7 @@ namespace Reactor.Fusion
 {
     public class Server
     {
-        private Reactor.Dgram.Socket socket;
+        private Reactor.Udp.Socket socket;
 
         private Reactor.Action<Reactor.Fusion.Socket> onsocket;
 
@@ -41,35 +41,35 @@ namespace Reactor.Fusion
 
         public Server()
         {
-            this.socket   = Reactor.Dgram.Socket.Create();
+            this.socket   = Reactor.Udp.Socket.Create();
 
             this.onsocket = socket => { };
 
             this.sockets = new Dictionary<System.Net.EndPoint, Reactor.Fusion.Socket>();
         }
 
-        private void OnMessage(System.Net.EndPoint endpoint, byte[] message)
+        private void OnMessage(Reactor.Udp.Message message)
         {
             PacketType packetType;
             
-            var packet = Parser.Deserialize(message, out packetType);
+            var packet = Parser.Deserialize(message.Buffer.ToArray(), out packetType);
 
             if (packetType == PacketType.Syn) {
 
-                if (!this.sockets.ContainsKey(endpoint)) {
+                if (!this.sockets.ContainsKey(message.EndPoint)) {
 
-                    this.sockets[endpoint] = new Socket(this.socket, endpoint);
+                    this.sockets[message.EndPoint] = new Socket(this.socket, message.EndPoint);
 
-                    this.sockets[endpoint].OnConnect += () => {
+                    this.sockets[message.EndPoint].OnConnect += () => {
 
-                        this.onsocket(this.sockets[endpoint]);
+                        this.onsocket(this.sockets[message.EndPoint]);
                     };
                 }
             }
 
-            if (this.sockets.ContainsKey(endpoint))
+            if (this.sockets.ContainsKey(message.EndPoint))
             {
-                this.sockets[endpoint].Receive(message);
+                this.sockets[message.EndPoint].Receive(message.Buffer.ToArray());
             }
         }
 
@@ -79,7 +79,7 @@ namespace Reactor.Fusion
         {
             this.socket.Bind(System.Net.IPAddress.Any, port);
 
-            this.socket.OnMessage += this.OnMessage;
+            this.socket.OnRead(this.OnMessage);
         }
 
         public static Server Create(Reactor.Action<Reactor.Fusion.Socket> callback)

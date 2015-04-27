@@ -26,34 +26,16 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using System.Net;
-using System.Security.Principal;
+namespace Reactor.Http {
 
-namespace Reactor.Http
-{
-    public class Context
-    {
-        private Reactor.Net.HttpListenerContext listener  { get; set; }
+    public class Context {
 
-        public IPrincipal                   User                     { get; set; }
+        public IncomingMessage    Request  { get; private set; }
+        public ServerResponse     Response { get; private set; }
 
-        public ServerConnection             Connection               { get; set; }
-
-        public ServerRequest                Request                  { get; set; }
-
-        public ServerResponse               Response                 { get; set; }
-
-        public Context(Reactor.Net.HttpListenerContext listener)
-        {
-            this.listener               = listener;
-
-            this.User                   = this.listener.User;
-
-            this.Connection             = new ServerConnection (this, this.listener.Connection);
-
-            this.Request                = new ServerRequest    (this, this.listener.Request);
-
-            this.Response               = new ServerResponse   (this, this.listener.Response);
+        public Context(Reactor.Http.IncomingMessage request, Reactor.Http.ServerResponse response) {
+            this.Request  = request;
+            this.Response = response;
         }
     }
 }

@@ -26,10 +26,12 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-namespace Reactor
-{
-    public interface IDuplexable<T> : IReadable<T>, IWriteable<T>
-    {
+namespace Reactor {
+
+    /// <summary>
+    /// The interface for readable and writeable streams.
+    /// </summary>
+    public interface IDuplexable : IReadable, IWritable {
 
     }
 }

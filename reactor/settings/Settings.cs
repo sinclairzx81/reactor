@@ -26,12 +26,16 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-namespace Reactor
-{
-    public static class Settings
-    {
-        public static int DefaultReadBufferSize  = 16384;
+namespace Reactor {
 
-        public static int DefaultWriteBufferSize = 16384;
+    /// <summary>
+    /// Global Settings for Reactor.
+    /// </summary>
+    internal static class Settings {
+
+        /// <summary>
+        /// The default buffer size. Used by Reactor.Buffer.
+        /// </summary>
+        public static int DefaultBufferSize  = 16384 * 4;
     }
 }

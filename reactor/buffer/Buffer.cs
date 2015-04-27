@@ -26,58 +26,63 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using System.IO;
+using System;
 using System.Text;
 
-namespace Reactor
-{
+namespace Reactor {
+
     /// <summary>
-    /// The Reactor Buffer is a general purpose, dynamically resizable buffer used to 
-    /// encapsulate data passed on IO bound data events. Supports both read and write 
-    /// operations and can be used as a general in memory storage object.
+    /// A specialized Ring Buffer / FIFO byte queue which supports 
+    /// dynamic resize on capacity. It is passed on all Reactor IO read
+    /// events.
     /// </summary>
-    public class Buffer
-    {
-        private MemoryStream stream;
+    public class Buffer {
 
-        private BinaryReader reader;
+        private readonly int resize = Reactor.Settings.DefaultBufferSize;
+        private Encoding     encoding;
+        private int          capacity;
+        private int          length;
+        private int          head;
+        private int          tail;
+        private byte[]       buffer;
 
-        private BinaryWriter writer;
+        #region Constructors
 
-        public Buffer()
-        {
-            this.stream = new MemoryStream();
-
-            this.reader = new BinaryReader(stream);
-
-            this.writer = new BinaryWriter(stream);
+        public Buffer (int capacity) {
+            this.encoding = Encoding.UTF8;
+            this.capacity = capacity;
+            this.length   = 0;
+            this.head     = 0;
+            this.tail     = 0;
+            this.buffer   = new byte[capacity];
         }
 
-        public Buffer(byte [] data, int index, int count)
-        {
-            this.stream = new MemoryStream(data, index, count);
+        public Buffer () : this(Reactor.Settings.DefaultBufferSize) { }
 
-            this.reader = new BinaryReader(stream);
+        #endregion
 
-            this.writer = new BinaryWriter(stream);
-        }
-
-        public Buffer(byte[] data) : this(data, 0, data.Length)
-        {
-
-        }
-
-        #region Properties
+        #region Propeties
 
         /// <summary>
-        /// The size of this buffer in bytes.
+        /// Gets or sets this buffers default text encoding. Default is UTF8.
         /// </summary>
-        public long Length
-        {
-            get
-            {
-                return this.stream.Length;
-            }
+        public Encoding Encoding {
+            get {  return this.encoding; }
+            set {  this.encoding = value; }
+        }
+
+        /// <summary>
+        /// The total capacity for this buffer.
+        /// </summary>
+        public int  Capacity {
+            get  { return this.capacity; }
+        }
+
+        /// <summary>
+        /// The length of this buffer.
+        /// </summary>
+        public int  Length {
+            get { return length; }
         }
 
         #endregion
@@ -85,39 +90,125 @@ namespace Reactor
         #region Write
 
         /// <summary>
-        /// Writes a buffer at the end of this buffer.
+        /// Writes this data to the buffer.
         /// </summary>
-        /// <param name="buffer">The buffer to write.</param>
-        public void Write(Buffer buffer)
-        {
-            var _buffer = buffer.stream.ToArray();
+        /// <param name="data"></param>
+        /// <param name="offset"></param>
+        /// <param name="count"></param>
+        public void Write (byte[] data, int offset, int count) {
 
-            this.writer.Write(_buffer, 0, _buffer.Length);
+            /* no op */
+            if (count == 0) return;
+
+            
+            /* todo: assign offset to indices to prevent copy. */
+            if (offset > 0) {
+                var temp = new byte[count];
+                System.Buffer.BlockCopy(data, offset, temp, 0, count);
+                data = temp;
+            }
+
+            /* resize buffer, copy, repack. */
+            var space = (this.capacity - this.length);
+            if (count > space) {
+                var overflow    = count - space;
+                var newsize     = this.capacity + overflow;
+                var remainder   = newsize % this.resize;
+                if (remainder > 0) {
+                    newsize = newsize + (this.resize - remainder);
+                }
+                /* copy data to temp buffer */
+                var temp = new byte[newsize];
+                if (this.head >= this.tail) {
+                    var src_0        = this.head;
+                    var dst_0        = 0;
+                    var count_0      = (this.capacity - this.head);
+                    System.Buffer.BlockCopy(this.buffer, src_0, temp, dst_0, count_0);
+
+                    var src_1        = 0;
+                    var dst_1        = count_0;
+                    var count_1      = this.tail;
+                    System.Buffer.BlockCopy(this.buffer, src_1, temp, dst_1, count_1);
+                }
+                else {
+                    System.Buffer.BlockCopy(this.buffer, this.head, temp, 0, this.length);
+                }
+
+                /* update indices */
+                this.buffer   = temp;
+                this.capacity = newsize;
+                this.head     = 0;
+                this.tail     = this.length;
+
+                /* copy data to end of buffer */
+                System.Buffer.BlockCopy(data, 0, this.buffer, this.tail, count);
+                this.length = (this.length + count);
+                this.tail   = (this.tail   + count) % this.capacity;
+                return;
+            }
+
+            //-----------------------
+            // no wrap:
+            //     h  -  t
+            // [0, 1, 2, 3, 4]  - wrapped
+            //     h  - t
+            // [0, 1, 2, 3, 4, 5, 6, ........] - unwrapped
+            //-----------------------
+            if (this.tail > this.head) {
+                if (count > space) { // wrapped
+                    var src_0        = 0;
+                    var dst_0        = this.tail;
+                    var count_0      = (this.capacity - this.tail);
+                    System.Buffer.BlockCopy(data, src_0, this.buffer, dst_0, count_0);
+
+                    var src_1        = count_0;
+                    var dst_1        = 0;
+                    var count_1      = count - count_0;
+                    if (count_1 > 0) {
+                        System.Buffer.BlockCopy(data, src_1, this.buffer, dst_1, count_1);
+                    }
+                    this.length = (this.length + count);
+                    this.tail   = (this.tail   + count) % this.capacity;
+                }
+                else { // unwrapped
+                    var src_0        = 0;
+                    var dst_0        = this.tail;
+                    var count_0      = count;
+                    System.Buffer.BlockCopy(data, src_0, this.buffer, dst_0, count_0);
+                    this.length = (this.length + count);
+                    this.tail   = (this.tail   + count) % this.capacity;
+                }
+            }
+            //-----------------------
+            // no wrap:
+            //  -  t     h  -
+            // [0, 1, 2, 3, 4]
+            //-----------------------
+            else if (this.tail <= this.head) {
+                var src_0        = 0;
+                var dst_0        = this.tail;
+                var count_0      = count;
+                System.Buffer.BlockCopy(data, src_0, this.buffer, dst_0, count_0);
+                this.length = (this.length + count);
+                this.tail   = (this.tail   + count) % this.capacity;
+            }
+        }
+
+        /// <summary>
+        /// Writes a reactor buffer.
+        /// </summary>
+        /// <param name="buffer"></param>
+        public void Write (Reactor.Buffer buffer) {
+            this.Write(buffer.ToArray());
         }
 
         /// <summary>
         /// Writes a string to the buffer.
         /// </summary>
         /// <param name="data">The string to write.</param>
-        public void Write(string data)
-        {
-            var buffer = Encoding.UTF8.GetBytes(data);
-
-            this.writer.Write(buffer, 0, buffer.Length);
-        }
-
-        /// <summary>
-        /// Writes out a formatted string, using the same semantics as System.String.Format(System.String,System.Object).
-        /// </summary>
-        /// <param name="format">The formatting string.</param>
-        /// <param name="arg0">An object to write into the formatted string.</param>
-        public void Write(string format, object arg0)
-        {
-            format = string.Format(format, arg0);
-
-            var buffer = Encoding.UTF8.GetBytes(format);
-
-            this.writer.Write(buffer, 0, buffer.Length);
+        public void Write  (string data) {
+            var buffer = this.encoding.GetBytes(data);
+            this.Write(buffer, 0, buffer.Length);
         }
 
         /// <summary>
@@ -125,257 +216,616 @@ namespace Reactor
         /// </summary>
         /// <param name="format">The formatting string.</param>
         /// <param name="args">The object array to write into the formatted string.</param>
-        public void Write(string format, params object[] args)
-        {
+        public void Write (string format, params object[] args) {
             format = string.Format(format, args);
-
-            var buffer = Encoding.UTF8.GetBytes(format);
-
-            this.writer.Write(buffer, 0, buffer.Length);
+            var buffer = this.encoding.GetBytes(format);
+            this.Write(buffer, 0, buffer.Length);
         }
 
         /// <summary>
-        /// Writes out a formatted string, using the same semantics as System.String.Format(System.String,System.Object).
+        /// Writes this data to the buffer.
         /// </summary>
-        /// <param name="format">The formatting string.</param>
-        /// <param name="arg0">An object to write into the formatted string.</param>
-        /// <param name="arg1">An object to write into the formatted string.</param>
-        public void Write(string format, object arg0, object arg1)
-        {
-            format = string.Format(format, arg0, arg1);
-
-            var buffer = Encoding.UTF8.GetBytes(format);
-
-            this.writer.Write(buffer, 0, buffer.Length);
-        }
-
-        /// <summary>
-        /// Writes out a formatted string, using the same semantics as System.String.Format(System.String,System.Object).
-        /// </summary>
-        /// <param name="format">The formatting string.</param>
-        /// <param name="arg0">An object to write into the formatted string.</param>
-        /// <param name="arg1">An object to write into the formatted string.</param>
-        /// <param name="arg2">An object to write into the formatted string.</param>
-        public void Write(string format, object arg0, object arg1, object arg2)
-        {
-            format = string.Format(format, arg0, arg1, arg2);
-
-            var buffer = Encoding.UTF8.GetBytes(format);
-
-            this.writer.Write(buffer, 0, buffer.Length);
-        }
-
-        /// <summary>
-        /// Writes a byte to the buffer.
-        /// </summary>
-        /// <param name="data">The byte to write</param>
-        public void Write(byte data)
-        {
-            this.writer.Write(data);
-        }
-
-        /// <summary>
-        /// Writes an array of bytes to the buffer.
-        /// </summary>
-        /// <param name="buffer">The buffer to write.</param>
-        public void Write(byte[] buffer)
-        {
-            this.writer.Write(buffer);
-        }
-
-        /// <summary>
-        /// Writes a subarray of bytes to the buffer.
-        /// </summary>
-        /// <param name="buffer">The byte array to write data from.</param>
-        /// <param name="index">Starting index in the buffer.</param>
-        /// <param name="count">The number of bytes to write.</param>
-        public void Write(byte[] buffer, int index, int count)
-        {
-            this.writer.Write(buffer, index, count);
+        /// <param name="data"></param>
+        public void Write (byte [] data) {
+            this.Write(data, 0, data.Length);
         }
 
         /// <summary>
         /// Writes the System.Boolean value to the buffer.
         /// </summary>
         /// <param name="value">The Boolean to write.</param>
-        public void Write(bool value)
-        {
-            this.writer.Write(value);
+        public void Write (bool value) {
+            this.Write(value);
         }
 
         /// <summary>
         /// Writes a System.Int16 value to the buffer.
         /// </summary>
         /// <param name="value">The value to write.</param>
-        public void Write(short value)
-        {
-            this.writer.Write(value);
+        public void Write (short value) {
+            this.Write(value);
         }
 
         /// <summary>
         /// Writes a System.UInt16 value to the buffer.
         /// </summary>
         /// <param name="value">The value to write.</param>
-        public void Write(ushort value)
-        {
-            this.writer.Write(value);
+        public void Write (ushort value) {
+            this.Write(value);
         }
 
         /// <summary>
         /// Writes a System.Int32 value to the buffer.
         /// </summary>
         /// <param name="value">The value to write.</param>
-        public void Write(int value)
-        {
-            this.writer.Write(value);
+        public void Write (int value) {
+            this.Write(value);
         }
 
         /// <summary>
         /// Writes a System.UInt32 value to the buffer.
         /// </summary>
         /// <param name="value">The value to write.</param>
-        public void Write(uint value)
-        {
-            this.writer.Write(value);
+        public void Write (uint value) {
+            this.Write(value);
         }
 
         /// <summary>
         /// Writes a System.Int64 value to the buffer.
         /// </summary>
         /// <param name="value">The value to write.</param>
-        public void Write(long value)
-        {
-            this.writer.Write(value);
+        public void Write (long value) {
+            this.Write(value);
         }
 
         /// <summary>
         /// Writes a System.UInt64 value to the buffer.
         /// </summary>
         /// <param name="value">The value to write.</param>
-        public void Write(ulong value)
-        {
-            this.writer.Write(value);
+        public void Write (ulong value) {
+            this.Write(value);
         }
 
         /// <summary>
         /// Writes a System.Single value to the buffer.
         /// </summary>
         /// <param name="value">The value to write.</param>
-        public void Write(float value)
-        {
-            this.writer.Write(value);
+        public void Write (float value) {
+            this.Write(value);
         }
 
         /// <summary>
         /// Writes a System.Double value to the buffer.
         /// </summary>
         /// <param name="value">The value to write.</param>
-        public void Write(double value)
+        public void Write (double value) {
+            this.Write(value);
+        }
+
+        #endregion
+
+        #region Unshift
+
+        /// <summary>
+        /// Unshifts this data to the front of the buffer.
+        /// </summary>
+        /// <param name="buffer">The buffer to unshift.</param>
+        public void Unshift(byte[] data, int offset, int count)
         {
-            this.writer.Write(value);
+            /* ignore 0 counts */
+            if (count == 0) return;
+
+            
+            /* todo: assign offset to indices to prevent copy. */
+            if (offset > 0) {
+                var temp = new byte[count];
+                System.Buffer.BlockCopy(data, offset, temp, 0, count);
+                data = temp;
+            }
+
+            /* resize buffer, copy, repack. */            
+            var space = (this.capacity - this.length);
+            if (count > space) {
+                var overflow    = count - space;
+                var newsize     = this.capacity + overflow;
+                var remainder   = newsize % this.resize;
+                if (remainder > 0) {
+                    newsize = newsize + (this.resize - remainder);
+                }
+
+                /* copy data to front. */
+                var temp = new byte[newsize];
+                System.Buffer.BlockCopy(data, 0, temp, 0, data.Length);
+
+                
+                /* copy buffer to back. */
+                if (this.head >= this.tail) {
+                    var src_0        = this.head;
+                    var dst_0        = data.Length;
+                    var count_0      = (this.capacity - this.head);
+                    System.Buffer.BlockCopy(this.buffer, src_0, temp, dst_0, count_0);
+
+                    var src_1        = 0;
+                    var dst_1        = count_0 + dst_0;
+                    var count_1      = this.tail;
+                    System.Buffer.BlockCopy(this.buffer, src_1, temp, dst_1, count_1);
+                }
+                else {
+                    System.Buffer.BlockCopy(this.buffer, this.head, temp, data.Length, this.length);
+                }
+                this.buffer   = temp;
+                this.capacity = newsize;
+                this.length   = this.length + data.Length;
+                this.head     = 0;
+                this.tail     = (this.length % this.capacity);
+                return;
+            }
+
+            //-----------------------
+            // no wrap:
+            //     h  -  t
+            // [0, 1, 2, 3, 4]  - wrapped
+            //                 h  - t
+            // [0, 1, 2, 3, 4, 5, 6, ........] - unwrapped
+            //-----------------------
+            if (this.tail > this.head) {
+                if (count > this.head) { // wrapped
+                    var src_0        = 0;
+                    var dst_0        = this.capacity + ((this.head - count) % this.capacity);
+                    var count_0      = this.capacity - dst_0;
+                    System.Buffer.BlockCopy(data, src_0, this.buffer, dst_0, count_0);
+
+                    var src_1        = count_0;
+                    var dst_1        = 0;
+                    var count_1      = this.head;
+                    if (count_1 > 0) {
+                        System.Buffer.BlockCopy(data, src_1, this.buffer, dst_1, count_1);
+                    }
+                    this.length = (this.length + count);
+                    this.head   = dst_0;
+                }
+                else { // unwrapped
+                    var src_0        = 0;
+                    var dst_0        = this.head - count;
+                    var count_0      = count;
+                    System.Buffer.BlockCopy(data, src_0, this.buffer, dst_0, count_0);
+                    this.length = (this.length + count);
+                    this.head   = (this.head   - count);
+                }
+            }
+            //-----------------------
+            // no wrap:
+            //  -  t     h  -
+            // [0, 1, 2, 3, 4]
+            //-----------------------
+            else if (this.tail <= this.head) {
+                var src_0        = 0;
+                var dst_0        = this.head - count;
+                if(dst_0 < 0) {
+                    dst_0 = this.capacity + dst_0;
+                }
+                var count_0      = count;
+                System.Buffer.BlockCopy(data, src_0, this.buffer, dst_0, count_0);
+                this.length = (this.length + count);
+                this.head   = dst_0;
+            }
+        }
+
+        /// <summary>
+        /// Unshifts this data to the front of the buffer.
+        /// </summary>
+        /// <param name="buffer">The buffer to unshift.</param>
+        public void Unshift (Reactor.Buffer buffer) {
+            var data = buffer.ToArray();
+            this.Unshift(data, 0, data.Length);
+        }
+
+        /// <summary>
+        /// Unshifts this data to the front of the buffer.
+        /// </summary>
+        /// <param name="buffer"></param>
+        public void Unshift (byte[] buffer) {
+            this.Unshift(Reactor.Buffer.Create(buffer));
+        }
+
+        /// <summary>
+        /// Unshifts this data to the front of the buffer.
+        /// </summary>
+        /// <param name="data"></param>
+        public void Unshift (string data) {
+            var buffer = this.encoding.GetBytes(data);
+            this.Unshift(buffer, 0, buffer.Length);
+        }
+
+        /// <summary>
+        /// Unshifts this data to the front of the buffer.
+        /// </summary>
+        /// <param name="format"></param>
+        /// <param name="args"></param>
+        public void Unshift (string format, params object[] args) {
+            format = string.Format(format, args);
+            var buffer = this.encoding.GetBytes(format);
+            this.Unshift(buffer, 0, buffer.Length);
+        }
+
+        /// <summary>
+        /// Writes this data to the buffer.
+        /// </summary>
+        /// <param name="data"></param>
+        public void Unshift (char data) {
+            this.Unshift(data.ToString());
+        }
+
+        /// <summary>
+        /// Unshifts this data to the front of the buffer.
+        /// </summary>
+        /// <param name="data"></param>
+        public void Unshift (byte data) {
+            this.Unshift(new byte[1] { data });
+        }
+
+        /// <summary>
+        /// Unshifts this data to the front of the buffer.
+        /// </summary>
+        /// <param name="value"></param>
+        public void Unshift (bool value) {
+            this.Unshift(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Unshifts this data to the front of the buffer.
+        /// </summary>
+        /// <param name="value"></param>
+        public void Unshift (short value) {
+            this.Unshift(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Unshifts this data to the front of the buffer.
+        /// </summary>
+        /// <param name="value"></param>
+        public void Unshift (ushort value) {
+            this.Unshift(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Unshifts this data to the front of the buffer.
+        /// </summary>
+        /// <param name="value"></param>
+        public void Unshift (int value) {
+            this.Unshift(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Unshifts this data to the front of the buffer.
+        /// </summary>
+        /// <param name="value"></param>
+        public void Unshift (uint value) {
+            this.Unshift(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Unshifts this data to the front of the buffer.
+        /// </summary>
+        /// <param name="value"></param>
+        public void Unshift (long value) {
+            this.Unshift(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Unshifts this data to the front of the buffer.
+        /// </summary>
+        /// <param name="value"></param>
+        public void Unshift (ulong value) {
+            this.Unshift(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Unshifts this data to the front of the buffer.
+        /// </summary>
+        /// <param name="value"></param>
+        public void Unshift (float value) {
+            this.Unshift(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Unshifts this data to the front of the buffer.
+        /// </summary>
+        /// <param name="value"></param>
+        public void Unshift (double value) {
+            this.Unshift(BitConverter.GetBytes(value));
+        }
+
+        #endregion
+
+        #region Fill
+
+        /// <summary>
+        /// Fills the buffer with this value. If the buffer already
+        /// contains data, it will only fill up to the remaining
+        /// space left in the buffer.
+        /// </summary>
+        /// <param name="data">The value to fill with.</param>
+        public void Fill (byte data) {
+            var space = (this.capacity - this.length);
+            var buffer = new byte[space];
+            for (int i = 0; i < buffer.Length; i++) {
+                buffer[i] = data;
+            }
+            this.Write(buffer);
+        }
+
+        #endregion
+
+        #region Slice
+
+        /// <summary>
+        /// Slices a new buffer which references the same memory as the old.
+        /// Warning: modifications on the new buffer will result in changes
+        /// to the original.
+        /// </summary>
+        /// <param name="start">The starting index.</param>
+        /// <param name="end">The end index.</param>
+        /// <returns></returns>
+        public Reactor.Buffer Slice (int start, int end) {
+            var select = end - start;
+            if (select < 0) {
+                throw new Exception("buffer: the end is less than the start.");
+            }
+
+            var buffer = Reactor.Buffer.Create(0);
+            buffer.encoding = this.encoding;
+            buffer.buffer   = this.buffer;
+            buffer.length   = end - start;
+            start           = start % this.length;
+            end             = end   % this.length;
+            buffer.head     = (this.head + start) % this.capacity;
+            buffer.tail     = (this.tail + end)   % this.capacity;
+            return buffer;
+        }
+
+        /// <summary>
+        /// Slices a new buffer which references the same memory as the old.
+        /// Will slice from this start index to the this buffers length.
+        /// Warning: modifications on the new buffer will result in changes
+        /// to the original. 
+        /// </summary>
+        /// <param name="start">The start index to slice from.</param>
+        /// <returns></returns>
+        public Reactor.Buffer Slice(int start) {
+            return this.Slice(start, this.buffer.Length);
         }
 
         #endregion
 
         #region Read
 
-        public byte ReadByte()
-        {
-            return this.reader.ReadByte();
+        /// <summary>
+        /// Reads bytes from this buffer.
+        /// </summary>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns></returns>
+        public byte[]  Read (int count) {
+
+            /* ignore 0 counts */
+            if(count == 0) return new byte[0];
+
+            /* if no data, return empty buffer. */
+            if(this.length == 0) return new byte[0];
+
+            /* ensure the count never exceeds the length. */
+            if (count > this.length) count = this.length;
+
+            /* read buffer. */
+            var dst   = new byte[count];
+            var end   = (this.capacity - this.head);
+            var start = (count - end);
+
+            if (count > end) {
+                System.Buffer.BlockCopy(this.buffer, this.head, dst, 0, end);
+                System.Buffer.BlockCopy(this.buffer, 0,         dst, end, start);
+                this.length = this.length - count;
+                this.head   = start;
+            }
+            else {
+
+                System.Buffer.BlockCopy(this.buffer, this.head, dst, 0, count);
+                this.length = (this.length - count);
+                this.head   = (this.head   + count) % this.capacity;
+            }
+            return dst;
         }
 
-        public byte[] ReadBytes(int count)
-        {
-            return this.reader.ReadBytes(count);
+        /// <summary>
+        /// Reads all data in this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public byte[] Read() {
+            return this.Read(this.length);
         }
 
-        public bool ReadBool()
-        {
-            return this.reader.ReadBoolean();
+        /// <summary>
+        /// Reads bytes from this buffer.
+        /// </summary>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns></returns>
+        public byte [] ReadBytes (int count) {
+            return this.Read(count);
         }
 
-        public short ReadInt16()
-        {
-            return this.reader.ReadInt16();
+        /// <summary>
+        /// Reads a single byte from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public byte ReadByte () {
+            var data = this.Read(1);
+            return data[0];
         }
 
-        public ushort ReadUInt16()
-        {
-            return this.reader.ReadUInt16();
+        /// <summary>
+        /// Reads a boolean from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public bool ReadBool () {
+            var data = this.Read(sizeof(System.Boolean));
+            return BitConverter.ToBoolean(data, 0);
         }
 
-        public int ReadInt32()
-        {
-            return this.reader.ReadInt32();
+        /// <summary>
+        /// Reads a Int16 value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public short ReadInt16 () {
+            var data = this.Read(sizeof(System.Int16));
+            return BitConverter.ToInt16(data, 0);
         }
 
-        public uint ReadUInt32()
-        {
-            return this.reader.ReadUInt32();
+        /// <summary>
+        /// Reads a UInt16 value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public ushort ReadUInt16 () {
+            var data = this.Read(sizeof(System.UInt16));
+            return BitConverter.ToUInt16(data, 0);
         }
 
-        public long ReadInt64()
-        {
-            return this.reader.ReadInt64();
+        /// <summary>
+        /// Reads a Int32 value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public int ReadInt32 () {
+            var data = this.Read(sizeof(System.Int32));
+            return BitConverter.ToInt32(data, 0);
         }
 
-        public ulong ReadUInt64()
-        {
-            return this.reader.ReadUInt64();
+        /// <summary>
+        /// Reads a UInt32 value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public uint ReadUInt32 () {
+            var data = this.Read(sizeof(System.UInt32));
+            return BitConverter.ToUInt32(data, 0);
         }
 
-        public float ReadSingle()
-        {
-            return this.reader.ReadSingle();
+        /// <summary>
+        /// Reads a Int64 value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public long ReadInt64 () {
+            var data = this.Read(sizeof(System.Int64));
+            return BitConverter.ToInt64(data, 0);
         }
 
-        public double ReadDouble()
-        {
-            return this.reader.ReadDouble();
+        /// <summary>
+        /// Reads a UInt64 value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public ulong ReadUInt64 () {
+            var data = this.Read(sizeof(System.UInt64));
+            return BitConverter.ToUInt64(data, 0);
+        }
+
+        /// <summary>
+        /// Reads a Single precision value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public float ReadSingle () {
+            var data = this.Read(sizeof(System.Single));
+            return BitConverter.ToSingle(data, 0);
+        }
+
+        /// <summary>
+        /// Reads a Double precision value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public double ReadDouble () {
+            var data = this.Read(sizeof(System.Double));
+            return BitConverter.ToDouble(data, 0);
         }
 
         #endregion
 
         #region Methods
 
-        public void Seek(int position)
-        {
-            this.stream.Seek(position, SeekOrigin.Begin);
+        /// <summary>
+        /// Clears the buffer.
+        /// </summary>
+        public void Clear() {
+            this.length = 0;
+            this.head   = 0;
+            this.tail   = 0;
         }
 
-        public void SetLength(int size)
-        {
-            this.stream.SetLength(size);
+        /// <summary>
+        /// Clones this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public Reactor.Buffer Clone() {
+            var buffer = Reactor.Buffer.Create(this.ToArray());
+            buffer.encoding = this.encoding;
+            return buffer;
         }
 
-        public byte [] ToArray()
-        {
-            return this.stream.ToArray();
-        }
-        
-        public string ToString(System.Text.Encoding Encoding)
-        {
-            return Encoding.GetString(this.stream.ToArray());
-        }
+        /// <summary>
+        /// Copies this buffer to a byte[].
+        /// </summary>
+        /// <returns></returns>
+        public byte [] ToArray() {
+            if(this.length == 0) return new byte[0];
+            var dst = new byte[this.length];
+            if (this.head >= this.tail) {
+                var src_0        = this.head;
+                var dst_0        = 0;
+                var count_0      = (this.capacity - this.head);
+                System.Buffer.BlockCopy(this.buffer, src_0, dst, dst_0, count_0);
 
-        public string ToString(string encoding)
-        {
-            encoding = encoding.ToLower();
-
-            switch(encoding)
-            {
-                case "ascii":   return Encoding.ASCII.GetString(this.stream.ToArray());
-
-                case "utf8":    return Encoding.UTF8.GetString(this.stream.ToArray());
-
-                case "utf7":    return Encoding.UTF7.GetString(this.stream.ToArray());
-
-                case "utf32":   return Encoding.UTF32.GetString(this.stream.ToArray());
-
-                case "unicode": return Encoding.Unicode.GetString(this.stream.ToArray());
-
-                default: return Encoding.UTF8.GetString(this.stream.ToArray());
+                var src_1        = 0;
+                var dst_1        = count_0;
+                var count_1      = this.tail;
+                System.Buffer.BlockCopy(this.buffer, src_1, dst, dst_1, count_1);
             }
+            else {
+                System.Buffer.BlockCopy(this.buffer, this.head, dst, 0, this.length);
+            }
+            return dst;
+        }
+
+        #endregion
+
+        #region ToString
+
+        /// <summary>
+        /// Converts the contents of this buffer ToString.
+        /// </summary>
+        /// <param name="Encoding">The encoding to use.</param>
+        /// <returns></returns>
+        public string ToString (System.Text.Encoding Encoding) {
+            return Encoding.GetString(this.ToArray());
+        }
+
+        /// <summary>
+        /// Converts the contents of this buffer ToString.
+        /// </summary>
+        /// <param name="Encoding">The encoding to use.</param>
+        /// <returns></returns>
+        public string ToString (string encoding) {
+            encoding = encoding.ToLower();
+            switch(encoding) {
+                case "ascii":   return System.Text.Encoding.ASCII.GetString(this.ToArray());
+                case "utf8":    return System.Text.Encoding.UTF8.GetString(this.ToArray());
+                case "utf7":    return System.Text.Encoding.UTF7.GetString(this.ToArray());
+                case "utf32":   return System.Text.Encoding.UTF32.GetString(this.ToArray());
+                case "unicode": return System.Text.Encoding.Unicode.GetString(this.ToArray());
+                default: return System.Text.Encoding.UTF8.GetString(this.ToArray());
+            }
+        }
+
+        /// <summary>
+        /// Returns this buffer as a string using this buffers encoding.
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString () {
+            return this.encoding.GetString(this.ToArray());
         }
 
         #endregion
@@ -383,32 +833,39 @@ namespace Reactor
         #region Statics
 
         /// <summary>
-        /// Creates a new Reactor Buffer.
+        /// Creates a new Reactor buffer.
         /// </summary>
-        /// <returns>A Buffer</returns>
-        public static Buffer Create()
-        {
-            return new Buffer();
+        /// <returns></returns>
+        public static Reactor.Buffer Create() {
+            return new Reactor.Buffer();
         }
 
-
-
         /// <summary>
-        /// Creates a new Reactor Buffer.
+        /// Creates a Reactor Buffer with this starting capacity.
         /// </summary>
-        /// <returns>A Buffer</returns>
-        public static Buffer Create(byte[] data, int index, int count)
-        {
-            return new Buffer(data, index, count);
+        /// <returns></returns>
+        public static Reactor.Buffer Create(int capacity) {
+            return new Reactor.Buffer(capacity);
         }
 
         /// <summary>
         /// Creates a new Reactor Buffer.
         /// </summary>
         /// <returns>A Buffer</returns>
-        public static Buffer Create(byte[] data)
-        {
-            return new Buffer(data);
+        public static Reactor.Buffer Create(byte[] data, int index, int count) {
+            var buffer = new Reactor.Buffer();
+            buffer.Write(data, index, count);
+            return buffer;
+        }
+
+        /// <summary>
+        /// Creates a new Reactor Buffer.
+        /// </summary>
+        /// <returns>A Buffer</returns>
+        public static Reactor.Buffer Create(byte[] data) {
+            var buffer = new Reactor.Buffer();
+            buffer.Write(data);
+            return buffer;
         }
 
         /// <summary>
@@ -416,43 +873,10 @@ namespace Reactor
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
-        public static Buffer Create(string data)
-        {
-            var buffer = System.Text.Encoding.UTF8.GetBytes(data);
-
-            return new Reactor.Buffer(buffer, 0, buffer.Length);
-        }
-
-        #endregion
-
-        #region IDisposable
-
-        private bool disposed = false;
-
-        private void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                if (!this.disposed)
-                {
-                    this.stream.Dispose();
-
-                    this.disposed = true;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Disposes of this Buffer.
-        /// </summary>
-        public void Dispose()
-        {
-            this.Dispose(true);
-        }
-
-        ~Buffer()
-        {
-            this.Dispose(false);
+        public static Reactor.Buffer Create(string data) {
+            var buffer = new Reactor.Buffer();
+            buffer.Write(data);
+            return buffer;
         }
 
         #endregion

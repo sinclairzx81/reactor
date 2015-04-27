@@ -32,41 +32,32 @@ using System.Security.Principal;
 
 namespace Reactor.Web
 {
-    public class Context
-    {
-        public IPrincipal                   User     { get; set; }
+    public class Context {
 
-        public Reactor.Http.ServerRequest   Request  { get; set; }
+        public  Reactor.Http.IncomingMessage Request  { get; set; }
+        public  Reactor.Http.ServerResponse  Response { get; set; }
+        public  IPrincipal                   User     { get; set; }
+        public  Dictionary<string, string>   Params   { get; set; }
+        private Dictionary<string, object>   items;
 
-        public Reactor.Http.ServerResponse  Response { get; set; }
-
-        public Dictionary<string, string>   Params   { get; set; }
-
-        private Dictionary<string, object>  Items    { get; set; }
-
-        public Context(Reactor.Http.Context context)
-        {
-            this.User     = context.User;
-
+        public Context(Reactor.Http.Context context) {
             this.Request  = context.Request;
-
             this.Response = context.Response;
-
-            this.Items    = new Dictionary<string, object>();
-
+            this.User     = null;
             this.Params   = new Dictionary<string, string>();
+            this.items    = new Dictionary<string, object>();
         }
 
         #region Methods
 
-        public void Set<T>(string name, T item)
-        {
-            this.Items[name] = item;
+        public void Set<T>(string name, T item) {
+
+            this.items[name] = item;
         }
 
-        public T Get<T>(string name)
-        {
-            return (T)this.Items[name];
+        public T Get<T>(string name) {
+
+            return (T)this.items[name];
         }
 
         #endregion

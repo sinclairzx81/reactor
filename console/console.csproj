@@ -45,18 +45,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\reactor.divert\reactor.divert.csproj">
-      <Project>{a7825b43-014d-4612-83e3-40d2a064aa29}</Project>
-      <Name>reactor.divert</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\reactor.fusion\reactor.fusion.csproj">
-      <Project>{80cae9bc-cffc-4fbc-837b-0ba3940504e1}</Project>
-      <Name>reactor.fusion</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\reactor.web.socket\reactor.web.socket.csproj">
-      <Project>{e2045d48-31a3-44f5-9e72-d5b094164a8b}</Project>
-      <Name>reactor.web.socket</Name>
-    </ProjectReference>
+    <None Include="app.config" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\reactor.web\reactor.web.csproj">
       <Project>{3c36767d-9365-4a7e-ad8c-9b893216f2f2}</Project>
       <Name>reactor.web</Name>
@@ -65,9 +56,6 @@
       <Project>{313a33d5-3743-4610-8e37-225f0376bcc9}</Project>
       <Name>reactor</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="app.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

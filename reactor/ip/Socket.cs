@@ -27,385 +27,542 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 
-namespace Reactor.IP
-{
-    public partial class Socket
-    {
-        private System.Net.Sockets.Socket     socket;
+namespace Reactor.IP {
 
-        public  event Action<byte []>         OnMessage;
+    /// <summary>
+    /// Reactor IP Socket.
+    /// </summary>
+    public class Socket : IDisposable {
 
-        public  event Action<Exception>       OnError;
+        #region State
 
-        public Socket()
-        {
-            this.socket = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.IP);
+        /// <summary>
+        /// Socket state.
+        /// </summary>
+        internal enum State {
+            /// <summary>
+            /// A state indicating this socket is active.
+            /// </summary>
+            Active,
+            /// <summary>
+            /// A state indicating this socket is closed.
+            /// </summary>
+            Ended
         }
+
+        #endregion
+
+        private System.Net.Sockets.Socket                socket;
+        private Reactor.Async.Spool                      spool;
+        private Reactor.Async.Event<Reactor.IP.Message>  onread;
+        private Reactor.Async.Event<System.Exception>    onerror;
+        private Reactor.Async.Event                      onend;
+        private State                                    state;
+        private byte[]                                   read_buffer;
+
+        #region Constructors
+
+        /// <summary>
+        /// Creates a new IP socket.
+        /// </summary>
+        public Socket(int buffersize) {
+            this.socket      = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.IP);
+            this.spool       = Reactor.Async.Spool.Create(1);
+            this.onread      = Reactor.Async.Event.Create<Reactor.IP.Message>();
+            this.onerror     = Reactor.Async.Event.Create<System.Exception>();
+            this.onend       = Reactor.Async.Event.Create();
+            this.read_buffer = new byte[buffersize];
+            this.state       = State.Active;
+            
+        }
+
+        #endregion
+
+        #region Events
+
+        /// <summary>
+        /// Subscribes this action to the OnRead event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnRead (Reactor.Action<Reactor.IP.Message> callback) {
+            this.onread.On(callback);
+            this._Read();
+        }
+
+        /// <summary>
+        /// Unsubscribes this action from the OnRead event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void RemoveRead (Reactor.Action<Reactor.IP.Message> callback) {
+            this.onread.Remove(callback);
+        }
+
+        /// <summary>
+        /// Subscribes this action to the OnError event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnError (Reactor.Action<System.Exception> callback) {
+            this.onerror.On(callback);
+        }
+
+        /// <summary>
+        /// Unsubscribes this action from the OnError event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void RemoveError (Reactor.Action<System.Exception> callback) {
+            this.onerror.Remove(callback);
+        }
+
+        /// <summary>
+        /// Subscribes this action to the OnEnd event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnEnd(Reactor.Action callback) {
+            this.onend.On(callback);
+        }
+
+        /// <summary>
+        /// Unsubscribes this action from the OnEnd event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void RemoveEnd(Reactor.Action callback) {
+            this.onend.Remove(callback);
+        }
+
+        #endregion
 
         #region Methods
 
         /// <summary>
-        /// Binds the underlying Socket to the supplied IPAddress and Port. If
-        /// setting up a socket as a listener, this is the method to use. Use
-        /// IPAddress.Any to bind to all local addresses.
+        /// Associates this socket with a local endpoint.
         /// </summary>
-        /// <param name="address">The address to bind to.</param>
-        /// <param name="port">The port to bind to.</param>
-        public void Bind(IPAddress address, int port)
-        {
-            this.socket.Bind(new IPEndPoint(address, port));
-
-            this.ReceiveFrom();
+        /// <param name="endpoint"></param>
+        public void Bind (IPEndPoint endpoint) {
+            this.socket.Bind(endpoint);
+            this._Read();
         }
 
         /// <summary>
-        /// Binds the underlying Socket to the supplied IPAddress. The port is
-        /// assigned by the socket. Use this method if you want to bind the 
-        /// socket for a client who needs to receive messages back from a
-        /// endpoint.
+        /// Associates this socket with a local endpoint.
         /// </summary>
-        /// <param name="address">The address to bind to.</param>
-        public void Bind(IPAddress address)
-        {
-            this.Bind(address, 0);
+        /// <param name="endpoint"></param>
+        public void Bind (IPAddress address, int port) {
+            this.Bind(new IPEndPoint(address, port));
+        }
+
+        /// <summary>
+        /// Associates this socket with a local endpoint.
+        /// </summary>
+        /// <param name="endpoint"></param>
+        public void Bind (int port) {
+            this.Bind(new IPEndPoint(IPAddress.Any, port));
+        }
+
+        /// <summary>
+        /// Associates this socket with a local endpoint.
+        /// </summary>
+        /// <param name="endpoint"></param>
+        public void Bind () {
+            this.Bind(new IPEndPoint(IPAddress.Any, 0));
+        }
+
+        /// <summary>
+        /// Sends this message to the socket.
+        /// </summary>
+        /// <param name="message"></param>
+        public Reactor.Async.Future<int> Send (Reactor.IP.Message message) {
+            return new Reactor.Async.Future<int>((resolve, reject) => {
+                this.spool.Run(next => {
+                    this.SendTo(message)
+                        .Then(resolve)
+                        .Error(reject)
+                        .Error(this._Error)
+                        .Finally(next);
+                });
+            });
+        }
+
+        /// <summary>
+        /// Ends this socket.
+        /// </summary>
+        public void End() {
+            this._End();
         }
 
         #endregion
 
         #region Socket
 
-        public AddressFamily AddressFamily
-        {
-            get
-            {
-                return this.socket.AddressFamily;
-            }
+        /// <summary>
+        /// Gets the address family of the Socket.
+        /// </summary>
+        public AddressFamily AddressFamily {
+            get { return this.socket.AddressFamily; }
         }
 
-        public int Available
-        {
-            get
-            {
-                return this.socket.Available;
-            }
+        /// <summary>
+        /// Gets the amount of data that has been received from the network and is available to be read.
+        /// </summary>
+        public int Available {
+            get { return this.socket.Available; }
         }
 
-        public bool Blocking
-        {
-            get
-            {
-                return this.socket.Blocking;
-            }
-            set
-            {
-                this.socket.Blocking = value;
-            }
+        /// <summary>
+        /// Gets or sets a value that indicates whether the Socket is in blocking mode.
+        /// </summary>
+        public bool Blocking {
+            get { return this.socket.Blocking; }
+            set { this.socket.Blocking = value; }
         }
 
-        public bool Connected
-        {
-            get
-            {
-                return this.socket.Connected;
-            }
+        /// <summary>
+        /// Gets a value that indicates whether a Socket is connected to a remote host as of the last Send or Receive operation.
+        /// </summary>
+        public bool Connected {
+            get { return this.socket.Connected; }
         }
 
-        public bool DontFragment
-        {
-            get
-            {
-                return this.socket.DontFragment;
-            }
-            set
-            {
-                this.socket.DontFragment = value;
-            }
+        /// <summary>
+        /// Gets or sets a Boolean value that specifies whether the Socket allows Internet Protocol (IP) datagrams to be fragmented.
+        /// </summary>
+        public bool DontFragment {
+            get { return this.socket.DontFragment; }
+            set { this.socket.DontFragment = value; }
         }
 
-        public bool EnableBroadcast
-        {
-            get
-            {
-                return this.socket.EnableBroadcast;
-            }
-            set
-            {
-                this.socket.EnableBroadcast = value;
-            }
+        /// <summary>
+        /// Gets or sets a Boolean value that specifies whether the Socket can send or receive broadcast packets.
+        /// </summary>
+        public bool EnableBroadcast {
+            get { return this.socket.EnableBroadcast; }
+            set { this.socket.EnableBroadcast = value; }
         }
 
-        public bool ExclusiveAddressUse
-        {
-            get
-            {
-                return this.socket.ExclusiveAddressUse;
-            }
-            set
-            {
-                this.socket.ExclusiveAddressUse = value;
-            }
+        /// <summary>
+        /// Gets or sets a Boolean value that specifies whether the Socket allows only one process to bind to a port.
+        /// </summary>
+        public bool ExclusiveAddressUse {
+            get { return this.socket.ExclusiveAddressUse; }
+            set { this.socket.ExclusiveAddressUse = value; }
         }
 
-        public IntPtr Handle
-        {
-            get
-            {
-                return this.socket.Handle;
-            }
+        /// <summary>
+        /// Gets the operating system handle for the Socket.
+        /// </summary>
+        public IntPtr Handle {
+            get { return this.socket.Handle; }
         }
 
-        public bool IsBound
-        {
-            get
-            {
-                return this.socket.IsBound;
-            }
+        /// <summary>
+        /// Gets a value that indicates whether the Socket is bound to a specific local port.
+        /// </summary>
+        public bool IsBound {
+            get { return this.socket.IsBound; }
         }
 
-        public LingerOption LingerState
-        {
-            get
-            {
-                return this.socket.LingerState;
-            }
-            set
-            {
-                this.socket.LingerState = value;
-            }
+        /// <summary>
+        /// Gets or sets a value that specifies whether the Socket will delay closing a socket in an attempt to send all pending data.
+        /// </summary>
+        public LingerOption LingerState {
+            get { return this.socket.LingerState; }
+            set { this.socket.LingerState = value; }
         }
 
-        public EndPoint LocalEndPoint
-        {
-            get
-            {
-                return this.socket.LocalEndPoint;
-            }
+        /// <summary>
+        /// Gets the local endpoint.
+        /// </summary>
+        public EndPoint LocalEndPoint {
+            get { return this.socket.LocalEndPoint; }
         }
 
-        public bool MulticastLoopback
-        {
-            get
-            {
-                return this.socket.MulticastLoopback;
-            }
-            set
-            {
-                this.socket.MulticastLoopback = value;
-            }
+        /// <summary>
+        /// Gets or sets a value that specifies whether outgoing multicast packets are delivered to the sending application.
+        /// </summary>
+        public bool MulticastLoopback {
+            get { return this.socket.MulticastLoopback; }
+            set { this.socket.MulticastLoopback = value; }
         }
 
-        public bool NoDelay
-        {
-            get
-            {
-                return this.socket.NoDelay;
-            }
-            set
-            {
-                this.socket.NoDelay = value;
-            }
+        /// <summary>
+        /// Gets or sets a Boolean value that specifies whether the stream Socket is using the Nagle algorithm.
+        /// </summary>
+        public bool NoDelay {
+            get { return this.socket.NoDelay; }
+            set { this.socket.NoDelay = value; }
         }
 
-        public static bool OSSupportsIPv6
-        {
-            get
-            {
-                return Socket.OSSupportsIPv6;
-            }
+        /// <summary>
+        /// Indicates whether the underlying operating system and network adaptors support Internet Protocol version 4 (IPv4).
+        /// </summary>
+        public static bool OSSupportsIPv4{
+            get { return Socket.OSSupportsIPv4; }
         }
 
-        public ProtocolType ProtocolType
-        {
-            get
-            {
-                return this.socket.ProtocolType;
-            }
+        /// <summary>
+        /// Indicates whether the underlying operating system and network adaptors support Internet Protocol version 6 (IPv6).
+        /// </summary>
+        public static bool OSSupportsIPv6 {
+            get { return Socket.OSSupportsIPv6; }
         }
 
-        public int ReceiveBufferSize
-        {
-            get
-            {
-                return this.socket.ReceiveBufferSize;
-            }
-            set
-            {
-                this.socket.ReceiveBufferSize = value;
-            }
+        /// <summary>
+        /// Gets the protocol type of the Socket.
+        /// </summary>
+        public ProtocolType ProtocolType {
+            get { return this.socket.ProtocolType; }
         }
 
-        public int ReceiveTimeout
-        {
-            get
-            {
-                return this.socket.ReceiveTimeout;
-            }
-            set
-            {
-                this.socket.ReceiveTimeout = value;
-            }
+        /// <summary>
+        /// Gets or sets a value that specifies the size of the receive buffer of the Socket.
+        /// </summary>
+        public int ReceiveBufferSize {
+            get { return this.socket.ReceiveBufferSize; }
+            set { this.socket.ReceiveBufferSize = value; }
         }
 
-        public EndPoint RemoteEndPoint
-        {
-            get
-            {
-                return this.socket.RemoteEndPoint;
-            }
+        /// <summary>
+        /// Gets or sets a value that specifies the amount of time after which a synchronous Receive call will time out.
+        /// </summary>
+        public int ReceiveTimeout {
+            get { return this.socket.ReceiveTimeout; }
+            set { this.socket.ReceiveTimeout = value; }
         }
 
-        public int SendBufferSize
-        {
-            get
-            {
-                return this.socket.SendBufferSize;
-            }
-            set
-            {
-                this.socket.SendBufferSize = value;
-            }
+        /// <summary>
+        /// Gets the remote endpoint.
+        /// </summary>
+        public EndPoint RemoteEndPoint {
+            get { return this.socket.RemoteEndPoint; }
         }
 
-        public int SendTimeout
-        {
-            get
-            {
-                return this.socket.SendTimeout;
-            }
-            set
-            {
-                this.socket.SendTimeout = value;
-            }
+        /// <summary>
+        /// Gets or sets a value that specifies the size of the send buffer of the Socket.
+        /// </summary>
+        public int SendBufferSize {
+            get { return this.socket.SendBufferSize; }
+            set { this.socket.SendBufferSize = value; }
         }
 
-        public SocketType SocketType
-        {
-            get
-            {
-                return this.socket.SocketType;
-            }
+        /// <summary>
+        /// Gets or sets a value that specifies the amount of time after which a synchronous Send call will time out.
+        /// </summary>
+        public int SendTimeout {
+            get { return this.socket.SendTimeout; }
+            set { this.socket.SendTimeout = value; }
         }
 
-        public static bool SupportsIPv4
-        {
-            get
-            {
-                return Socket.SupportsIPv4;
-            }
+        /// <summary>
+        /// Gets the type of the Socket.
+        /// </summary>
+        public SocketType SocketType {
+            get { return this.socket.SocketType; }
         }
 
-        public short Ttl
-        {
-            get
-            {
-                return this.socket.Ttl;
-            }
-            set
-            {
-                this.socket.Ttl = value;
-            }
+        /// <summary>
+        /// Gets or sets a value that specifies the Time To Live (TTL) value of Internet Protocol (IP) packets sent by the Socket.
+        /// </summary>
+        public short Ttl {
+            get { return this.socket.Ttl; }
+            set { this.socket.Ttl = value; }
         }
 
-        public bool UseOnlyOverlappedIO
-        {
-            get
-            {
-                return this.socket.Blocking;
-            }
-            set
-            {
-                this.socket.Blocking = value;
-            }
+        /// <summary>
+        /// Specifies whether the socket should only use Overlapped I/O mode.
+        /// </summary>
+        public bool UseOnlyOverlappedIO {
+            get { return this.socket.Blocking; }
+            set { this.socket.Blocking = value; }
         }
-        
-        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, bool optionValue)
-        {
+
+        /// <summary>
+        /// Sets the specified Socket option to the specified Boolean value.
+        /// </summary>
+        /// <param name="optionLevel"></param>
+        /// <param name="optionName"></param>
+        /// <param name="optionValue"></param>
+        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, bool optionValue) {
+            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
+        }
+
+        /// <summary>
+        /// Sets the specified Socket option to the specified value, represented as a byte array.
+        /// </summary>
+        /// <param name="optionLevel"></param>
+        /// <param name="optionName"></param>
+        /// <param name="optionValue"></param>
+        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, byte[] optionValue) {
+            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
+        }
+
+        /// <summary>
+        /// Sets the specified Socket option to the specified integer value.
+        /// </summary>
+        /// <param name="optionLevel"></param>
+        /// <param name="optionName"></param>
+        /// <param name="optionValue"></param>
+        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, int optionValue) {
+            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
+        }
+
+        /// <summary>
+        /// Sets the specified Socket option to the specified value, represented as an object.
+        /// </summary>
+        /// <param name="optionLevel"></param>
+        /// <param name="optionName"></param>
+        /// <param name="optionValue"></param>
+        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, object optionValue) {
             this.socket.SetSocketOption(optionLevel, optionName, optionValue);
         }
         
-        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, byte[] optionValue)
-        {
-            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
-        }
-        
-        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, int optionValue)
-        {
-            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
-        }
-
-        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, object optionValue)
-        {
-            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
-        }
-
         #endregion
 
-        #region Send
+        #region Internal
 
-        public void Send(IPAddress address, int port, byte [] data)
-        {
-            this.Send(new IPEndPoint(address, port), data, 0, data.Length);
-        }
-
-        public void Send(IPAddress address, int port, byte[] data, int index, int count)
-        {
-            this.Send(new IPEndPoint(address, port), data, index, count);
-        }
-
-        public void Send(EndPoint endpoint, byte [] data)
-        {
-            this.Send(endpoint, data, 0, data.Length);
-        }
-
-        public void Send(EndPoint endpoint, byte [] data, int index, int count)
-        {
-            this.socket.SendTo(data, index, count, SocketFlags.None, endpoint);
-        }
-
-        #endregion
-
-        #region Receive
-
-        private byte[] receive_buffer = new byte[4096];
-
-        private void ReceiveFrom()
-        {
-            IO.Receive(this.socket, this.receive_buffer, (exception, read) =>
-            {
-                if(exception != null)
-                {
-                    if(this.OnError != null)
-                    {
-                        this.OnError(exception);
-                    }
-
+        /// <summary>
+        /// Resolves the hostname, and caches the result for future requests.
+        /// </summary>
+        private Dictionary<string, IPAddress> cached_addresses = new Dictionary<string,IPAddress>();
+        private Reactor.Async.Future<System.Net.IPAddress> ResolveHost (string hostname) {
+            return new Reactor.Async.Future<System.Net.IPAddress>((resolve, reject) => {
+                if (cached_addresses.ContainsKey(hostname)) {
+                    resolve(cached_addresses[hostname]);
                     return;
                 }
+                Reactor.Dns.GetHostAddresses(hostname).Then(addresses => {
+                    if (addresses.Length == 0) {
+                        reject(new Exception("host not found"));
+                        return;
+                    }
+                    this.cached_addresses[hostname] = addresses[0];
+                    resolve(addresses[0]);
+                });
+            });
+        }
 
-                if (this.OnMessage != null)
-                {
-                    byte[] message = new byte[read];
-
-                    System.Buffer.BlockCopy(receive_buffer, 0, message, 0, read);
-                    
-                    this.OnMessage(message);
+        /// <summary>
+        /// Sends a message to the underlying socket.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        private Reactor.Async.Future<int> SendTo(Reactor.IP.Message message) {
+            return new Reactor.Async.Future<int>((resolve, reject) => {
+                try {
+                    var data = message.Buffer.ToArray();
+                    this.socket.BeginSendTo(data, 0, data.Length, SocketFlags.None, message.EndPoint, result => {
+                        Loop.Post(() => {
+                            try {
+                                int sent = socket.EndSendTo(result);
+                                resolve(sent);
+                            }
+                            catch (Exception error) {
+                                reject(error);
+                            }
+                        });
+                    }, null);
                 }
+                catch(Exception error) {
+                    reject(error);
+                }
+            });
+        }
 
-                this.ReceiveFrom();
-
+        /// <summary>
+        ///Receives a message from this socket.
+        /// </summary>
+        /// <returns></returns>
+        private Reactor.Async.Future<Reactor.IP.Message> ReceiveFrom () {
+            return new Reactor.Async.Future<Reactor.IP.Message>((resolve, reject) => {
+                try {
+                    EndPoint remoteEP = new IPEndPoint(IPAddress.Any, 0);
+                    this.socket.BeginReceiveFrom(this.read_buffer, 0, this.read_buffer.Length, SocketFlags.None, ref remoteEP, result => {
+                        Loop.Post(() => {
+                            try {
+                                int read = this.socket.EndReceiveFrom(result, ref remoteEP);
+                                var buffer = Reactor.Buffer.Create(this.read_buffer, 0, read);
+                                var endpoint = remoteEP;
+                                resolve(new Reactor.IP.Message(endpoint, buffer));
+                            }
+                            catch (Exception error) {
+                                reject(error);
+                            }
+                        });
+                    }, null);
+                }
+                catch(Exception error) {
+                     reject(error);
+                }
             });
         }
 
         #endregion
 
-        #region Statics
+        #region Machine
 
-        public static Socket Create() 
-        {
-            return new Socket();
+        /// <summary>
+        /// Emits a error.
+        /// </summary>
+        /// <param name="error"></param>
+        private void _Error(Exception error) {
+            if (this.state != State.Ended) {
+                this.onerror.Emit(error);
+                this._End();
+            }
+        }
+
+        /// <summary>
+        /// Ends this socket.
+        /// </summary>
+        private void _End() {
+            if (this.state != State.Ended) {
+                this.state = State.Ended;
+                this.socket.Close();
+                this.onend.Emit();
+            }
+        }
+
+        /// <summary>
+        /// Reads from the socket while active.
+        /// </summary>
+        private void _Read() {
+            this.ReceiveFrom().Then(message => {
+                if (this.state == State.Active) {
+                    this.onread.Emit(message);
+                    this._Read();
+                }
+            }).Error(this._Error);
+        }
+
+        #endregion
+
+        #region IDisposable
+
+        public void Dispose() {
+            this._End();
+        }
+
+        #endregion
+        
+        #region Statics
+        
+        /// <summary>
+        /// Returns a new IP socket with the specified buffer receive size.
+        /// </summary>
+        /// <param name="buffersize"></param>
+        /// <returns></returns>
+        public static Socket Create(int buffersize) {
+            return new Socket(buffersize);
+        }
+
+        /// <summary>
+        /// Returns a new IP socket. 
+        /// </summary>
+        /// <returns></returns>
+        public static Socket Create() {
+            return new Socket(Reactor.Settings.DefaultBufferSize);
         }
 
         #endregion

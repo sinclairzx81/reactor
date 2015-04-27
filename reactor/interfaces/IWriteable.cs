@@ -30,20 +30,64 @@ using System;
 
 namespace Reactor
 {
-    public interface IWriteable<T>
-    {
-        void Write(T buffer, Action<Exception> callback);
+    /// <summary>
+    /// A interface for all writable streams.
+    /// </summary>
+    public interface IWritable {
 
-        void Write(T buffer);
+        /// <summary>
+        /// Subscribes this action to the OnDrain event.
+        /// </summary>
+        /// <param name="callback">A callback to receive the error.</param>
+        void OnDrain   (Reactor.Action callback);
 
-        void Flush(Action<Exception> callback);
+        /// <summary>
+        /// Unsubscribes this action from the OnDrain event.
+        /// </summary>
+        /// <param name="callback">The callback to remove.</param>
+        void RemoveDrain (Reactor.Action callback);
 
-        void Flush();
+        /// <summary>
+        /// Subscribes this action to the OnError event.
+        /// </summary>
+        /// <param name="callback">A callback to receive the error.</param>
+        void OnError (Reactor.Action<Exception> callback);
 
-        void End(Action<Exception> callback);
+        /// <summary>
+        /// Unsubscribes this action from the OnError event.
+        /// </summary>
+        /// <param name="callback">The callback to remove.</param>
+        void RemoveError (Reactor.Action<Exception> callback);
 
-        void End();
+        /// <summary>
+        /// Subscribes this action to the OnEnd event.
+        /// </summary>
+        /// <param name="callback">A callback to receive the error.</param>
+        void OnEnd (Reactor.Action callback);
 
-        event Action<Exception> OnError;
+        /// <summary>
+        /// Unsubscribes this action from the OnEnd event.
+        /// </summary>
+        /// <param name="callback">The callback to remove.</param>
+        void RemoveEnd (Reactor.Action callback);
+
+        /// <summary>
+        /// Writes this buffer to the stream.
+        /// </summary>
+        /// <param name="buffer">The buffer to write.</param>
+        /// <param name="callback">A callback indicating when this buffer has been writen.</param>
+        Reactor.Async.Future Write (Reactor.Buffer buffer);
+
+        /// <summary>
+        /// Flushes this stream.
+        /// </summary>
+        /// <param name="callback">A callback indicating when this stream has been flushed.</param>
+        Reactor.Async.Future Flush ();
+
+        /// <summary>
+        /// Ends this stream. 
+        /// </summary>
+        /// <param name="callback">A callback indicating when this stream has ended.</param>
+        Reactor.Async.Future End ();
     }
 }

@@ -31,135 +31,92 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace Reactor.Divert
-{
-    public class Socket : Reactor.Divert.ISocket
-    {
+namespace Reactor.Divert {
+    public class Socket : Reactor.Divert.ISocket {
         private const uint                       buffersize = 65536;
-
         private string                           filter;
-
         private IntPtr                           handle;
-
-        private Thread                           thread;
-
+        private System.Threading.Thread          thread;
         private IntPtr                           readbuffer;
-
         private IntPtr                           writebuffer;
-
         private WINDIVERT_ADDRESS                addr;
-
         private bool                             started;
-
         private Reactor.Action<byte[]>           onread;
-
         private Reactor.Action<System.Exception> onerror;
 
-        public Socket         (string filter)
-        {
+        public Socket         (string filter) {
             this.filter       = filter;
-
             this.handle       = IntPtr.Zero;
-
             this.started      = false;
-
             this.readbuffer   = Marshal.AllocHGlobal((int)buffersize); // clean these up
-
             this.writebuffer  = Marshal.AllocHGlobal((int)buffersize);
-
             this.addr         = default(WINDIVERT_ADDRESS);
-
             this.onread       = data  => this.Write(data);
-
             this.onerror      = error => { };
-
             this.handle       = WinDivert.WinDivertOpen(this.filter, WINDIVERT_LAYER.WINDIVERT_LAYER_NETWORK, 0, 0);
 
-            if (handle      == new IntPtr(-1))
-            {
+            if (handle      == new IntPtr(-1)) {
                 var exception = new Win32Exception(Marshal.GetLastWin32Error());
-
                 throw exception;
             }
 
             this.started = true;
-
-            this.thread  = new Thread(this.Runtime);
-
+            this.thread  = new System.Threading.Thread(this.Runtime);
             this.thread.Start();
         }
 
-        public void     Read  (Reactor.Action<byte[]> callback)
-        {
+        #region Methods
+
+        public void     OnRead  (Reactor.Action<byte[]> callback) {
             this.onread = callback;
         }
 
-        public void     Error (Reactor.Action<System.Exception> callback)
-        {
+        public void     OnError (Reactor.Action<System.Exception> callback) {
             this.onerror = callback;
         }
 
-        public void     Write (byte [] data)
-        {
+        public void     Write (byte [] data) {
             Marshal.Copy(data, 0, this.writebuffer, data.Length);
-
+            
             uint send = 0;
-
-            if (!WinDivert.WinDivertSend(this.handle, this.writebuffer, (uint)data.Length, ref addr, out send))
-            {
+            if (!WinDivert.WinDivertSend(this.handle, this.writebuffer, (uint)data.Length, ref addr, out send)) {
                 var exception = new Win32Exception(Marshal.GetLastWin32Error());
-
                 this.onerror(exception);
-
                 this.started = false;
-
                 return;
             }
         }
 
-        public void     End   ()
-        {
+        public void     OnEnd   () {
             this.started = false;
-
             WinDivert.WinDivertClose(this.handle);
         }
 
+        #endregion
+
         #region Runtime
 
-        private byte[] ReadInternal()
-        {
+        private byte[] ReadInternal() {
             uint read = 0;
-
-            if (!WinDivert.WinDivertRecv(this.handle, this.readbuffer, buffersize, out addr, out read))
-            {
+            if (!WinDivert.WinDivertRecv(this.handle, this.readbuffer, buffersize, out addr, out read)) {
                 var error = new Win32Exception(Marshal.GetLastWin32Error());
-
                 this.onerror(error);
-
                 return null;
             }
 
             var data = new byte[read];
-
             Marshal.Copy(this.readbuffer, data, 0, (int)read);
-
             return data;
         }
 
-        private void Runtime ()
-        {
+        private void Runtime () {
             this.started = true;
-
-            while (this.started)
-            {
+            while (this.started) {
                 var data = this.ReadInternal();
-                
-                if(data != null)
-                {
+                if(data != null) {
                     Reactor.Loop.Post(() => this.onread(data));
                 }
             }
-
             WinDivert.WinDivertClose(this.handle);
         }
 
@@ -167,15 +124,12 @@ namespace Reactor.Divert
 
         #region Statics
 
-        public static Reactor.Divert.Socket Create(string filter)
-        {
+        public static Reactor.Divert.Socket Create(string filter) {
             return new Reactor.Divert.Socket(filter);
         }
 
-        public static Reactor.Divert.Socket Create()
-        {
+        public static Reactor.Divert.Socket Create() {
             var filter = "(inbound or outbound)";
-
             return new Reactor.Divert.Socket(filter);
         }
 

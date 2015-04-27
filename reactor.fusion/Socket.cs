@@ -29,6 +29,7 @@ THE SOFTWARE.
 using System;
 using Reactor.Fusion.Protocol;
 using Reactor.Fusion.Queues;
+using Reactor.Udp;
 
 namespace Reactor.Fusion
 {
@@ -48,7 +49,7 @@ namespace Reactor.Fusion
 
         public event Action<Reactor.Buffer>     OnData;
 
-        public event Action<Exception>          OnError;
+        //public event Action<Exception>          OnError;
 
         public event Action                     OnEnd;
 
@@ -56,7 +57,7 @@ namespace Reactor.Fusion
         // state
         //----------------------------------
 
-        private Reactor.Dgram.Socket              socket;
+        private Reactor.Udp.Socket              socket;
 
         private System.Net.EndPoint             endpoint;
 
@@ -72,13 +73,13 @@ namespace Reactor.Fusion
 
         private RecvQueue                       recv_queue;
 
-        public Socket(Reactor.Dgram.Socket socket, System.Net.EndPoint endpoint)
+        public Socket(Reactor.Udp.Socket socket, System.Net.EndPoint endpoint)
         {
             this.OnConnect += ()    => { };
 
             this.OnData    += data  => { };
 
-            this.OnError   += error => { };
+            //this.OnError   += error => { };
 
             this.OnEnd     += ()    => { };
 
@@ -95,7 +96,7 @@ namespace Reactor.Fusion
 
             this.OnData    += data  => { };
 
-            this.OnError   += error => { };
+            //this.OnError   += error => { };
 
             this.OnEnd     += ()    => { };
 
@@ -103,21 +104,26 @@ namespace Reactor.Fusion
 
             this.endpoint   = new System.Net.IPEndPoint(address, port);
 
-            this.socket     = Reactor.Dgram.Socket.Create();
+            this.socket     = Reactor.Udp.Socket.Create();
 
             this.socket.Bind(System.Net.IPAddress.Any, 0);
 
-            this.socket.OnMessage += (remote, data) => {
+            this.socket.OnRead(message => {
 
-                if (remote.ToString() == this.endpoint.ToString()) {
+                if (message.EndPoint.ToString() == this.endpoint.ToString()) {
 
-                    this.Receive(data);
+                    this.Receive(message.Buffer.ToArray());
                 }
-            };
+            });
 
             var syn = new Syn(Random.Get());
 
-            this.socket.Send(this.endpoint, syn.Serialize());
+            this.socket.Send(new Message {
+
+                EndPoint = this.endpoint,
+
+                Buffer   = Reactor.Buffer.Create(syn.Serialize())
+            });
         }
 
         private void Setup  (uint sequenceNumber, uint acknowlegementNumber)
@@ -141,7 +147,12 @@ namespace Reactor.Fusion
 
                 foreach (var payload in this.send_queue.Read(1)) {
 
-                    this.socket.Send(this.endpoint, payload.Serialize());
+                    this.socket.Send(new Message {
+
+                        EndPoint = this.endpoint,
+
+                        Buffer = Reactor.Buffer.Create(payload.Serialize())
+                    });
                 }
             }
         }
@@ -154,9 +165,14 @@ namespace Reactor.Fusion
 
                 this.sending = true;
 
-                foreach (var payload in this.send_queue.Read(1))
-                {
-                    this.socket.Send(this.endpoint, payload.Serialize());
+                foreach (var payload in this.send_queue.Read(1)) {
+
+                    this.socket.Send(new Message {
+
+                        EndPoint = this.endpoint,
+
+                        Buffer = Reactor.Buffer.Create(payload.Serialize())
+                    });
                 }
             }
         }
@@ -219,12 +235,24 @@ namespace Reactor.Fusion
         {
             var synack = new SynAck(Random.Get(), syn.SequenceNumber + 1);
 
-            this.socket.Send(this.endpoint, synack.Serialize());
+            this.socket.Send(new Message {
+
+                EndPoint = this.endpoint,
+
+                Buffer   = Reactor.Buffer.Create(synack.Serialize())
+            });
         }
 
         internal void ReceiveSynAck       (SynAck       synack)       
         {
-            this.socket.Send(this.endpoint, new Ack(synack.AcknowledgementNumber, synack.SequenceNumber + 1).Serialize());
+            var ack = new Ack(synack.AcknowledgementNumber, synack.SequenceNumber + 1);
+
+            this.socket.Send(new Message {
+
+                EndPoint = this.endpoint,
+
+                Buffer   = Reactor.Buffer.Create(ack.Serialize())
+            });
 
             this.Setup (synack.AcknowledgementNumber, synack.SequenceNumber + 1);
         }
@@ -242,9 +270,14 @@ namespace Reactor.Fusion
 
             this.OnData(Reactor.Buffer.Create(data));
 
-            var ack = new DataAck(this.recv_queue.SequenceNumber, this.recv_queue.WindowSize);
+            var dataack = new DataAck(this.recv_queue.SequenceNumber, this.recv_queue.WindowSize);
 
-            this.socket.Send(this.endpoint, ack.Serialize());
+            this.socket.Send(new Message {
+
+                EndPoint = this.endpoint,
+
+                Buffer   = Reactor.Buffer.Create(dataack.Serialize())
+            });
         }
 
         internal void ReceiveDataAck   (DataAck       ack)   
@@ -255,15 +288,25 @@ namespace Reactor.Fusion
 
             foreach (var payload in this.send_queue.Read(1)) {
 
-                this.socket.Send(this.endpoint, payload.Serialize());
+                this.socket.Send(new Message {
+
+                    EndPoint = this.endpoint,
+
+                    Buffer   = Reactor.Buffer.Create(payload.Serialize())
+                });
             }
         }
 
         internal void ReceiveFinSyn  (FinSyn       syn) 
         {
-            var ack = new FinAck(this.recv_queue.SequenceNumber, 0);
+            var finack = new FinAck(this.recv_queue.SequenceNumber, 0);
 
-            this.socket.Send(this.endpoint, ack.Serialize());
+            this.socket.Send(new Message {
+
+                EndPoint = this.endpoint,
+
+                Buffer   = Reactor.Buffer.Create(finack.Serialize())
+            });
 
             this.OnEnd();
         }

@@ -33,8 +33,6 @@ namespace Reactor.Fusion.Protocol
 {
     internal class Syn : Packet
     {
-        public uint SequenceNumber { get; set; }
-        
         public Syn(uint sequencenumber) 
             
             : base(sequencenumber, 0)

@@ -34,7 +34,7 @@ namespace Reactor
     /// <summary>
     /// DynamicAction: Dynamic actions based on the Type arguments supplied.
     /// </summary>
-    public class DynamicAction
+    internal class DynamicAction
     {
         public Delegate Delegate { get; set; }
 

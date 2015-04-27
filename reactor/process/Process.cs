@@ -32,383 +32,220 @@ using System.IO;
 
 namespace Reactor.Process
 {
-    public class Process
-    {
+    /// <summary>
+    /// A operating system process with event streams for stdin, stdout and stderr.
+    /// </summary>
+    public class Process {
+
         private System.Diagnostics.Process process;
 
-        public WriteStream StdIn   { get; set; }
+        #region Properties
 
-        public ReadStream  StdOut  { get; set; }
+        /// <summary>
+        /// Standard input stream.
+        /// </summary>
+        public Reactor.Process.Writer  In     { get; private set; }
 
-        public ReadStream  StdErr  { get; set; }
+        /// <summary>
+        /// Standard output stream.
+        /// </summary>
+        public Reactor.Process.Reader  Out    { get; private set; }
+        
+        /// <summary>
+        /// Standard error stream.
+        /// </summary>
+        public Reactor.Process.Reader  Error  { get; private set; }
 
-        public Process(string filename, string arguments, string workingdirectory)
-        {
+        #endregion
+
+        #region Constructor
+
+        public Process(string filename, string arguments, string workingdirectory) {
             this.process                                  = new System.Diagnostics.Process();
-
             this.process.StartInfo.UseShellExecute        = false;
-            
             this.process.StartInfo.RedirectStandardInput  = true;
-
             this.process.StartInfo.RedirectStandardOutput = true;
-            
             this.process.StartInfo.RedirectStandardError  = true;
-
             this.process.StartInfo.CreateNoWindow         = true;
-
             this.process.StartInfo.WindowStyle            = ProcessWindowStyle.Hidden;
-
             this.process.StartInfo.FileName               = filename;
-
-            this.process.StartInfo.WorkingDirectory      = workingdirectory;
-
-            if (arguments != null)
-            {
+            this.process.StartInfo.WorkingDirectory       = workingdirectory;
+            if (arguments != null) {
                 this.process.StartInfo.Arguments = arguments;
             }
-
             this.process.Start();
-
-            this.StdIn  = new Reactor.Process.WriteStream (this.process.StandardInput.BaseStream);
-
-            this.StdOut = new Reactor.Process.ReadStream  (this.process.StandardOutput.BaseStream);
-
-            this.StdErr  = new Reactor.Process.ReadStream (this.process.StandardError.BaseStream);
+            this.In     = Reactor.Process.Writer.Create (this.process.StandardInput.BaseStream);
+            this.Out    = Reactor.Process.Reader.Create (this.process.StandardOutput.BaseStream);
+            this.Error  = Reactor.Process.Reader.Create (this.process.StandardError.BaseStream);
         }
 
-        public Process(string filename, string arguments) : this(filename, arguments, Directory.GetCurrentDirectory())
-        {
+        public Process(string filename, string arguments) : this(filename, arguments, Directory.GetCurrentDirectory()) { }
 
-        }
+        public Process(string filename) : this(filename, string.Empty, Directory.GetCurrentDirectory()) { }
 
-        public Process(string filename) : this(filename, string.Empty, Directory.GetCurrentDirectory())
-        {
-
-        }
+        #endregion
 
         #region Process
 
-        public int BasePriority
-        {
-            get
-            {
-                return this.process.BasePriority;
-            }
+        public int BasePriority  { 
+            get { return this.process.BasePriority; }
         }
 
-        public bool EnableRaisingEvents
-        {
-            get
-            {
-                return this.process.EnableRaisingEvents;
-            }
-            set
-            {
-                this.process.EnableRaisingEvents = value;
-            }
+        public bool EnableRaisingEvents {
+            get { return this.process.EnableRaisingEvents; }
+            set { this.process.EnableRaisingEvents = value; }
         }
 
-        public int ExitCode
-        {
-            get
-            {
-                return this.process.ExitCode;
-            }
+        public int ExitCode {
+            get { return this.process.ExitCode; }
         }
 
-        public DateTime ExitTime
-        {
-            get
-            {
-                return this.process.ExitTime;
-            }
+        public DateTime ExitTime {
+            get { return this.process.ExitTime; }
         }
 
-        public IntPtr Handle
-        {
-            get
-            {
-                return this.process.Handle;
-            }
+        public IntPtr Handle {
+            get { return this.process.Handle; }
         }
 
-        public int HandleCount
-        {
-            get
-            {
-                return this.process.HandleCount;
-            }
+        public int HandleCount {
+            get { return this.process.HandleCount; }
         }
 
-        public bool HasExited
-        {
-            get
-            {
-                return this.process.HasExited;
-            }
+        public bool HasExited {
+            get { return this.process.HasExited; }
         }
 
-        public int Id
-        {
-            get
-            {
-                return this.process.Id;
-            }
+        public int Id {
+            get { return this.process.Id; }
         }
 
-        public string MachineName
-        {
-            get
-            {
-                return this.process.MachineName;
-            }
+        public string MachineName {
+            get { return this.process.MachineName; }
         }
 
-        public ProcessModule MainModule
-        {
-            get
-            {
-                return this.process.MainModule;
-            }
+        public ProcessModule MainModule {
+            get { return this.process.MainModule; }
         }
 
-        public IntPtr MainWindowHandle
-        {
-            get
-            {
-                return this.process.MainWindowHandle;
-            }
+        public IntPtr MainWindowHandle {
+            get { return this.process.MainWindowHandle; }
         }
 
-        public string MainWindowTitle
-        {
-            get
-            {
-                return this.process.MainWindowTitle;
-            }
+        public string MainWindowTitle {
+            get { return this.process.MainWindowTitle; }
         }
 
-        public IntPtr MaxWorkingSet
-        {
-            get
-            {
-                return this.process.MaxWorkingSet;
-            }
-            set
-            {
-                this.process.MaxWorkingSet = value;
-            }
+        public IntPtr MaxWorkingSet {
+            get { return this.process.MaxWorkingSet; }
+            set { this.process.MaxWorkingSet = value; }
         }
 
-        public IntPtr MinWorkingSet
-        {
-            get
-            {
-                return this.process.MinWorkingSet;
-            }
-            set
-            {
-                this.process.MinWorkingSet = value;
-            }
+        public IntPtr MinWorkingSet {
+            get { return this.process.MinWorkingSet; }
+            set { this.process.MinWorkingSet = value; }
         }
 
-        public ProcessModuleCollection Modules
-        {
-            get
-            {
-                return this.process.Modules;
-            }
+        public ProcessModuleCollection Modules {
+            get { return this.process.Modules; }
         }
 
-        public long NonpagedSystemMemorySize
-        {
-            get
-            {
-                return this.process.NonpagedSystemMemorySize64;
-            }
+        public long NonpagedSystemMemorySize {
+            get { return this.process.NonpagedSystemMemorySize64; }
         }
 
-        public long PagedMemorySize
-        {
-            get
-            {
-                return this.process.PagedMemorySize64;
-            }
+        public long PagedMemorySize {
+            get { return this.process.PagedMemorySize64; }
         }
 
-        public long PagedSystemMemorySize
-        {
-            get
-            {
-                return this.process.PagedSystemMemorySize64;
-            }
+        public long PagedSystemMemorySize {
+            get { return this.process.PagedSystemMemorySize64; }
         }
 
-        public long PeakPagedMemorySize
-        {
-            get
-            {
-                return this.process.PeakPagedMemorySize64;
-            }
+        public long PeakPagedMemorySize {
+            get { return this.process.PeakPagedMemorySize64; }
         }
 
-        public long PeakVirtualMemorySize
-        {
-            get
-            {
-                return this.process.PeakVirtualMemorySize64;
-            }
+        public long PeakVirtualMemorySize {
+            get { return this.process.PeakVirtualMemorySize64; }
         }
 
-        public long PeakWorkingSet
-        {
-            get
-            {
-                return this.process.PeakWorkingSet64;
-            }
+        public long PeakWorkingSet {
+            get { return this.process.PeakWorkingSet64; }
         }
 
-        public bool PriorityBoostEnabled
-        {
-            get
-            {
-                return this.process.PriorityBoostEnabled;
-            }
-            set
-            {
-                this.process.PriorityBoostEnabled = value;
-            }
+        public bool PriorityBoostEnabled {
+            get { return this.process.PriorityBoostEnabled; }
+            set { this.process.PriorityBoostEnabled = value; }
         }
 
-        public ProcessPriorityClass PriorityClass
-        {
-            get
-            {
-                return this.process.PriorityClass;
-            }
-            set
-            {
-                this.process.PriorityClass = value;
-            }
+        public ProcessPriorityClass PriorityClass {
+            get { return this.process.PriorityClass; }
+            set { this.process.PriorityClass = value; }
         }
 
-        public long PrivateMemorySize
-        {
-            get
-            {
-                return this.process.PrivateMemorySize64;
-            }
+        public long PrivateMemorySize {
+            get { return this.process.PrivateMemorySize64; }
         }
 
-        public TimeSpan PrivilegedProcessorTime
-        {
-            get
-            {
-                return this.process.PrivilegedProcessorTime;
-            }
+        public TimeSpan PrivilegedProcessorTime {
+            get { return this.process.PrivilegedProcessorTime; }
         }
 
-        public string ProcessName
-        {
-            get
-            {
-                return this.process.ProcessName;
-            }
+        public string ProcessName {
+            get { return this.process.ProcessName; }
         }
 
-        public IntPtr ProcessorAffinity
-        {
-            get
-            {
-                return this.process.ProcessorAffinity;
-            }
-            set
-            {
-                this.process.ProcessorAffinity = value;
-            }
+        public IntPtr ProcessorAffinity {
+            get { return this.process.ProcessorAffinity; }
+            set { this.process.ProcessorAffinity = value; }
         }
 
-        public bool Responding
-        {
-            get
-            {
-                return this.process.Responding;
-            }
+        public bool Responding {
+            get { return this.process.Responding; }
         }
    
-        public int SessionId
-        {
-            get
-            {
-                return this.process.SessionId;
-            }
+        public int SessionId {
+            get { return this.process.SessionId; }
         }
 
-        public DateTime StartTime
-        {
-            get
-            {
-                return this.process.StartTime;
-            }
+        public DateTime StartTime {
+            get { return this.process.StartTime; }
         }
 
-        public ProcessThreadCollection Threads
-        {
-            get
-            {
-                return this.process.Threads;
-            }
+        public ProcessThreadCollection Threads {
+            get { return this.process.Threads; }
         }
 
-        public TimeSpan TotalProcessorTime
-        {
-            get
-            {
-                return this.process.TotalProcessorTime;
-            }
+        public TimeSpan TotalProcessorTime {
+            get { return this.process.TotalProcessorTime; }
         }
 
-        public TimeSpan UserProcessorTime
-        {
-            get
-            {
-                return this.process.UserProcessorTime;
-            }
+        public TimeSpan UserProcessorTime {
+            get { return this.process.UserProcessorTime; }
         }
 
-        public long VirtualMemorySize
-        {
-            get
-            {
-                return this.process.VirtualMemorySize64;
-            }
+        public long VirtualMemorySize {
+            get { return this.process.VirtualMemorySize64; }
         }
 
-        public long WorkingSet
-        {
-            get
-            {
-                return this.process.WorkingSet64;
-            }
+        public long WorkingSet {
+            get { return this.process.WorkingSet64; }
         }
 
-        public void Refresh()
-        {
+        public void Refresh() {
             this.process.Refresh();
         }
 
-        public void Close()
-        {
+        public void Close() {
             this.process.Close();
         }
 
-        public bool CloseMainWindow()
-        {
+        public bool CloseMainWindow() {
             return this.process.CloseMainWindow();
         }
  
-        public void Kill()
-        {
+        public void Kill() {
             this.process.Kill();
         }
 
@@ -416,19 +253,16 @@ namespace Reactor.Process
 
         #region Statics
 
-        public static Process Create(string filename, string arguments, string workingdirectory)
-        {
-            return new Process(filename, arguments, workingdirectory);
+        public static Reactor.Process.Process Create(string filename, string arguments, string workingdirectory) {
+            return new Reactor.Process.Process(filename, arguments, workingdirectory);
         }
 
-        public static Process Create(string filename, string arguments)
-        {
-            return new Process(filename, arguments);
+        public static Reactor.Process.Process Create(string filename, string arguments) {
+            return new Reactor.Process.Process(filename, arguments);
         }
         
-        public static Process Create(string filename)
-        {
-            return new Process(filename);
+        public static Reactor.Process.Process Create(string filename) {
+            return new Reactor.Process.Process(filename);
         }
 
         #endregion

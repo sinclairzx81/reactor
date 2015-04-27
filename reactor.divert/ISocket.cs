@@ -30,12 +30,12 @@ namespace Reactor.Divert
 {
     public interface ISocket
     {
-        void Write  (byte[] data);
+        void Write    (byte[] data);
 
-        void Read   (Reactor.Action<byte[]> callback);
+        void OnRead   (Reactor.Action<byte[]> callback);
 
-        void End    ();
+        void OnEnd    ();
 
-        void Error  (Reactor.Action<System.Exception> callback);
+        void OnError  (Reactor.Action<System.Exception> callback);
     }
 }

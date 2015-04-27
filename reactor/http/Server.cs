@@ -27,102 +27,86 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
-using System.Net;
 
-namespace Reactor.Http
-{
-    public class Server
-    {
-        private Reactor.Net.HttpListener httplistener;
+namespace Reactor.Http {
 
-        public Action<Context> OnContext { get; set; }
+    /// <summary>
+    /// Reactor HTTP Server.
+    /// </summary>
+    public class Server {
 
-        public Action<Exception>   OnError   { get; set; }
+        #region Events
 
-        public Server()
-        {
-            
+        public class Events {
+            public Reactor.Async.Event<Reactor.Http.Context> Context;
+            public Reactor.Async.Event<System.Exception>     Error;
         }
 
-        public Server(Action<Context> OnContext)
-        {
-            this.OnContext = OnContext;
+        #endregion
+
+        private Reactor.Tcp.Server                        server;
+        private Reactor.Async.Event<Reactor.Http.Context> oncontext;
+        private Reactor.Async.Event<System.Exception>     onerror;
+        private Reactor.Async.Event                       onend;
+
+        #region Constructors
+
+        public Server() {
+            this.server    = Reactor.Tcp.Server.Create(this._Socket);
+            this.oncontext = Reactor.Async.Event.Create<Reactor.Http.Context>();
+            this.onerror   = Reactor.Async.Event.Create<System.Exception>();
+            this.onend     = Reactor.Async.Event.Create();
         }
 
-        public Server Listen(int port, Reactor.Action<Exception> callback)
-        {
-            try {
+        #endregion
 
-                this.httplistener = new Reactor.Net.HttpListener();
+        #region Events
 
-                this.httplistener.Prefixes.Add(string.Format("http://*:{0}/", port));
-
-                this.httplistener.Start();
-                
-                this.GetContext();
-
-                callback(null);
-            }
-            catch(Exception exception) {
-
-                if(exception is HttpListenerException) {
-
-                    callback(exception);
-                }
-                else {
-
-                    callback(exception);
-                }
-            }
-
-            return this;
+        public Events GetEvents() {
+            return new Events {
+                Context = this.oncontext,
+                Error   = this.onerror
+            };
         }
 
-        public Server Listen(int port)
-        {
-            return this.Listen(port, (exception) => {
-
-                if(exception != null) {
-
-                    if (this.OnError != null) {
-
-                        this.OnError(exception);
-                    }
-                }
-            });
+        public void OnContext (Reactor.Action<Reactor.Http.Context> callback) {
+            this.oncontext.On(callback);
         }
 
-        public Server Stop()
-        {
-            if (this.httplistener != null)
-            {
-                this.httplistener.Stop();
-            }
-            return this;
+        public void OnError (Reactor.Action<Exception> callback) {
+            this.onerror.On(callback);
         }
 
-        #region GetContext
+        public void RemoveContext (Reactor.Action<Reactor.Http.Context> callback) {
+            this.oncontext.Remove(callback);
+        }
 
-        private void GetContext()
-        {
-            IO.GetContext(this.httplistener, (exception, context) =>
-            {
-                if(exception != null)
-                {
-                    if(this.OnError != null)
-                    {
-                        this.OnError(exception);
-                    }
+        public void RemoveError (Reactor.Action<Exception> callback) {
+            this.onerror.Remove(callback);
+        }
 
-                    return;
-                }
+        public void Listen (int port) {
+            this.server.Listen(port);
+        }
 
-                if(this.OnContext != null)
-                {
-                    this.OnContext(new Context(context));   
-                }
+        public void Stop() {
+            this.server.Dispose();
+        }
 
-                this.GetContext();
+        #endregion
+
+        #region Internals
+
+        private void _Socket (Reactor.Tcp.Socket socket) {
+            var request  = new Reactor.Http.IncomingMessage (socket);
+            var response = new Reactor.Http.ServerResponse  (socket);
+            request.BeginRequest().Then(() => {
+                var context  = new Reactor.Http.Context(request, response);
+                this.oncontext.Emit(context);                
+            }).Error(error => {
+                response.StatusCode = 400;
+                response.StatusDescription = "Bad Request";
+                response.End();
             });
         }
 
@@ -130,14 +114,14 @@ namespace Reactor.Http
 
         #region Statics
 
-        public static Server Create()
-        {
-            return new Server();
+        public static Server Create() {
+            return new Reactor.Http.Server();
         }
 
-        public static Server Create(Action<Context> OnContext)
-        {
-            return new Server(OnContext);
+        public static Server Create(Reactor.Action<Reactor.Http.Context> callback) {
+            var server = new Reactor.Http.Server();
+            server.OnContext(callback);
+            return server;
         }
 
         #endregion

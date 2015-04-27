@@ -30,35 +30,23 @@ using System.Threading;
 
 namespace Reactor
 {
-    internal class Runtime
-    {
-        private ManualResetEvent       manualresetevent;
+    internal class Runtime {
+        private ManualResetEvent        manualresetevent;
+        private SynchronizationContext  synchronizationcontext;
+        private Messages                messages;
+        private System.Threading.Thread thread;
+        private bool                    started;
 
-        private SynchronizationContext synchronizationcontext;
-
-        private Messages               messages;
-
-        private Thread                 thread;
-
-        private bool                   started;
-
-        public Runtime(SynchronizationContext synchronizationcontext, Messages messages)
-        {
+        public Runtime(SynchronizationContext synchronizationcontext, Messages messages) {
             this.manualresetevent       = new ManualResetEvent(false);
-
             this.synchronizationcontext = synchronizationcontext;
-
             this.messages               = messages;
-
             this.started                = false;
-
-            this.thread                 = new Thread(this.Process);
+            this.thread                 = new System.Threading.Thread(this.Process);
         }
 
-        public void Signal()
-        {
-            if(this.started)
-            {
+        public void Signal() {
+            if(this.started) {
                 this.manualresetevent.Set();
             }
         }

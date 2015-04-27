@@ -82,11 +82,11 @@ namespace Reactor.Web
         // matches this route.
         //--------------------------------------------
 
-        internal bool Match(Http.ServerRequest serverRequest)
-        {
-            if (string.Equals(serverRequest.Method, this.Method, StringComparison.InvariantCultureIgnoreCase))
-            {
-                var path = Reactor.Net.HttpUtility.UrlDecode(serverRequest.Url.AbsolutePath);
+        internal bool Match(Http.IncomingMessage serverRequest) {
+
+            if (string.Equals(serverRequest.Method, this.Method, StringComparison.InvariantCultureIgnoreCase)) {
+
+                var path = Reactor.Http.Utility.UrlDecode(serverRequest.Url.AbsolutePath);
 
                 var match = this.regex.IsMatch(path);
 
@@ -100,20 +100,20 @@ namespace Reactor.Web
         // computes the params for this route.
         //--------------------------------------------
 
-        internal Dictionary<string, string> ComputeParams(Http.ServerRequest serverRequest)
-        {
+        internal Dictionary<string, string> ComputeParams(Http.IncomingMessage serverRequest) {
+
             var dict = new Dictionary<string, string>();
 
-            var path = Reactor.Net.HttpUtility.UrlDecode(serverRequest.Url.AbsolutePath);
+            var path = Reactor.Http.Utility.UrlDecode(serverRequest.Url.AbsolutePath);
 
             var match = this.regex.Match(path);
 
             int index = -1;
 
-            foreach (var group in match.Groups)
-            {
-                if (index >= 0)
-                {
+            foreach (var group in match.Groups) {
+
+                if (index >= 0) {
+
                     dict[this.names[index]] = group.ToString();
                 }
 

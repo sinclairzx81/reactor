@@ -45,8 +45,8 @@ namespace Reactor.Web
 
         #region Handler
 
-        public void Handler(Reactor.Web.Context context, Reactor.Action next)
-        {
+        public void Handler(Reactor.Web.Context context, Reactor.Action next) {
+
             Reactor.Web.MiddlewareProcessor.Process(context, this.middleware, () => {
 
                 foreach (var route in this.routes) {
