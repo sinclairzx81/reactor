@@ -465,7 +465,6 @@ namespace Reactor.File {
         /// <param name="buffer"></param>
         private void _Data (Reactor.Buffer buffer) {
             this.state = State.Pending;
-            Console.WriteLine("inside _data");
             /* detect overflow */
             var length    = buffer.Length;
             var ended     = false;
