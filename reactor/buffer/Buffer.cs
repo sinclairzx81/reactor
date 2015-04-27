@@ -96,35 +96,51 @@ namespace Reactor {
         /// <param name="offset"></param>
         /// <param name="count"></param>
         public void Write (byte[] data, int offset, int count) {
-
-            /* no op */
+            //-----------------------------
+            // ignore 0 counts.
+            //-----------------------------
             if (count == 0) return;
-
-            
-            /* todo: assign offset to indices to prevent copy. */
+            //-----------------------------------
+            // here, we are being a bit lazy
+            // and realigning the buffer to be
+            // at offset 0. this makes the copy
+            // operations a bit more tangible
+            // later on, but needs to be optimized.
+            //-----------------------------------
             if (offset > 0) {
                 var temp = new byte[count];
                 System.Buffer.BlockCopy(data, offset, temp, 0, count);
                 data = temp;
             }
-
-            /* resize buffer, copy, repack. */
+            //-----------------------------------
+            // if the incoming data exceeds the 
+            // maximum space of this buffer, we 
+            // need to resize the buffer. here,
+            // we calculate a new buffer based
+            // on the resize, and copy the old
+            // and new data into it. Indices
+            // are reset and offsets begin at 0.
+            //-----------------------------------
             var space = (this.capacity - this.length);
             if (count > space) {
+                //------------------------------
+                // calculate new buffer size. 
+                //------------------------------
                 var overflow    = count - space;
                 var newsize     = this.capacity + overflow;
                 var remainder   = newsize % this.resize;
                 if (remainder > 0) {
                     newsize = newsize + (this.resize - remainder);
                 }
-                /* copy data to temp buffer */
+                //------------------------------
+                // copy old data to temp.
+                //------------------------------
                 var temp = new byte[newsize];
                 if (this.head >= this.tail) {
                     var src_0        = this.head;
                     var dst_0        = 0;
                     var count_0      = (this.capacity - this.head);
                     System.Buffer.BlockCopy(this.buffer, src_0, temp, dst_0, count_0);
-
                     var src_1        = 0;
                     var dst_1        = count_0;
                     var count_1      = this.tail;
@@ -133,62 +149,31 @@ namespace Reactor {
                 else {
                     System.Buffer.BlockCopy(this.buffer, this.head, temp, 0, this.length);
                 }
-
-                /* update indices */
+                //------------------------------
+                // update indices.
+                //------------------------------
                 this.buffer   = temp;
                 this.capacity = newsize;
                 this.head     = 0;
                 this.tail     = this.length;
 
-                /* copy data to end of buffer */
+                //------------------------------
+                // copy new data.
+                //------------------------------
                 System.Buffer.BlockCopy(data, 0, this.buffer, this.tail, count);
                 this.length = (this.length + count);
                 this.tail   = (this.tail   + count) % this.capacity;
                 return;
             }
-
-            //-----------------------
-            // no wrap:
-            //     h  -  t
-            // [0, 1, 2, 3, 4]  - wrapped
-            //     h  - t
-            // [0, 1, 2, 3, 4, 5, 6, ........] - unwrapped
-            //-----------------------
-            if (this.tail > this.head) {
-                if (count > space) { // wrapped
-                    var src_0        = 0;
-                    var dst_0        = this.tail;
-                    var count_0      = (this.capacity - this.tail);
-                    System.Buffer.BlockCopy(data, src_0, this.buffer, dst_0, count_0);
-
-                    var src_1        = count_0;
-                    var dst_1        = 0;
-                    var count_1      = count - count_0;
-                    if (count_1 > 0) {
-                        System.Buffer.BlockCopy(data, src_1, this.buffer, dst_1, count_1);
-                    }
-                    this.length = (this.length + count);
-                    this.tail   = (this.tail   + count) % this.capacity;
-                }
-                else { // unwrapped
-                    var src_0        = 0;
-                    var dst_0        = this.tail;
-                    var count_0      = count;
-                    System.Buffer.BlockCopy(data, src_0, this.buffer, dst_0, count_0);
-                    this.length = (this.length + count);
-                    this.tail   = (this.tail   + count) % this.capacity;
-                }
+            var overrun = (count + this.tail) - capacity;
+            if (overrun > 0) {
+                System.Buffer.BlockCopy(data, 0, this.buffer, this.tail, this.capacity - this.tail);
+                System.Buffer.BlockCopy(data, this.capacity - this.tail, this.buffer, 0, count - (this.capacity - this.tail));
+                this.length = (this.length + count);
+                this.tail   = (this.tail   + count) % this.capacity;
             }
-            //-----------------------
-            // no wrap:
-            //  -  t     h  -
-            // [0, 1, 2, 3, 4]
-            //-----------------------
-            else if (this.tail <= this.head) {
-                var src_0        = 0;
-                var dst_0        = this.tail;
-                var count_0      = count;
-                System.Buffer.BlockCopy(data, src_0, this.buffer, dst_0, count_0);
+            else {
+                System.Buffer.BlockCopy(data, 0, this.buffer, this.tail, count);
                 this.length = (this.length + count);
                 this.tail   = (this.tail   + count) % this.capacity;
             }
@@ -312,18 +297,34 @@ namespace Reactor {
         /// <param name="buffer">The buffer to unshift.</param>
         public void Unshift(byte[] data, int offset, int count)
         {
-            /* ignore 0 counts */
+            //-----------------------------
+            // ignore 0 counts.
+            //-----------------------------
             if (count == 0) return;
 
             
-            /* todo: assign offset to indices to prevent copy. */
+            //-----------------------------------
+            // here, we are being a bit lazy
+            // and realigning the buffer to be
+            // at offset 0. this makes the copy
+            // operations a bit more tangible
+            // later on, but needs to be optimized.
+            //-----------------------------------
             if (offset > 0) {
                 var temp = new byte[count];
                 System.Buffer.BlockCopy(data, offset, temp, 0, count);
                 data = temp;
             }
 
-            /* resize buffer, copy, repack. */            
+            //-----------------------------------
+            // if the incoming data exceeds the 
+            // maximum space of this buffer, we 
+            // need to resize the buffer. here,
+            // we calculate a new buffer based
+            // on the resize, and copy the old
+            // and new data into it. Indices
+            // are reset and offsets begin at 0.
+            //-----------------------------------        
             var space = (this.capacity - this.length);
             if (count > space) {
                 var overflow    = count - space;
@@ -332,19 +333,19 @@ namespace Reactor {
                 if (remainder > 0) {
                     newsize = newsize + (this.resize - remainder);
                 }
-
-                /* copy data to front. */
+                //------------------------------------
+                // copy new buffer
+                //------------------------------------
                 var temp = new byte[newsize];
                 System.Buffer.BlockCopy(data, 0, temp, 0, data.Length);
-
-                
-                /* copy buffer to back. */
+                //------------------------------------
+                // copy old buffer
+                //------------------------------------
                 if (this.head >= this.tail) {
                     var src_0        = this.head;
                     var dst_0        = data.Length;
                     var count_0      = (this.capacity - this.head);
                     System.Buffer.BlockCopy(this.buffer, src_0, temp, dst_0, count_0);
-
                     var src_1        = 0;
                     var dst_1        = count_0 + dst_0;
                     var count_1      = this.tail;
@@ -360,54 +361,21 @@ namespace Reactor {
                 this.tail     = (this.length % this.capacity);
                 return;
             }
-
-            //-----------------------
-            // no wrap:
-            //     h  -  t
-            // [0, 1, 2, 3, 4]  - wrapped
-            //                 h  - t
-            // [0, 1, 2, 3, 4, 5, 6, ........] - unwrapped
-            //-----------------------
-            if (this.tail > this.head) {
-                if (count > this.head) { // wrapped
-                    var src_0        = 0;
-                    var dst_0        = this.capacity + ((this.head - count) % this.capacity);
-                    var count_0      = this.capacity - dst_0;
-                    System.Buffer.BlockCopy(data, src_0, this.buffer, dst_0, count_0);
-
-                    var src_1        = count_0;
-                    var dst_1        = 0;
-                    var count_1      = this.head;
-                    if (count_1 > 0) {
-                        System.Buffer.BlockCopy(data, src_1, this.buffer, dst_1, count_1);
-                    }
-                    this.length = (this.length + count);
-                    this.head   = dst_0;
-                }
-                else { // unwrapped
-                    var src_0        = 0;
-                    var dst_0        = this.head - count;
-                    var count_0      = count;
-                    System.Buffer.BlockCopy(data, src_0, this.buffer, dst_0, count_0);
-                    this.length = (this.length + count);
-                    this.head   = (this.head   - count);
-                }
-            }
-            //-----------------------
-            // no wrap:
-            //  -  t     h  -
-            // [0, 1, 2, 3, 4]
-            //-----------------------
-            else if (this.tail <= this.head) {
-                var src_0        = 0;
-                var dst_0        = this.head - count;
-                if(dst_0 < 0) {
-                    dst_0 = this.capacity + dst_0;
-                }
-                var count_0      = count;
-                System.Buffer.BlockCopy(data, src_0, this.buffer, dst_0, count_0);
+            //---------------------------------
+            // copy data
+            //---------------------------------
+            var overrun = (this.head - count);
+            if (overrun < 0) {
+                overrun = -overrun;
+                System.Buffer.BlockCopy(data, 0, this.buffer, this.capacity - overrun, overrun);
+                System.Buffer.BlockCopy(data, overrun, this.buffer, 0, count - overrun);
                 this.length = (this.length + count);
-                this.head   = dst_0;
+                this.head   = this.capacity - overrun;
+            }
+            else {
+                System.Buffer.BlockCopy(data, 0, this.buffer, this.head - count, count);
+                this.length = (this.length + count);
+                this.head   = (this.head   - count);
             }
         }
 
@@ -606,34 +574,35 @@ namespace Reactor {
         /// <param name="count">The number of bytes to read.</param>
         /// <returns></returns>
         public byte[]  Read (int count) {
-
-            /* ignore 0 counts */
+            //----------------------------
+            // ignore counts of 0
+            //----------------------------
             if(count == 0) return new byte[0];
-
-            /* if no data, return empty buffer. */
+            //----------------------------
+            // ignore when length is 0
+            //----------------------------
             if(this.length == 0) return new byte[0];
-
-            /* ensure the count never exceeds the length. */
+            //----------------------------
+            // adjust count to meet the length.
+            //----------------------------
             if (count > this.length) count = this.length;
-
-            /* read buffer. */
-            var dst   = new byte[count];
-            var end   = (this.capacity - this.head);
-            var start = (count - end);
-
-            if (count > end) {
-                System.Buffer.BlockCopy(this.buffer, this.head, dst, 0, end);
-                System.Buffer.BlockCopy(this.buffer, 0,         dst, end, start);
-                this.length = this.length - count;
-                this.head   = start;
-            }
-            else {
-
-                System.Buffer.BlockCopy(this.buffer, this.head, dst, 0, count);
+            //----------------------------
+            // copy data.
+            //----------------------------
+            var data = new byte[count];
+            var overrun = (count + this.head) - capacity;
+            if (overrun > 0) {
+                System.Buffer.BlockCopy(this.buffer, this.head, data, 0, this.capacity - this.head);
+                System.Buffer.BlockCopy(this.buffer, 0, data, this.capacity - this.head, count - (this.capacity - this.head));
                 this.length = (this.length - count);
                 this.head   = (this.head   + count) % this.capacity;
             }
-            return dst;
+            else {
+                System.Buffer.BlockCopy(this.buffer, this.head, data,  0, count);
+                this.length = (this.length - count);
+                this.head   = (this.head   + count) % this.capacity;
+            }
+            return data;
         }
 
         /// <summary>
