@@ -40,6 +40,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="hostname">The host name or ip address to resolve.</param>
         public static Reactor.Async.Future<System.Net.IPAddress[]> GetHostAddresses(string hostname) {
+            if (hostname == "localhost") hostname = "127.0.0.1";
             return new Async.Future<System.Net.IPAddress[]>((resolve, reject) => {
                 try {
                     System.Net.Dns.BeginGetHostAddresses(hostname, result => {

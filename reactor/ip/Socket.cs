@@ -57,7 +57,7 @@ namespace Reactor.IP {
         #endregion
 
         private System.Net.Sockets.Socket                socket;
-        private Reactor.Async.Spool                      spool;
+        private Reactor.Async.Queue                      queue;
         private Reactor.Async.Event<Reactor.IP.Message>  onread;
         private Reactor.Async.Event<System.Exception>    onerror;
         private Reactor.Async.Event                      onend;
@@ -71,7 +71,7 @@ namespace Reactor.IP {
         /// </summary>
         public Socket(int buffersize) {
             this.socket      = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.IP);
-            this.spool       = Reactor.Async.Spool.Create(1);
+            this.queue       = Reactor.Async.Queue.Create(1);
             this.onread      = Reactor.Async.Event.Create<Reactor.IP.Message>();
             this.onerror     = Reactor.Async.Event.Create<System.Exception>();
             this.onend       = Reactor.Async.Event.Create();
@@ -176,13 +176,10 @@ namespace Reactor.IP {
         /// <param name="message"></param>
         public Reactor.Async.Future<int> Send (Reactor.IP.Message message) {
             return new Reactor.Async.Future<int>((resolve, reject) => {
-                this.spool.Run(next => {
-                    this.SendTo(message)
-                        .Then(resolve)
-                        .Error(reject)
-                        .Error(this._Error)
-                        .Finally(next);
-                });
+                this.SendTo(message)
+                    .Then(resolve)
+                    .Error(reject)
+                    .Error(this._Error);
             });
         }
 
@@ -450,23 +447,28 @@ namespace Reactor.IP {
         /// <returns></returns>
         private Reactor.Async.Future<int> SendTo(Reactor.IP.Message message) {
             return new Reactor.Async.Future<int>((resolve, reject) => {
-                try {
-                    var data = message.Buffer.ToArray();
-                    this.socket.BeginSendTo(data, 0, data.Length, SocketFlags.None, message.EndPoint, result => {
-                        Loop.Post(() => {
-                            try {
-                                int sent = socket.EndSendTo(result);
-                                resolve(sent);
-                            }
-                            catch (Exception error) {
-                                reject(error);
-                            }
-                        });
-                    }, null);
-                }
-                catch(Exception error) {
-                    reject(error);
-                }
+                this.queue.Run(next => {
+                    try {
+                        var data = message.Buffer.ToArray();
+                        this.socket.BeginSendTo(data, 0, data.Length, SocketFlags.None, message.EndPoint, result => {
+                            Loop.Post(() => {
+                                try {
+                                    int sent = socket.EndSendTo(result);
+                                    resolve(sent);
+                                    next();
+                                }
+                                catch (Exception error) {
+                                    reject(error);
+                                    next();
+                                }
+                            });
+                        }, null);
+                    }
+                    catch(Exception error) {
+                        reject(error);
+                        next();
+                    }
+                });
             });
         }
 

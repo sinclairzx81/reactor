@@ -45,19 +45,30 @@ namespace Reactor.Tcp {
         /// </summary>
         internal enum State {
             /// <summary>
-            /// A state indicating a paused state.
+            /// The initial state of this stream. A stream
+            /// in a pending state signals that the stream
+			/// is waiting on the caller to issue a read request
+			/// the the underlying resource, by attaching a
+			/// OnRead, OnReadable, or calling Read().
             /// </summary>
-            Paused,
+            Pending,
             /// <summary>
-            /// A state indicating a reading state.
+            /// A stream in a reading state signals that the
+			/// stream is currently requesting data from the
+			/// underlying resource and is waiting on a 
+			/// response.
             /// </summary>
             Reading,
             /// <summary>
-            /// A state indicating a resume state.
+            /// A stream in a paused state will bypass attempts
+			/// to read on the underlying resource. A paused
+			/// stream must be resumed by the caller.
             /// </summary>
-            Resumed,
+            Paused,
             /// <summary>
-            /// A state indicating a ended state.
+            /// Indicates this stream has ended. Streams can end
+			/// by way of reaching the end of the stream, or through
+			/// error.
             /// </summary>
             Ended
         }
@@ -67,11 +78,11 @@ namespace Reactor.Tcp {
         /// </summary>
         internal enum Mode {
             /// <summary>
-            /// Flowing read semantics.
+            /// This stream is using flowing semantics.
             /// </summary>
             Flowing,
             /// <summary>
-            /// Non flowing read semantics.
+            /// This stream is using non-flowing semantics.
             /// </summary>
             NonFlowing
         }
@@ -79,11 +90,11 @@ namespace Reactor.Tcp {
         #endregion
 
         private System.Net.Sockets.Socket             socket;
-        private Reactor.Async.Spool                   spool;
+        private Reactor.Async.Queue                   queue;
         private Reactor.Async.Event                   onconnect;
         private Reactor.Async.Event                   ondrain;
         private Reactor.Async.Event                   onreadable;
-        private Reactor.Async.Event<Reactor.Buffer>   ondata;
+        private Reactor.Async.Event<Reactor.Buffer>   onread;
         private Reactor.Async.Event<Exception>        onerror;
         private Reactor.Async.Event                   onend;
         private Reactor.Streams.Reader                reader;
@@ -100,14 +111,14 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="socket">The socket to bind.</param>
         internal Socket (System.Net.Sockets.Socket socket) {
-            this.spool      = Reactor.Async.Spool.Create(1);
+            this.queue      = Reactor.Async.Queue.Create(1);
             this.onconnect  = Reactor.Async.Event.Create();
             this.ondrain    = Reactor.Async.Event.Create();
             this.onreadable = Reactor.Async.Event.Create();
-            this.ondata     = Reactor.Async.Event.Create<Reactor.Buffer>();
+            this.onread     = Reactor.Async.Event.Create<Reactor.Buffer>();
             this.onerror    = Reactor.Async.Event.Create<Exception>();
             this.onend      = Reactor.Async.Event.Create();
-            this.state      = State.Paused;
+            this.state      = State.Pending;
             this.mode       = Mode.NonFlowing;
             this.socket     = socket;
             var stream      = new NetworkStream(socket);
@@ -122,7 +133,7 @@ namespace Reactor.Tcp {
             this.writer.OnError (this._Error);
             this.writer.OnEnd   (this._End);
             this.onconnect.Emit();
-            this.spool.Resume();
+            this.queue.Resume();
         }
 
         /// <summary>
@@ -131,16 +142,16 @@ namespace Reactor.Tcp {
         /// <param name="endpoint">The endpoint to connect to.</param>
         /// <param name="port">The port to connect to.</param>
         public Socket (System.Net.IPAddress endpoint, int port) {
-            this.spool      = Reactor.Async.Spool.Create(1);
+            this.queue      = Reactor.Async.Queue.Create(1);
             this.onconnect  = Reactor.Async.Event.Create();
             this.ondrain    = Reactor.Async.Event.Create();
             this.onreadable = Reactor.Async.Event.Create();
-            this.ondata     = Reactor.Async.Event.Create<Reactor.Buffer>();
+            this.onread     = Reactor.Async.Event.Create<Reactor.Buffer>();
             this.onerror    = Reactor.Async.Event.Create<Exception>();
             this.onend      = Reactor.Async.Event.Create();
-            this.state      = State.Paused;
+            this.state      = State.Pending;
             this.mode       = Mode.NonFlowing;
-            this.spool.Pause();
+            this.queue.Pause();
             this.Connect(endpoint, port).Then(socket => {
                 this.socket = socket;
                 var stream  = new NetworkStream(socket);
@@ -155,7 +166,7 @@ namespace Reactor.Tcp {
                 this.writer.OnError (this._Error);
                 this.writer.OnEnd   (this._End);
                 this.onconnect.Emit();
-                this.spool.Resume();
+                this.queue.Resume();
             }).Error(this._Error);
         }
 
@@ -165,16 +176,16 @@ namespace Reactor.Tcp {
         /// <param name="endpoint">The endpoint to connect to.</param>
         /// <param name="port">The port to connect to.</param>
         public Socket (string hostname, int port) {
-            this.spool      = Reactor.Async.Spool.Create(1);
+            this.queue      = Reactor.Async.Queue.Create(1);
             this.onconnect  = Reactor.Async.Event.Create();
             this.ondrain    = Reactor.Async.Event.Create();
             this.onreadable = Reactor.Async.Event.Create();
-            this.ondata     = Reactor.Async.Event.Create<Reactor.Buffer>();
+            this.onread     = Reactor.Async.Event.Create<Reactor.Buffer>();
             this.onerror    = Reactor.Async.Event.Create<Exception>();
             this.onend      = Reactor.Async.Event.Create();
-            this.state      = State.Paused;
+            this.state      = State.Pending;
             this.mode       = Mode.NonFlowing;
-            this.spool.Pause();
+            this.queue.Pause();
             this.ResolveHost(hostname).Then(endpoint => {
                 this.Connect(endpoint, port).Then(socket => {
                     this.socket = socket;
@@ -190,7 +201,7 @@ namespace Reactor.Tcp {
                     this.writer.OnError (this._Error);
                     this.writer.OnEnd   (this._End);
                     this.onconnect.Emit();
-                    this.spool.Resume();
+                    this.queue.Resume();
                 }).Error(this._Error);
             }).Error(this._Error);
         }
@@ -232,14 +243,18 @@ namespace Reactor.Tcp {
         }
 
         /// <summary>
-        /// Subscribes this action to the OnReadable event.
+        /// Subscribes this action to the OnReadable event. When a chunk of 
+		/// data can be read from the stream, it will emit a 'readable' event.
+		/// In some cases, listening for a 'readable' event will cause some 
+		/// data to be read into the internal buffer from the underlying 
+		/// system, if it hadn't already.
         /// </summary>
         /// <param name="callback"></param>
         public void OnReadable(Reactor.Action callback) {
-            this.spool.Run(next => {
-                this.mode = Mode.NonFlowing;
-                this.onreadable.On(callback);
-                this.Resume();
+            this.onreadable.On(callback);
+            this.queue.Run(next => {
+                this.mode = Mode.NonFlowing; 
+                this._Read();
                 next();
             });
         }
@@ -249,23 +264,24 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveReadable(Reactor.Action callback) {
-            this.spool.Run(next => {
-                this.onreadable.Remove(callback);
-                next();
-            });
+			this.onreadable.Remove(callback);
         }
 
         /// <summary>
-        /// Subscribes this action to the OnRead event.
+        /// Subscribes this action to the OnRead event. Attaching a data event 
+		/// listener to a stream that has not been explicitly paused will 
+		/// switch the stream into flowing mode. Data will then be passed 
+		/// as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
         public void OnRead (Reactor.Action<Reactor.Buffer> callback) {
-            this.spool.Run(next => {
-                this.mode = Mode.Flowing;
-                this.ondata.On(callback);
-                this.Resume();
-                next();
-            });
+            this.onread.On(callback);
+            if (this.state == State.Pending) {
+                this.queue.Run(next => {
+                    this.Resume();
+                    next();
+                });
+            }
         }
 
         /// <summary>
@@ -273,10 +289,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveRead (Reactor.Action<Reactor.Buffer> callback) {
-            this.spool.Run(next => {
-                this.ondata.Remove(callback);
-                next();
-            });
+            this.onread.Remove(callback);
         }
 
         /// <summary>
@@ -316,20 +329,27 @@ namespace Reactor.Tcp {
         #region Methods
 
         /// <summary>
-        /// Reads bytes from this streams buffer.
+        /// The Read(count) method pulls some data out of the internal buffer 
+		/// and returns it. If there is no data available, then it will return
+		/// a zero length buffer. If the internal buffer is empty, then this 
+        /// method will begin reading from the resource again in non-flowing mode.
         /// </summary>
         /// <param name="count">The number of bytes to read.</param>
         /// <returns></returns>
         public Reactor.Buffer Read(int count) {
-            var subset = this.buffer.Read(count);
-            if (this.buffer.Length == 0) {
-                this.Resume();
+            this.mode = Mode.NonFlowing; 
+            var result = Reactor.Buffer.Create(this.buffer.Read(count));
+            if (this.buffer.Length == 0) {    
+                this._Read();
             }
-            return Reactor.Buffer.Create(subset);            
+            return result;
         }
 
         /// <summary>
-        /// Reads bytes from this streams buffer.
+        /// The Read() method pulls all data out of the internal buffer 
+		/// and returns it. If there is no data available, then it will return
+		/// a zero length buffer. If the internal buffer is empty, then this 
+        /// method will begin reading from the resource again in non-flowing mode.
         /// </summary>
         /// <returns></returns>
         public Reactor.Buffer Read() {
@@ -340,7 +360,7 @@ namespace Reactor.Tcp {
         /// Unshifts this buffer back to this stream.
         /// </summary>
         /// <param name="buffer">The buffer to unshift.</param>
-        public void Unshift(Reactor.Buffer buffer) {
+        public void Unshift (Reactor.Buffer buffer) {
             this.buffer.Unshift(buffer);
         }
 
@@ -349,9 +369,9 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="buffer">The buffer to write.</param>
         /// <param name="callback">A callback to signal when this buffer has been written.</param>
-        public Reactor.Async.Future Write(Reactor.Buffer buffer) {
+        public Reactor.Async.Future Write (Reactor.Buffer buffer) {
             return new Reactor.Async.Future((resolve, reject)=>{
-                this.spool.Run(next => {
+                this.queue.Run(next => {
                     this.writer.Write(buffer)
                                .Then(resolve)
                                .Error(reject)
@@ -364,9 +384,9 @@ namespace Reactor.Tcp {
         /// Flushes this stream.
         /// </summary>
         /// <param name="callback">A callback to signal when this buffer has been flushed.</param>
-        public Reactor.Async.Future Flush() {
+        public Reactor.Async.Future Flush () {
             return new Reactor.Async.Future((resolve, reject)=>{
-                this.spool.Run(next => {
+                this.queue.Run(next => {
                     this.writer.Flush()
                                .Then(resolve)
                                .Error(reject)
@@ -379,9 +399,9 @@ namespace Reactor.Tcp {
         /// Ends this stream.
         /// </summary>
         /// <param name="callback">A callback to signal when this stream has ended.</param>
-        public Reactor.Async.Future End() {
+        public Reactor.Async.Future End () {
             return new Reactor.Async.Future((resolve, reject)=>{
-                this.spool.Run(next => {
+                this.queue.Run(next => {
                     this.writer.End()
                                .Then(resolve)
                                .Error(reject)
@@ -391,18 +411,26 @@ namespace Reactor.Tcp {
         }
 
         /// <summary>
-        /// Pauses this stream.
+        /// Pauses this stream. This method will cause a 
+		/// stream in flowing mode to stop emitting data events, 
+		/// switching out of flowing mode. Any data that becomes 
+		/// available will remain in the internal buffer.
         /// </summary>
         public void Pause() {
+			this.mode  = Mode.NonFlowing;
             this.state = State.Paused;
         }
 
         /// <summary>
-        /// Resumes this stream.
+        /// This method will cause the readable stream to resume emitting data events.
+		/// This method will switch the stream into flowing mode. If you do not want 
+		/// to consume the data from a stream, but you do want to get to its end event, 
+		/// you can call readable.resume() to open the flow of data.
         /// </summary>
         public void Resume() {
-            this.spool.Run(next => {
-                this.state = State.Resumed;
+            this.mode  = Mode.Flowing;
+            this.state = State.Pending;
+            this.queue.Run(next => {
                 this._Read();
                 next();
             });
@@ -1015,8 +1043,17 @@ namespace Reactor.Tcp {
         /// Begins reading from the underlying stream.
         /// </summary>
         private void _Read () {
-            if (this.state == State.Resumed) {
+            if (this.state == State.Pending) {
                 this.state = State.Reading;
+                /* its possible that the stream has
+                 * been unshifted since the last read.
+                 * here, we check the buffer and emit
+                 * anything back prior to requesting
+                 * more data from the resource. */
+                if (this.buffer.Length > 0) {
+                    this.onread.Emit(this.buffer.Clone());
+                    this.buffer.Clear();
+                }
                 this.reader.Read();
             }
         }
@@ -1026,17 +1063,20 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="buffer"></param>
         private void _Data (Reactor.Buffer buffer) {
-            this.state = State.Resumed;
-            switch (this.mode) {
-                case Mode.Flowing:
-                    this.ondata.Emit(buffer);
-                    this._Read();
-                    break;
-                case Mode.NonFlowing:
-                    this.buffer.Write(buffer);
-                    this.onreadable.Emit();
-                    break;
-            } 
+            if (this.state == State.Reading) {
+                this.state = State.Pending;
+                this.buffer.Write(buffer);
+                switch (this.mode) {
+                    case Mode.Flowing:
+                        this.onread.Emit(this.buffer.Clone());
+                        this.buffer.Clear();
+                        this._Read();
+                        break;
+                    case Mode.NonFlowing:
+                        this.onreadable.Emit();
+                        break;
+                } 
+            }
         }
 
         /// <summary>
@@ -1046,6 +1086,7 @@ namespace Reactor.Tcp {
         private void _Error (Exception error) {
             if (this.state != State.Ended) { 
                 this.onerror.Emit(error);
+                this._End();
             }
         }
 
@@ -1060,7 +1101,7 @@ namespace Reactor.Tcp {
                 if (this.poll   != null) this.poll.Clear();
                 if (this.writer != null) this.writer.Dispose();
                 if (this.reader != null) this.reader.Dispose();
-                this.spool.Dispose();
+                this.queue.Dispose();
                 this.onend.Emit();
             }
         }

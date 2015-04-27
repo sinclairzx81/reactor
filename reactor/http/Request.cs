@@ -35,7 +35,7 @@ namespace Reactor.Http {
 
     public class Request : IWritable {
         private Reactor.Tcp.Socket                     socket;
-        private Reactor.Async.Spool                    spool;
+        private Reactor.Async.Queue                    queue;
         private Reactor.Async.Event<IncomingMessage>   onresponse;
         private Reactor.Http.Headers                   headers;
         private Uri                                    uri;
@@ -44,14 +44,14 @@ namespace Reactor.Http {
         private bool                                   header_sent;
 
         public Request(Uri uri) {
-            this.spool          = new Reactor.Async.Spool(1);
+            this.queue          = new Reactor.Async.Queue(1);
             this.onresponse     = new Reactor.Async.Event<IncomingMessage>();
             this.headers        = new Reactor.Http.Headers();
             this.uri            = uri;
             this.method         = "GET";
             this.content_length = 0;
             this.header_sent    = false;
-            this.spool.Pause();
+            this.queue.Pause();
         }
 
 
@@ -101,7 +101,7 @@ namespace Reactor.Http {
                     this.header_sent = true;
                     this.BeginRequest();
                 }
-                this.spool.Run(next => {
+                this.queue.Run(next => {
                     this.socket.Write(buffer)
                                .Then(resolve)
                                .Then(next)
@@ -116,7 +116,7 @@ namespace Reactor.Http {
                     this.header_sent = true;
                     this.BeginRequest();
                 }
-                this.spool.Run(next => {
+                this.queue.Run(next => {
                     this.socket.End()
                                .Then(resolve)
                                .Then(next)
@@ -143,23 +143,19 @@ namespace Reactor.Http {
             headers.Set_Internal("Cache-Control",   "no-cache");
             headers.Set_Internal("Connection",      "keep-alive");
             headers.Set_Internal("Pragma",          "no-cache");
-            headers.Set_Internal("User-Agent",      "Reactor HTTP Client 0.9");
-
-            /* content-length | transfer-encoding */
+            headers.Set_Internal("User-Agent",      "reactor http client");
             if (this.content_length == 0) {
                 headers.Set_Internal("Transfer-Encoding", "chunked");
             }
             else {
                 headers.Set_Internal("Content-Length", content_length.ToString());
             }
-
-            
             /* write: */
             var buffer = Reactor.Buffer.Create(128);
             buffer.Write("{0} HTTP/1.1 {1}\r\n", this.method, this.uri.PathAndQuery);
             buffer.Write(this.headers.ToString());
             this.socket.Write(buffer);
-            this.spool.Resume();
+            this.queue.Resume();
         }
 
         private void BeginRequest() {

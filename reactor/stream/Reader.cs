@@ -39,7 +39,7 @@ namespace Reactor.Streams {
         private Reactor.Async.Event<Reactor.Buffer>   onread;
         private Reactor.Async.Event<Exception>        onerror;
         private Reactor.Async.Event                   onend;
-        private Reactor.Async.Spool                   spool;
+        private Reactor.Async.Queue                   queue;
         private byte[]                                read_buffer;
 
         #region Constructors
@@ -51,7 +51,7 @@ namespace Reactor.Streams {
         /// <param name="buffersize">The read buffer size in bytes.</param>
         public Reader (System.IO.Stream stream, int buffersize) {
             this.stream       = stream;
-            this.spool        = Reactor.Async.Spool.Create(1);
+            this.queue        = Reactor.Async.Queue.Create(1);
             this.onread       = Reactor.Async.Event.Create<Reactor.Buffer>();
             this.onerror      = Reactor.Async.Event.Create<Exception>();
             this.onend        = Reactor.Async.Event.Create();
@@ -118,7 +118,7 @@ namespace Reactor.Streams {
         /// Reads from this stream. Data will be submitted to OnRead handlers.
         /// </summary>
         public void Read() {
-            this.spool.Run(next => {
+            this.queue.Run(next => {
                 try {
                     this.stream.BeginRead(this.read_buffer, 0, this.read_buffer.Length, result => {
                         Loop.Post(() => {
@@ -160,7 +160,7 @@ namespace Reactor.Streams {
         /// Disposes of this reader.
         /// </summary>
         public void Dispose() {
-            this.spool.Dispose();
+            this.queue.Dispose();
             this.stream.Dispose();
             this.read_buffer = null;
         }

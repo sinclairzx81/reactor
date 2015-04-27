@@ -13,7 +13,7 @@ namespace console {
 
     class Program {
 
-        static void Collection () {
+        static void Collect () {
             Reactor.Fibers.Fiber.Create(() => {
                 while (true) {
                     Console.ReadLine();
@@ -21,6 +21,20 @@ namespace console {
                     GC.Collect();
                 }
             });
+        }
+
+        static void GenerateTestFile() {
+            var writer = Reactor.File.Writer.Create("c:/input/input.txt", FileMode.OpenOrCreate | FileMode.Truncate);
+            for (int i = 0; i < 100000; i++) {
+                Console.WriteLine("write " + i);
+                writer.Write("line {0}: this is a test line. this is a test line.\n", i);
+            }
+            writer.End();
+            var start = DateTime.Now;
+            writer.OnError(error => Console.WriteLine(error));
+            writer.OnEnd(() => Console.WriteLine("file finished"));
+            writer.OnEnd(() => Console.WriteLine(DateTime.Now - start));
+
         }
 
         static void Compare (string src, string dst) {
@@ -51,6 +65,15 @@ namespace console {
             }).Error(Console.WriteLine);
         }
 
+        static void StunTest() {
+
+            Reactor.Udp.Stun.Hole
+                .Punch(Reactor.Udp.Socket.Create().Bind(), "stun1.l.google.com:19302")
+                .Then (result => {
+                    Console.WriteLine(result);
+                });
+        }
+
         static void WebTest () {
             var server = Reactor.Web.Server.Create();
             server.Get("/", context => {
@@ -59,21 +82,31 @@ namespace console {
                 context.Response.End();
             });
             server.Get("/post", context =>{
-                context.Response.ContentType = "text.html";
+                Console.WriteLine("GET: /post");
+                context.Response.ContentType = "text/html";
                 var read = Reactor.File.Reader.Create("c:/input/input.html");
                 read.Pipe(context.Response);                
             });
-            server.Post("/post", context =>{
-                var writer = Reactor.File.Writer.Create("c:/input/output_11.exe");
-                context.Request.Pipe(writer);
-                context.Request.OnRead(data => Console.WriteLine(data.Length));
+            int count = 0;
+            server.Post("/post", context => {
+                Console.WriteLine("POST: /post");
+                context.Request.OnRead(data =>{
+                    count+=data.Length;
+                    Console.WriteLine(count);
+                });
                 context.Request.OnEnd(() => {
                     context.Response.Write("got it");
                     context.Response.End();
                 });
-                writer.OnEnd(() => {
-                    Compare("c:/input/input.exe", "c:/input/output_11.exe");
-                });
+                //var writer = Reactor.File.Writer.Create("c:/input/output_11.exe");
+                //context.Request.Pipe(writer);
+                //context.Request.OnEnd(() => {
+                //    context.Response.Write("got it");
+                //    context.Response.End();
+                //});
+                //writer.OnEnd(() => {
+                //    Console.WriteLine("writer ended");
+                //});
             });
             server.Get("/image", context => {
                 context.Response.ContentType = "image/png";
@@ -109,7 +142,7 @@ namespace console {
         }
 
         static void StreamTestServer(string filename) {
-            Reactor.Tcp.Server.Create(socket => {
+            var server = Reactor.Tcp.Server.Create(socket => {
                 var reader = Reactor.File.Reader.Create(filename);
                 reader.Pipe(socket);
                 reader.OnRead  (data  => Console.WriteLine("server: reader: " + data.Length));
@@ -118,13 +151,24 @@ namespace console {
                 socket.OnEnd   (()    => Console.WriteLine("server: socket: ended"));
                 socket.OnDrain (()    => Console.WriteLine("server: socket: drained"));
                 socket.OnError (error  => Console.WriteLine("server: socket: " + error));
-            }).Listen(5001);
+            }); server.Listen(5001);
+            
+            
+
+            
         }
 
         static void StreamTestClient(string filename, Reactor.Action complete) {
             var socket = Reactor.Tcp.Socket.Create("localhost", 5001);
             var writer = Reactor.File.Writer.Create(filename, FileMode.Truncate);
+            //socket.Pause();
             socket.Pipe(writer);
+            //Console.WriteLine("pausing for 5");
+            //Reactor.Timeout.Create(() => {
+            //    socket.Resume();
+            //}, 1);
+
+
             int received = 0;
             socket.OnRead  (data  => {received += data.Length; });
             socket.OnRead  (data  => Console.WriteLine("client: socket: " + received + " - " + data.Length));
@@ -148,16 +192,35 @@ namespace console {
         static void Main(string[] args) {
 
             Reactor.Loop.Start();
+            //GenerateTestFile();
+            ///CopyTest();
+            //StreamTest();
+            WebTest();
 
-            var p = Reactor.Process.Process.Create("node",  "c:/input/app.js");
+            var queue = Reactor.Async.Queue.Create(1);
+            
+            
 
-            p.Out.OnRead(data => Console.WriteLine(data));
-            Reactor.Interval.Create(() => {
-                p.In.Write("hello");
-                p.In.Flush();
-            });
+            //var file = Reactor.File.Reader.Create("c:/input/input.txt");
+            //var count = 0;
+            //var received = 0;
+            //file.OnReadable(() => {
+            //    Console.WriteLine("data");
+            //    var b = file.Read();
+            //    received += b.Length;
+                
+            //    Console.WriteLine(b.Length);
+                
+                
+            //    if (count < 1) { file.Unshift("1"); count++;}
+            //    //file.Read(1);
+                
+            //});
+            //file.OnEnd(() => Console.WriteLine("end"));
+            //file.OnEnd(() => Console.WriteLine(received));
+            
+            
 
-            p.Error.OnRead(data => Console.WriteLine(data));
         }
     }
 }

@@ -33,15 +33,26 @@ using System.Collections.Generic;
 namespace Reactor.Async {
 
     /// <summary>
-    /// Reactor Spool. Allows users to queue asynchronous operations with
-    /// a user defined level of concurrency.
+    /// Async Queue allows callers to queue asynchronous 
+    /// operations with a user defined level of concurrency.
+    /// Useful when needing to control throughput on a given
+    /// resource.
     /// </summary>
-    public class Spool : IDisposable {
+    /// <example><![CDATA[
+    /// var queue = Reactor.Async.Queue(1);
+    /// queue.Run(next => {
+    ///     do_something_async(() => {
+    ///         next();
+    ///     });
+    /// });
+    /// ]]>
+    /// </example>
+    public class Queue : IDisposable {
 
-        private Queue<Reactor.Action<Reactor.Action>> queue;
-        private int                                   concurrency;
-        private int                                   running;
-        private bool                                  paused;
+        private Reactor.ConcurrentQueue<Reactor.Action<Reactor.Action>> queue;
+        private int                                                     concurrency;
+        private int                                                     running;
+        private bool                                                    paused;
 
         #region Constructors
 
@@ -49,14 +60,10 @@ namespace Reactor.Async {
         /// Creates a new spool.
         /// </summary>
         /// <param name="concurrency"></param>
-        public Spool(int concurrency) {
-
-            this.queue       = new Queue<Reactor.Action<Reactor.Action>>();
-
+        public Queue(int concurrency) {
+            this.queue       = new Reactor.ConcurrentQueue<Reactor.Action<Reactor.Action>>();
             this.concurrency = concurrency;
-
             this.running     = 0;
-
             this.paused      = false;
         }
 
@@ -82,9 +89,10 @@ namespace Reactor.Async {
         public void Run(Action<Action> operation) {
             this.queue.Enqueue(operation);
             if (!this.paused) {
-                this._Process();
+                this.Process();
             }
         }
+        
         /// <summary>
         /// Pauses the processing of this queue.
         /// </summary>
@@ -97,27 +105,32 @@ namespace Reactor.Async {
         /// </summary>
         public void Resume() {
             this.paused = false;
-            this._Process();
+            this.Process();
         }
 
         #endregion
 
-        #region Internals
+        #region Machine
 
         /// <summary>
         /// Process a item from the queue recursively.
         /// </summary>
-        private void _Process() {
+        private void Process() {
             if (this.queue.Count > 0) {
                 if (this.running < this.concurrency) {
-                    var operation = this.queue.Dequeue();
-                    this.running += 1;
-                    operation(() => {
-                        this.running -= 1;
-                        if (!this.paused) {
-                            this._Process();
-                        }
-                    });
+                    Action<Action> operation = null;
+                    if (this.queue.TryDequeue(out operation)) {
+                        this.running += 1;
+                        operation(() => {
+                            this.running -= 1;
+                            if (!this.paused) {
+                                this.Process();
+                            }
+                        });
+                    }
+                    else {
+                        this.Process();
+                    }
                 }
             }
         }
@@ -143,16 +156,16 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="concurrency"></param>
         /// <returns></returns>
-        public static Spool Create(int concurrency) {
-            return new Spool(concurrency);
+        public static Queue Create(int concurrency) {
+            return new Queue(concurrency);
         }
 
         /// <summary>
         /// Creates a new spool with a concurrency of 1.
         /// </summary>
         /// <returns></returns>
-        public static Spool Create() {
-            return new Spool(1);
+        public static Queue Create() {
+            return new Queue(1);
         }
 
         #endregion

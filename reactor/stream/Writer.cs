@@ -35,7 +35,7 @@ namespace Reactor.Streams {
     /// </summary>
     internal class Writer : IDisposable {
         private System.IO.Stream                 stream;
-        private Reactor.Async.Spool              spool;
+        private Reactor.Async.Queue              queue;
         private Reactor.Async.Event              ondrain;
         private Reactor.Async.Event<Exception>   onerror;
         private Reactor.Async.Event              onend;
@@ -48,7 +48,7 @@ namespace Reactor.Streams {
         /// <param name="stream">The stream to write to.</param>
         public Writer(System.IO.Stream stream) {
             this.stream  = stream;
-            this.spool   = Reactor.Async.Spool.Create(1);
+            this.queue   = Reactor.Async.Queue.Create(1);
             this.ondrain = Reactor.Async.Event.Create();
             this.onerror = Reactor.Async.Event.Create<Exception>();
             this.onend   = Reactor.Async.Event.Create();
@@ -109,7 +109,7 @@ namespace Reactor.Streams {
         #endregion
 
         #region Methods
-        
+    
         /// <summary>
         /// Writes this buffer to this stream.
         /// </summary>
@@ -118,7 +118,7 @@ namespace Reactor.Streams {
         public Reactor.Async.Future Write (Reactor.Buffer buffer) {
             var clone = buffer.ToArray();
             return new Reactor.Async.Future((resolve, reject) => {
-                this.spool.Run(next => {
+                this.queue.Run(next => {
                     try {
                         this.stream.BeginWrite(clone, 0, clone.Length, result => {
                             Loop.Post(() => {
@@ -155,7 +155,7 @@ namespace Reactor.Streams {
         /// <param name="callback">A action called once the stream has been flushed.</param>
         public Reactor.Async.Future Flush () {
             return new Reactor.Async.Future((resolve, reject) => {
-                this.spool.Run(next => {
+                this.queue.Run(next => {
                     try {
                         this.stream.Flush();
                         resolve();
@@ -177,8 +177,8 @@ namespace Reactor.Streams {
         /// </summary>
         /// <param name="callback">A action called once the stream has been ended.</param>
         public Reactor.Async.Future End () {
-            return new Reactor.Async.Future((resolve, reject) => {
-                this.spool.Run(next => {
+            return new Reactor.Async.Future((resolve, reject) => {  
+                this.queue.Run(next => {
                     try {
                         this.stream.Dispose();
                         this.onend.Emit();
@@ -193,7 +193,7 @@ namespace Reactor.Streams {
                         reject(error);
                         next();
                     }
-                });            
+                });
             });
         }
 
@@ -205,7 +205,7 @@ namespace Reactor.Streams {
         /// Disposes of this writer.
         /// </summary>
         public void Dispose() {
-            this.spool.Dispose();
+            this.queue.Dispose();
             this.stream.Dispose();
         }
 

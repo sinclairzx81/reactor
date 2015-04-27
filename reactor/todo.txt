@@ -1,4 +1,7 @@
-﻿# consider mapping.
+﻿# there is a wrapping issue on the buffer, need to 
+  compute indices better than i am.
+
+# 
 
 # conflict between IReadable IWriteable onend. consider
   not using "End" as a means of closing readstreams.

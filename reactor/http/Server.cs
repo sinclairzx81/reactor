@@ -102,7 +102,7 @@ namespace Reactor.Http {
             var response = new Reactor.Http.ServerResponse  (socket);
             request.BeginRequest().Then(() => {
                 var context  = new Reactor.Http.Context(request, response);
-                this.oncontext.Emit(context);                
+                this.oncontext.Emit(context);
             }).Error(error => {
                 response.StatusCode = 400;
                 response.StatusDescription = "Bad Request";

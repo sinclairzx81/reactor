@@ -38,7 +38,6 @@ namespace Reactor.Http {
     /// </summary>
     public class IncomingMessage : Reactor.IReadable {
         private Reactor.Tcp.Socket                  socket;
-        private Reactor.Async.Event                 onready;
         private Reactor.Async.Event                 onreadable;
         private Reactor.Async.Event<Reactor.Buffer> onread;
         private Reactor.Async.Event<Exception>      onerror;
@@ -61,7 +60,6 @@ namespace Reactor.Http {
 
         internal IncomingMessage(Reactor.Tcp.Socket socket) {
             this.socket          = socket;
-            this.onready         = new Reactor.Async.Event();
             this.onreadable      = new Reactor.Async.Event();
             this.onread          = new Reactor.Async.Event<Reactor.Buffer>();
             this.onerror         = new Reactor.Async.Event<Exception>();
@@ -193,14 +191,7 @@ namespace Reactor.Http {
 
         #region Events
 
-        public void OnReady (Reactor.Action callback) {
-            this.onready.On(callback);
-        }
-
-        public void OnReadable (Reactor.Action callback) {
-            this.onreadable.On(callback);
-            this.socket.OnReadable(this.onreadable.Emit);
-        }
+        
 
         public Reactor.Buffer Read () {
             return this.socket.Read();
@@ -210,36 +201,32 @@ namespace Reactor.Http {
             return this.socket.Read(count);
         }
 
-        public void Unshift (Reactor.Buffer buffer) {
-            this.socket.Unshift(buffer);
-        }
 
+        public void OnReadable (Reactor.Action callback) {
+            this.onreadable.On(callback);
+
+        }
         public void OnRead (Reactor.Action<Reactor.Buffer> callback) {
             this.onread.On(callback);
-            Loop.Post(() => this.socket.OnRead(this._Data));
+            this.socket.Resume();
+        }
+        public void RemoveRead (Reactor.Action<Reactor.Buffer> callback) {
+            this.onread.Remove(callback);
         }
 
         public void OnError (Reactor.Action<Exception> callback) {
             this.onerror.On(callback);
-            Loop.Post(() => this.socket.OnError(this._Error) );
         }
 
         public void OnEnd (Reactor.Action callback) {
             this.onend.On(callback);
-            Loop.Post(() => this.socket.OnEnd(this._End));
-        }
-
-        public void RemoveReady (Reactor.Action callback) {
-            this.onready.Remove(callback);
         }
 
         public void RemoveReadable (Reactor.Action callback) {
             this.onreadable.On(callback);
         }
 
-        public void RemoveRead (Reactor.Action<Reactor.Buffer> callback) {
-            this.onread.Remove(callback);
-        }
+
 
         public void RemoveError (Reactor.Action<Exception> callback) {
             this.onerror.Remove(callback);
@@ -249,13 +236,19 @@ namespace Reactor.Http {
             this.onend.Remove(callback);
         }
 
-        public void Pause () {
+        #endregion
 
+        #region Methods
+
+        public void Unshift (Reactor.Buffer buffer) {
+            this.socket.Unshift(buffer);
+        }
+
+        public void Pause () {
             this.socket.Pause();
         }
 
         public void Resume () {
-
             this.socket.Resume();
         }
 
@@ -543,8 +536,24 @@ namespace Reactor.Http {
                         this.ReadHeaders().Then(() => {
                             this.ReadUrl().Then(() => {
                                 this.ReadQueryString().Then(() => {
-                                    this.socket.Unshift(unconsumed);
+                                    /* once we have processed the request
+                                     * we need to reset the socket. The
+                                     * following sets received count 
+                                     * to zero, unshifts any unconsumed
+                                     * data from the buffer, and binds 
+                                     * the socket to local listeners. 
+                                     * 
+                                     * At this point, the socket is in
+                                     * a paused state. ideally, we need
+                                     * the socket in a pending state so
+                                     * the caller can 'resume' processing
+                                     * in a typical fashion.
+                                     * */
                                     this.received = 0;
+                                    this.socket.Unshift (unconsumed);
+                                    this.socket.OnRead  (this._Read);
+                                    this.socket.OnError (this._Error);
+                                    this.socket.OnEnd   (this._End);
                                     resolve();
                                 }).Error(reject);
                             }).Error(reject);
@@ -553,6 +562,8 @@ namespace Reactor.Http {
                 }; this.socket.OnRead(onread);
             });
         }
+
+        #endregion
 
         /// <summary>
         /// Handles errors on this stream.
@@ -572,7 +583,6 @@ namespace Reactor.Http {
             if (!this.ended) {
                 this.ended = true;
                 this.onend.Emit();
-                this.onready.Dispose();
                 this.onreadable.Dispose();
                 this.onread.Dispose();
                 this.onerror.Dispose();
@@ -584,9 +594,16 @@ namespace Reactor.Http {
         /// Receives data on this stream.
         /// </summary>
         /// <param name="buffer"></param>
-        private void _Data (Reactor.Buffer buffer) {
+        private void _Read (Reactor.Buffer buffer) {
+            this.received += buffer.Length;
+            Console.WriteLine("_read: {0} - {1} - {2} - {3}", 
+                this.received, this.contentLength, 
+                this.received < this.contentLength ? "less" : "greater",
+                this.contentLength - this.received);
+            //Console.Write("[");    
+            //Console.Write(buffer);
+            //Console.Write("]");    
             if (!this.ended) {
-                this.received += buffer.Length;
                 //-------------------------------------
                 // content-length:
                 //-------------------------------------
@@ -606,7 +623,5 @@ namespace Reactor.Http {
                 // TODO
             }
         }
-
-        #endregion
     }
 }
