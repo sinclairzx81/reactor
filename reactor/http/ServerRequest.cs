@@ -750,21 +750,7 @@ namespace Reactor.Http {
                         this.ReadHeaders().Then(() => {
                             this.ReadUrl().Then(() => {
                                 this.ReadQueryString().Then(() => {
-                                    /* once we have processed the request
-                                     * we need to reset the socket. The
-                                     * following sets 'this' received count 
-                                     * to zero, unshifts any unconsumed
-                                     * data from the buffer, and binds 
-                                     * the socket to local listeners. 
-                                     * 
-                                     * At this point, the socket is in
-                                     * a paused state. ideally, we need
-                                     * the socket in a pending state so
-                                     * the caller can 'resume' processing
-                                     * in a typical fashion.
-                                     * */
                                     this.buffer.Write(unconsumed);
-                                    this.received = unconsumed.Length;
                                     this.socket.OnError(this._Error);
                                     this.socket.OnEnd(this._End);
                                     resolve();
@@ -802,8 +788,7 @@ namespace Reactor.Http {
                 if (this.buffer.Length > 0) {
                     var clone = this.buffer.Clone();
                     this.buffer.Clear();
-                    this.onread.Emit(clone);
-                    this._Data(this.buffer);
+                    this._Data(clone);
                 }
                 /* here, we handle the case where
                  * the caller is attempting to read a 

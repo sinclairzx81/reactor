@@ -1157,7 +1157,6 @@ namespace Reactor.Tls {
                 if (this.buffer.Length > 0) {
                     var clone = this.buffer.Clone();
                     this.buffer.Clear();
-                    this.onread.Emit(clone);
                     this._Data(clone);
                 }
                 else {

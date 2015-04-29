@@ -1,5 +1,33 @@
-﻿using System;
-using System.Collections.Generic;
+﻿/*--------------------------------------------------------------------------
+
+Reactor
+
+The MIT License (MIT)
+
+Copyright (c) 2015 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+---------------------------------------------------------------------------*/
+
+
+using System;
 using System.Globalization;
 using System.Net;
 using System.Text;
@@ -268,7 +296,7 @@ namespace Reactor.Http
         /// transition into a pending state prior to reading from the resource.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnceReadable(Reactor.Action callback) {
+        public void OnceReadable (Reactor.Action callback) {
             this.onreadable.Once(callback);
             this.mode = Mode.NonFlowing;
             if (this.state == State.Paused) {
@@ -281,7 +309,7 @@ namespace Reactor.Http
         /// Unsubscribes this action from the 'readable' event.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveReadable(Reactor.Action callback) {
+        public void RemoveReadable (Reactor.Action callback) {
 			this.onreadable.Remove(callback);
         }
 
@@ -584,6 +612,7 @@ namespace Reactor.Http
                 parser.OnEnd       (()      => {
                     // this needs fixing...
                     unconsumed = parser.Unconsumed();
+                    Console.WriteLine("asd");
                 });
                 parser.Begin();
                 if(parse_error != null) throw parse_error;
@@ -649,21 +678,7 @@ namespace Reactor.Http
                     this.socket.RemoveRead(onread);
                     this.ReadProtocol(buffer).Then(unconsumed => {
                         this.ReadHeaders().Then(() => {
-                            /* once we have processed the request
-                            * we need to reset the socket. The
-                            * following sets 'this' received count 
-                            * to zero, unshifts any unconsumed
-                            * data from the buffer, and binds 
-                            * the socket to local listeners. 
-                            * 
-                            * At this point, the socket is in
-                            * a paused state. ideally, we need
-                            * the socket in a pending state so
-                            * the caller can 'resume' processing
-                            * in a typical fashion.
-                            * */
                             this.buffer.Write(unconsumed);
-                            this.received = unconsumed.Length;
                             this.socket.OnError(this._Error);
                             this.socket.OnEnd(this._End);
                             resolve();
@@ -699,8 +714,7 @@ namespace Reactor.Http
                 if (this.buffer.Length > 0) {
                     var clone = this.buffer.Clone();
                     this.buffer.Clear();
-                    this.onread.Emit(clone);
-                    this._Data(this.buffer);
+                    this._Data(clone);
                 }
                 /* here, we handle the case where
                  * the caller is attempting to read a 
@@ -709,7 +723,8 @@ namespace Reactor.Http
                  * end till next loop to give the caller
                  * enough time to attach listeners.
                  */
-                else if (this.received >= this.contentLength) {
+                else if (this.received >= this.contentLength &&
+                         this.TransferEncoding != "chunked") {
                     Loop.Post(this._End);
                 }
                 /* here, we make a actual request on the
@@ -748,6 +763,11 @@ namespace Reactor.Http
                         buffer = buffer.Slice(0, length);
                         ended  = true;
                     }
+                }
+
+                if (this.TransferEncoding == "chunked") {
+                    // todo: parse content type chunked.
+                    // we need a protocol parser.
                 }
 
                 this.buffer.Write(buffer);

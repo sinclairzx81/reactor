@@ -545,7 +545,7 @@ namespace Reactor {
                 buffer.encoding = this.encoding;
                 buffer.buffer   = this.buffer;
                 buffer.capacity = this.capacity;
-                buffer.length   = this.length;
+                buffer.length   = 0;
                 buffer.head     = this.head;
                 buffer.tail     = this.head;
                 return buffer;

@@ -114,52 +114,52 @@ namespace Reactor.Web
             return this.router.Use(middleware);
         }
 
-        public Router Get(string pattern, Reactor.Action<Context> handler)
+        public Router Get(string pattern, Reactor.Action<Reactor.Web.Context> handler)
         {
             return this.router.Get(pattern, handler);
         }
 
-        public Router Post(string pattern, Reactor.Action<Context> handler)
+        public Router Post(string pattern, Reactor.Action<Reactor.Web.Context> handler)
         {
             return this.router.Post(pattern, handler);
         }
 
-        public Router Put(string pattern, Reactor.Action<Context> handler)
+        public Router Put(string pattern, Reactor.Action<Reactor.Web.Context> handler)
         {
             return this.router.Put(pattern, handler);
         }
 
-        public Router Delete(string pattern, Reactor.Action<Context> handler)
+        public Router Delete(string pattern, Reactor.Action<Reactor.Web.Context> handler)
         {
             return this.router.Delete(pattern, handler);
         }
 
-        public Router Options(string pattern, Reactor.Action<Context> handler)
+        public Router Options(string pattern, Reactor.Action<Reactor.Web.Context> handler)
         {
             return this.router.Options(pattern, handler);
         }
 
-        public Router Get(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Context> handler)
+        public Router Get(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Reactor.Web.Context> handler)
         {
             return this.router.Get(pattern, middleware, handler);
         }
 
-        public Router Post(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Context> handler)
+        public Router Post(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Reactor.Web.Context> handler)
         {
             return this.router.Post(pattern, middleware, handler);
         }
 
-        public Router Put(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Context> handler)
+        public Router Put(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Reactor.Web.Context> handler)
         {
             return this.router.Put(pattern, middleware, handler);
         }
 
-        public Router Delete(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Context> handler)
+        public Router Delete(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Reactor.Web.Context> handler)
         {
             return this.router.Delete(pattern, middleware, handler);
         }
 
-        public Router Options(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Context> handler)
+        public Router Options(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Reactor.Web.Context> handler)
         {
             return this.router.Options(pattern, middleware, handler);
         }

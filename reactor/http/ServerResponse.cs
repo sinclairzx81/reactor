@@ -176,7 +176,7 @@ namespace Reactor.Http {
                 this._WriteHeaders();
             }
             //-----------------------------------
-            // chunked
+            // transfer encoding chunked
             //-----------------------------------
             if (this.content_length == 0) {
                 socket.Write(String.Format("{0:x}\r\n", buffer.Length));
