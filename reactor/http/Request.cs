@@ -173,6 +173,21 @@ namespace Reactor.Http {
             });
         }
 
+        /// <summary>
+        /// Forces buffering of all writes. Buffered data will be 
+        /// flushed either at .Uncork() or at .End() call.
+        /// </summary>
+        public void Cork() {
+            this.socket.Cork();
+        }
+
+        /// <summary>
+        /// Flush all data, buffered since .Cork() call.
+        /// </summary>
+        public void Uncork() {
+             this.socket.Uncork();
+        }
+
         #endregion
 
         #region Internals
@@ -182,27 +197,29 @@ namespace Reactor.Http {
         /// </summary>
         private Reactor.Async.Future WriteHeaders () {
             return new Reactor.Async.Future((resolve, reject) => {
-                headers["Host"]       = this.uri.DnsSafeHost + this.uri.Port.ToString();
+                headers["Host"]       = this.uri.DnsSafeHost;
                 headers["Connection"] = this.connection;
                 var buffer = Reactor.Buffer.Create(128);
                 buffer.Write("{0} {1} HTTP/1.1\r\n", this.method, this.uri.PathAndQuery);
                 buffer.Write(this.headers.ToString());
+                Console.WriteLine(buffer);
                 this.socket.Write(buffer).Then(resolve).Error(reject);
             });
         }
 
         private Reactor.Async.Future Begin() {
-            /* if this request is already 
-             * started, then resolve immediately
-             */
             if(this.started) {
-                return new Reactor.Async.Future((resolve, reject) => resolve());
+                return new Reactor.Async.Future
+                    ((resolve, reject) => resolve());
             }
             return new Reactor.Async.Future((resolve, reject) => {
                 this.socket = Reactor.Tcp.Socket.Create(this.uri.DnsSafeHost, this.uri.Port);
                 this.WriteHeaders().Then(() => {
+                    /* we emit a http response as soon as we
+                     * have successfully written the http headers
+                     */
                     var response = new Reactor.Http.Response(this.socket);
-                    response.Begin().Then(() =>{
+                    response.Begin().Then(() => {
                         this.onread.Emit(response);
                         this.started = true;
                     }).Error(reject);

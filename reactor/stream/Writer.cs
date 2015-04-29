@@ -109,7 +109,7 @@ namespace Reactor.Streams {
         #endregion
 
         #region Methods
-    
+        
         /// <summary>
         /// Writes this buffer to this stream.
         /// </summary>
@@ -177,6 +177,7 @@ namespace Reactor.Streams {
         /// </summary>
         /// <param name="callback">A action called once the stream has been ended.</param>
         public Reactor.Async.Future End () {
+            this.Uncork();
             return new Reactor.Async.Future((resolve, reject) => {  
                 this.queue.Run(next => {
                     try {
@@ -195,6 +196,21 @@ namespace Reactor.Streams {
                     }
                 });
             });
+        }
+
+        /// <summary>
+        /// Forces buffering of all writes. Buffered data will be 
+        /// flushed either at .Uncork() or at .End() call.
+        /// </summary>
+        public void Cork() {
+            this.queue.Pause();
+        }
+
+        /// <summary>
+        /// Flush all data, buffered since .Cork() call.
+        /// </summary>
+        public void Uncork() {
+            this.queue.Resume();
         }
 
         #endregion

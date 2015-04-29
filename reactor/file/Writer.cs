@@ -157,6 +157,22 @@ namespace Reactor.File {
             return this.writer.End();
         }
 
+        /// <summary>
+        /// Forces buffering of all writes. Buffered data will be 
+        /// flushed either at .Uncork() or at .End() call.
+        /// </summary>
+        public void Cork() {
+            this.writer.Cork();
+        }
+
+        /// <summary>
+        /// Flush all data, buffered since .Cork() call.
+        /// </summary>
+        public void Uncork() {
+             this.writer.Uncork();
+        }
+
+
         #endregion
 
         #region Buffer

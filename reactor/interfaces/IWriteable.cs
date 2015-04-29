@@ -102,5 +102,16 @@ namespace Reactor
         /// </summary>
         /// <returns></returns>
         Reactor.Async.Future End ();
+
+        /// <summary>
+        /// Forces buffering of all writes. Buffered data will be 
+        /// flushed either at .Uncork() or at .End() call.
+        /// </summary>
+        void Cork();
+
+        /// <summary>
+        /// Flush all data, buffered since .Cork() call.
+        /// </summary>
+        void Uncork();
     }
 }

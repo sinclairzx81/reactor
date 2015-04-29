@@ -170,6 +170,12 @@ namespace Reactor.Http {
 
         #region IWritable
 
+        /// <summary>
+        /// Writes this buffer to the stream. This method returns a Reactor.Future
+        /// which resolves once this buffer has been written.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <returns></returns>
         public Reactor.Async.Future Write (Reactor.Buffer buffer) {
             if (!this.header_sent) {
                 this.header_sent = true;
@@ -186,6 +192,11 @@ namespace Reactor.Http {
             return this.socket.Write(buffer);
         }
 
+        /// <summary>
+        /// Flushes this stream. This method returns a Reactor.Future which
+        /// resolves once the stream has been flushed.
+        /// </summary>
+        /// <returns></returns>
         public Reactor.Async.Future Flush() {
             if (!this.header_sent) {
                 this.header_sent = true;
@@ -194,6 +205,11 @@ namespace Reactor.Http {
             return this.socket.Flush();
         }
 
+        /// <summary>
+        /// Ends and disposes of the underlying resource. This method returns
+        /// a Reactor.Future which resolves once this stream has been ended.
+        /// </summary>
+        /// <returns></returns>
         public Reactor.Async.Future End () {
             if (!this.header_sent) {
                 this.header_sent = true;
@@ -207,6 +223,21 @@ namespace Reactor.Http {
                 this.socket.Write("\r\n");
             }
             return this.socket.End();
+        }
+
+        /// <summary>
+        /// Forces buffering of all writes. Buffered data will be 
+        /// flushed either at .Uncork() or at .End() call.
+        /// </summary>
+        public void Cork() {
+            this.socket.Cork();
+        }
+
+        /// <summary>
+        /// Flush all data, buffered since .Cork() call.
+        /// </summary>
+        public void Uncork() {
+             this.socket.Uncork();
         }
 
         public void OnError     (Reactor.Action<Exception> callback)

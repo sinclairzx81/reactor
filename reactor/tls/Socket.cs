@@ -105,6 +105,7 @@ namespace Reactor.Tls {
         private Reactor.Interval                      poll;
         private State                                 state;
         private Mode                                  mode;
+        private bool                                  corked;
         
         #region Constructors
 
@@ -122,6 +123,7 @@ namespace Reactor.Tls {
             this.onend      = Reactor.Async.Event.Create();
             this.state      = State.Pending;
             this.mode       = Mode.NonFlowing;
+            this.corked     = false;
             this.socket     = socket;
             this.reader     = Reactor.Streams.Reader.Create(stream);
             this.writer     = Reactor.Streams.Writer.Create(stream);
@@ -153,6 +155,7 @@ namespace Reactor.Tls {
             this.onend      = Reactor.Async.Event.Create();
             this.state      = State.Pending;
             this.mode       = Mode.NonFlowing;
+            this.corked     = false;
             this.queue.Pause();
             this.Connect(endpoint, port).Then(socket => {
                 this.socket = socket;
@@ -168,6 +171,7 @@ namespace Reactor.Tls {
                     this.writer.OnDrain (this._Drain);
                     this.writer.OnError (this._Error);
                     this.writer.OnEnd   (this._End);
+                    if(this.corked) this.Cork();
                     this.onconnect.Emit();
                     this.queue.Resume();
                 }).Error(this._Error);
@@ -190,6 +194,7 @@ namespace Reactor.Tls {
             this.onend      = Reactor.Async.Event.Create();
             this.state      = State.Pending;
             this.mode       = Mode.NonFlowing;
+            this.corked     = false;
             this.queue.Pause();
             this.ResolveHost(hostname).Then(endpoint => {
                 this.Connect(endpoint, port).Then(socket => {
@@ -206,6 +211,7 @@ namespace Reactor.Tls {
                         this.writer.OnDrain (this._Drain);
                         this.writer.OnError (this._Error);
                         this.writer.OnEnd   (this._End);
+                        if(this.corked) this.Cork();
                         this.onconnect.Emit();
                         this.queue.Resume();
                     }).Error(this._Error);
@@ -465,6 +471,7 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="callback">A callback to signal when this stream has ended.</param>
         public Reactor.Async.Future End () {
+            this.Uncork();
             return new Reactor.Async.Future((resolve, reject)=>{
                 this.queue.Run(next => {
                     this.writer.End()
@@ -473,6 +480,25 @@ namespace Reactor.Tls {
                                .Finally(next);
                 });
             });
+        }
+
+        /// <summary>
+        /// Forces buffering of all writes. Buffered data will be 
+        /// flushed either at .Uncork() or at .End() call.
+        /// </summary>
+        public void Cork() {
+            this.corked = true;
+            if(this.writer != null)
+                this.writer.Cork();
+        }
+
+        /// <summary>
+        /// Flush all data, buffered since .Cork() call.
+        /// </summary>
+        public void Uncork() {
+            this.corked = false;
+            if(this.writer != null)
+                this.writer.Uncork();
         }
 
         /// <summary>
