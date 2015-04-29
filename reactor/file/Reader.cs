@@ -479,16 +479,24 @@ namespace Reactor.File {
         private void _Read () {
             if (this.state == State.Pending) {
                 this.state = State.Reading;
-                /* its possible that the stream has
-                 * been unshifted since the last read.
-                 * here, we check the buffer and emit
-                 * anything back prior to requesting
-                 * more data from the resource. */
+                /* any data resident in the buffer
+                 * needs to emitted prior to issuing
+                 * a request for more, normal operation
+                 * would assume that the callers only 
+                 * need to read if they have emptied 
+                 * the buffer, however, this rule is
+                 * broken in instances where the user
+                 * may have unshifted data inbetween
+                 * reads. The following flushes this
+                 * data back to the caller before 
+                 * requesting more.
+                 */
                 if (this.buffer.Length > 0) {
                     switch (this.mode) {
                         case Mode.Flowing:
-                            this.onread.Emit(this.buffer.Clone());
+                            var clone = this.buffer.Clone();
                             this.buffer.Clear();
+                            this.onread.Emit(clone);
                             break;
                         case Mode.NonFlowing:
                             this.onreadable.Emit();
@@ -506,7 +514,15 @@ namespace Reactor.File {
         /// <param name="buffer"></param>
         private void _Data (Reactor.Buffer buffer) {
             this.state = State.Pending;
-            /* detect overflow */
+            /* in the case of file readers, we
+             * have semantics around read ranges,
+             * because of this, and because we
+             * read data in fixed size chunks, 
+             * the following detects for buffer
+             * overflows and trims the end of 
+             * the buffer prior to emitting
+             * back to the caller.
+             */ 
             var length    = buffer.Length;
             var ended     = false;
             this.received = this.received + length;
@@ -520,8 +536,9 @@ namespace Reactor.File {
             this.buffer.Write(buffer);
             switch (this.mode) {
                 case Mode.Flowing:
-                    this.onread.Emit(this.buffer.Clone());
+                    var clone = this.buffer.Clone();
                     this.buffer.Clear();
+                    this.onread.Emit(clone);
                     if(ended)
                         this._End();
                     else
@@ -540,7 +557,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="error"></param>
         private void _Error (Exception error) {
-            if (this.state != State.Ended) { 
+            if (this.state != State.Ended) {
                 this.onerror.Emit(error);
                 this._End();
             }

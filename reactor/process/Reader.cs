@@ -458,16 +458,24 @@ namespace Reactor.Process
         private void _Read () {
             if (this.state == State.Pending) {
                 this.state = State.Reading;
-                /* its possible that the stream has
-                 * been unshifted since the last read.
-                 * here, we check the buffer and emit
-                 * anything back prior to requesting
-                 * more data from the resource. */
+                /* any data resident in the buffer
+                 * needs to emitted prior to issuing
+                 * a request for more, normal operation
+                 * would assume that the callers only 
+                 * need to read if they have emptied 
+                 * the buffer, however, this rule is
+                 * broken in instances where the user
+                 * may have unshifted data inbetween
+                 * reads. The following flushes this
+                 * data back to the caller before 
+                 * requesting more.
+                 */
                 if (this.buffer.Length > 0) {
                     switch (this.mode) {
                         case Mode.Flowing:
-                            this.onread.Emit(this.buffer.Clone());
+                            var clone = this.buffer.Clone();
                             this.buffer.Clear();
+                            this.onread.Emit(clone);
                             break;
                         case Mode.NonFlowing:
                             this.onreadable.Emit();
@@ -488,8 +496,9 @@ namespace Reactor.Process
             this.buffer.Write(buffer);
             switch (this.mode) {
                 case Mode.Flowing:
-                    this.onread.Emit(this.buffer.Clone());
+                    var clone = this.buffer.Clone();
                     this.buffer.Clear();
+                    this.onread.Emit(clone);
                     this._Read();
                     break;
                 case Mode.NonFlowing:

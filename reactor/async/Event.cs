@@ -151,14 +151,11 @@ namespace Reactor.Async {
         public void Emit () {
             for (int i = 0; i < this.callbacks.Count; i++) {
                 var callback = this.callbacks[i];
-                callback.Action();
-            }
-            for (int i = 0; i < this.callbacks.Count; i++) {
-                var callback = this.callbacks[i];
                 if (callback.Once) {
                     this.callbacks.Remove(callback);
                 }
-            }            
+                callback.Action();
+            }           
         }
 
         #endregion
@@ -336,14 +333,11 @@ namespace Reactor.Async {
         public void Emit (T data) {
             for (int i = 0; i < this.callbacks.Count; i++) {
                 var callback = this.callbacks[i];
-                callback.Action(data);
-            }
-            for (int i = 0; i < this.callbacks.Count; i++) {
-                var callback = this.callbacks[i];
                 if (callback.Once) {
                     this.callbacks.Remove(callback);
                 }
-            }            
+                callback.Action(data);
+            } 
         }
 
         #endregion
