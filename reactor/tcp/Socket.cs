@@ -1129,19 +1129,6 @@ namespace Reactor.Tcp {
         private void _Read () {
             if (this.state == State.Pending) {
                 this.state = State.Reading;
-                /* any data resident in the buffer
-                 * needs to emitted prior to issuing
-                 * a request for more, normal operation
-                 * would assume that the callers only 
-                 * need to read if they have emptied 
-                 * the buffer, however, this rule is
-                 * broken in instances where the user
-                 * may have unshifted data inbetween
-                 * reads. The following overrides the
-                 * default behaviour and calls to 
-                 * _data() directly with a cloned
-                 * buffer.
-                 */
                 if (this.buffer.Length > 0) {
                     var clone = this.buffer.Clone();
                     this.buffer.Clear();
