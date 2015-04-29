@@ -431,7 +431,7 @@ namespace Reactor.Http {
         /// available will remain in the internal buffer.
         /// </summary>
         public void Pause() {
-			this.mode  = Mode.NonFlowing;
+            this.mode  = Mode.NonFlowing;
             this.state = State.Paused;
         }
 
