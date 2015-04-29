@@ -540,16 +540,28 @@ namespace Reactor {
             if (select < 0) {
                 throw new Exception("buffer: the end is less than the start.");
             }
-
-            var buffer = Reactor.Buffer.Create(0);
-            buffer.encoding = this.encoding;
-            buffer.buffer   = this.buffer;
-            buffer.length   = end - start;
-            start           = start % this.length;
-            end             = end   % this.length;
-            buffer.head     = (this.head + start) % this.capacity;
-            buffer.tail     = (this.tail + end)   % this.capacity;
-            return buffer;
+            if (start == 0 && end == 0) {
+                var buffer = Reactor.Buffer.Create(0);
+                buffer.encoding = this.encoding;
+                buffer.buffer   = this.buffer;
+                buffer.capacity = this.capacity;
+                buffer.length   = this.length;
+                buffer.head     = this.head;
+                buffer.tail     = this.head;
+                return buffer;
+            }
+            else {
+                var buffer = Reactor.Buffer.Create(0);
+                buffer.encoding = this.encoding;
+                buffer.buffer   = this.buffer;
+                buffer.capacity = this.capacity;
+                buffer.length   = end - start;
+                start           = start % this.length;
+                end             = end   % this.length;
+                buffer.head     = (this.head + start) % this.capacity;
+                buffer.tail     = (this.tail + end)   % this.capacity;
+                return buffer;
+            }
         }
 
         /// <summary>

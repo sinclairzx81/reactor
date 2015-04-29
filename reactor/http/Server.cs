@@ -52,8 +52,11 @@ namespace Reactor.Http {
 
         #region Constructors
 
+        /// <summary>
+        /// Creates a new http server.
+        /// </summary>
         public Server() {
-            this.server    = Reactor.Tcp.Server.Create(this._Socket);
+            this.server    = Reactor.Tcp.Server.Create(this.Accept);
             this.onread    = Reactor.Async.Event.Create<Reactor.Http.Context>();
             this.onerror   = Reactor.Async.Event.Create<System.Exception>();
             this.onend     = Reactor.Async.Event.Create();
@@ -63,6 +66,10 @@ namespace Reactor.Http {
 
         #region Events
 
+        /// <summary>
+        /// Gets the internal events for this server.
+        /// </summary>
+        /// <returns></returns>
         public Events GetEvents() {
             return new Events {
                 Read  = this.onread,
@@ -71,26 +78,70 @@ namespace Reactor.Http {
             };
         }
 
+        /// <summary>
+        /// Subscribes this action to the 'read' event.
+        /// </summary>
+        /// <param name="callback"></param>
         public void OnRead (Reactor.Action<Reactor.Http.Context> callback) {
             this.onread.On(callback);
         }
 
+        /// <summary>
+        /// Unsubscribes this action from the 'read' event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void RemoveRead (Reactor.Action<Reactor.Http.Context> callback) {
+            this.onread.Remove(callback);
+        }
+
+        /// <summary>
+        /// Subscribes this action to the 'error' event.
+        /// </summary>
+        /// <param name="callback"></param>
         public void OnError (Reactor.Action<Exception> callback) {
             this.onerror.On(callback);
         }
 
-        public void RemoveContext (Reactor.Action<Reactor.Http.Context> callback) {
-            this.onread.Remove(callback);
-        }
 
+        /// <summary>
+        /// Unsubscribes this action from the 'error' event.
+        /// </summary>
+        /// <param name="callback"></param>
         public void RemoveError (Reactor.Action<Exception> callback) {
             this.onerror.Remove(callback);
         }
 
+        /// <summary>
+        /// Subscribes this action to the 'end' event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnEnd(Reactor.Action callback) {
+            this.onend.On(callback);
+        }
+
+        /// <summary>
+        /// Unsubscribes this action from the 'end' event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void RemoveEnd(Reactor.Action callback) {
+            this.onend.Remove(callback);
+        }
+
+        #endregion
+
+        #region Methods
+
+        /// <summary>
+        /// Starts this server listening on the specified port.
+        /// </summary>
+        /// <param name="port"></param>
         public void Listen (int port) {
             this.server.Listen(port);
         }
 
+        /// <summary>
+        /// Stops this server.
+        /// </summary>
         public void Stop() {
             this.server.Dispose();
         }
@@ -99,10 +150,15 @@ namespace Reactor.Http {
 
         #region Internals
 
-        private void _Socket (Reactor.Tcp.Socket socket) {
-            var request  = new Reactor.Http.IncomingMessage (socket);
+        /// <summary>
+        /// Accepts incoming tcp requests and processes
+        /// them as http requests.
+        /// </summary>
+        /// <param name="socket"></param>
+        private void Accept (Reactor.Tcp.Socket socket) {
+            var request  = new Reactor.Http.ServerRequest (socket);
             var response = new Reactor.Http.ServerResponse  (socket);
-            request.BeginRequest().Then(() => {
+            request.Begin().Then(() => {
                 this.onread.Emit(Reactor.Http.Context.Create(request, response));
             }).Error(error => {
                 response.StatusCode = 400;
@@ -115,10 +171,19 @@ namespace Reactor.Http {
 
         #region Statics
 
+        /// <summary>
+        /// Returns a new http server.
+        /// </summary>
+        /// <returns></returns>
         public static Server Create() {
             return new Reactor.Http.Server();
         }
 
+        /// <summary>
+        /// Returns a new http server.
+        /// </summary>
+        /// <param name="callback">A callback to handle incoming http requests.</param>
+        /// <returns></returns>
         public static Server Create(Reactor.Action<Reactor.Http.Context> callback) {
             var server = new Reactor.Http.Server();
             server.OnRead(callback);

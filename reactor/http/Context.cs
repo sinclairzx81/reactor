@@ -36,7 +36,7 @@ namespace Reactor.Http {
         /// <summary>
         /// The incoming http request.
         /// </summary>
-        public IncomingMessage    Request  { get; private set; }
+        public ServerRequest      Request  { get; private set; }
 
         /// <summary>
         /// The outgoing http response.
@@ -45,7 +45,12 @@ namespace Reactor.Http {
 
         #region Constructors
 
-        internal Context(Reactor.Http.IncomingMessage request, Reactor.Http.ServerResponse response) {
+        /// <summary>
+        /// Creates a new HTTP context.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="response"></param>
+        internal Context(Reactor.Http.ServerRequest request, Reactor.Http.ServerResponse response) {
             this.Request  = request;
             this.Response = response;
         }
@@ -60,7 +65,7 @@ namespace Reactor.Http {
         /// <param name="request"></param>
         /// <param name="response"></param>
         /// <returns></returns>
-        internal static Context Create(Reactor.Http.IncomingMessage request, Reactor.Http.ServerResponse response) {
+        internal static Context Create(Reactor.Http.ServerRequest request, Reactor.Http.ServerResponse response) {
             return new Context(request, response);
         }
 

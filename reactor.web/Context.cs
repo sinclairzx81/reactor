@@ -34,7 +34,7 @@ namespace Reactor.Web
 {
     public class Context {
 
-        public  Reactor.Http.IncomingMessage Request  { get; set; }
+        public  Reactor.Http.ServerRequest   Request  { get; set; }
         public  Reactor.Http.ServerResponse  Response { get; set; }
         public  IPrincipal                   User     { get; set; }
         public  Dictionary<string, string>   Params   { get; set; }

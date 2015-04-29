@@ -1,42 +1,15 @@
-﻿/*--------------------------------------------------------------------------
-
-Reactor
-
-The MIT License (MIT)
-
-Copyright (c) 2015 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-
----------------------------------------------------------------------------*/
-
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Net;
 using System.Text;
 
-namespace Reactor.Http {
-
+namespace Reactor.Http
+{
     /// <summary>
     /// Reactor HTTP Incoming Message
     /// </summary>
-    public class IncomingMessage : Reactor.IReadable {
+    public class Response : Reactor.IReadable {
 
         #region States
 
@@ -117,7 +90,7 @@ namespace Reactor.Http {
         /// Creates a new Incoming Message. 
         /// </summary>
         /// <param name="socket"></param>
-        internal IncomingMessage(Reactor.Tcp.Socket socket) {
+        internal Response(Reactor.Tcp.Socket socket) {
             this.socket          = socket;
             this.onreadable      = Reactor.Async.Event.Create();
             this.onread          = Reactor.Async.Event.Create<Reactor.Buffer>();
@@ -604,9 +577,7 @@ namespace Reactor.Http {
             return Reactor.Fibers.Fiber.Create<Reactor.Buffer>(() => {
                 Reactor.Buffer unconsumed = null;
                 Exception parse_error = null;
-                var parser = Reactor.Http.Parsers.HttpParser.Create(buffer);
-                parser.OnMethod    (method  => { this.method  = method;  });
-                parser.OnRawUrl    (raw_url => { this.raw_url = raw_url; });
+                var parser = Reactor.Http.Protocol.ResponseReader.Create(buffer);
                 parser.OnVersion   (version => { this.version = version; });
                 parser.OnHeader    (header  => { this.headers.Add_Internal(header.Key, header.Value); });
                 parser.OnError     (error   => { parse_error  = error; });
@@ -661,76 +632,6 @@ namespace Reactor.Http {
         }
 
         /// <summary>
-        /// Resolves a System.Net.Uri from the raw_url.
-        /// </summary>
-        /// <returns></returns>
-        private Reactor.Async.Future ReadUrl () {
-            return Reactor.Fibers.Fiber.Create(() => {
-                var host = this.UserHostName;
-                if (version > HttpVersion.Version10 && (host.Length == 0)) {
-                    throw new Exception("Invalid host name");
-                }
-                string path;
-                Uri raw_uri = null;
-                if (Uri.TryCreate(this.raw_url, UriKind.Absolute, out raw_uri)) {
-                    path = raw_uri.PathAndQuery;
-                }
-                else {
-                    path = raw_url;
-                }
-                if (host.Length == 0) {
-                    host = this.socket.LocalEndPoint.ToString();
-                }
-                if (raw_uri != null) {
-                    host = raw_uri.Host;
-                }
-                int colon = host.IndexOf(':');
-                if (colon >= 0) {
-                    host = host.Substring(0, colon);
-                }
-
-                var local = this.socket.LocalEndPoint as IPEndPoint;
-                string base_uri = String.Format("{0}://{1}:{2}", "http", host, local.Port);
-                Uri url = null;
-                if (!Uri.TryCreate(base_uri + path, UriKind.Absolute, out url)) {
-                    throw new Exception("Invalid url: " + base_uri + path);
-                }
-                this.url = url;
-            });
-        }
-
-        /// <summary>
-        /// Parsers the QueryString
-        /// </summary>
-        /// <returns></returns>
-        private Reactor.Async.Future ReadQueryString () {
-            return Reactor.Fibers.Fiber.Create(() => {
-                var query = this.url.Query;
-                if (query == null || query.Length == 0) {
-                    return;
-                }
-                if (query[0] == '?') {
-                    query = query.Substring(1);
-                }
-                string[] components = query.Split('&');
-                foreach (string kv in components) {
-                    try {
-                        int pos = kv.IndexOf('=');
-                        if (pos == -1) {
-                            this.query.Add(null, Reactor.Http.Utility.UrlDecode(kv));
-                        }
-                        else {
-                            string key = Reactor.Http.Utility.UrlDecode(kv.Substring(0, pos));
-                            string val = Reactor.Http.Utility.UrlDecode(kv.Substring(pos + 1));
-                            this.query.Add(key, val);
-                        }
-                    }
-                    catch { }
-                }
-            });
-        }
-
-        /// <summary>
         /// Responsible for initializing the Incoming Message. This
         /// method will begin reading from the underlying socket and
         /// attempt to parse the http protocol header. On successful
@@ -740,7 +641,7 @@ namespace Reactor.Http {
         /// bodies, but also to provide a layed abstraction between
         /// the caller and the socket.
         /// </summary>
-        internal Reactor.Async.Future BeginRequest () {
+        internal Reactor.Async.Future Begin () {
             return new Reactor.Async.Future((resolve, reject) => {
                 Reactor.Action<Reactor.Buffer> onread = null;
                 onread = buffer => {
@@ -748,28 +649,24 @@ namespace Reactor.Http {
                     this.socket.RemoveRead(onread);
                     this.ReadProtocol(buffer).Then(unconsumed => {
                         this.ReadHeaders().Then(() => {
-                            this.ReadUrl().Then(() => {
-                                this.ReadQueryString().Then(() => {
-                                    /* once we have processed the request
-                                     * we need to reset the socket. The
-                                     * following sets 'this' received count 
-                                     * to zero, unshifts any unconsumed
-                                     * data from the buffer, and binds 
-                                     * the socket to local listeners. 
-                                     * 
-                                     * At this point, the socket is in
-                                     * a paused state. ideally, we need
-                                     * the socket in a pending state so
-                                     * the caller can 'resume' processing
-                                     * in a typical fashion.
-                                     * */
-                                    this.buffer.Write(unconsumed);
-                                    this.received = unconsumed.Length;
-                                    this.socket.OnError(this._Error);
-                                    this.socket.OnEnd(this._End);
-                                    resolve();
-                                }).Error(reject);
-                            }).Error(reject);
+                            /* once we have processed the request
+                            * we need to reset the socket. The
+                            * following sets 'this' received count 
+                            * to zero, unshifts any unconsumed
+                            * data from the buffer, and binds 
+                            * the socket to local listeners. 
+                            * 
+                            * At this point, the socket is in
+                            * a paused state. ideally, we need
+                            * the socket in a pending state so
+                            * the caller can 'resume' processing
+                            * in a typical fashion.
+                            * */
+                            this.buffer.Write(unconsumed);
+                            this.received = unconsumed.Length;
+                            this.socket.OnError(this._Error);
+                            this.socket.OnEnd(this._End);
+                            resolve();
                         }).Error(reject);
                     }).Error(reject);
                 }; this.socket.OnRead(onread);
@@ -836,9 +733,7 @@ namespace Reactor.Http {
         private void _Data (Reactor.Buffer buffer) {
             if (this.state == State.Reading) {
                 this.state = State.Pending;
-
                 bool ended = false;
-
                 if (this.TransferEncoding != "chunked") {
                     /* non chunked content needs to be 
                      * compared against the content-length.
