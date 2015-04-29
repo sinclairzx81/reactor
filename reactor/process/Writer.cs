@@ -65,11 +65,23 @@ namespace Reactor.Process {
         #region Events
 
         /// <summary>
-        /// Subscribes to the OnDrain event.
+        /// Subscribes this action to the 'drain' event. The event indicates
+        /// when a write operation has completed and the caller should send
+        /// more data.
         /// </summary>
         /// <param name="callback"></param>
         public void OnDrain (Reactor.Action callback) {
             this.ondrain.On(callback);
+        }
+
+        /// <summary>
+        /// Subscribes this action once to the 'drain' event. The event indicates
+        /// when a write operation has completed and the caller should send
+        /// more data.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnceDrain(Reactor.Action callback) {
+            this.ondrain.Once(callback);
         }
 
         /// <summary>

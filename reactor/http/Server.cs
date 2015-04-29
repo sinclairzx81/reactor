@@ -38,14 +38,15 @@ namespace Reactor.Http {
         #region Events
 
         public class Events {
-            public Reactor.Async.Event<Reactor.Http.Context> Context;
-            public Reactor.Async.Event<System.Exception>     Error;
+            public Reactor.Async.Event<Reactor.Http.Context> Read  {  get; set; }
+            public Reactor.Async.Event<System.Exception>     Error {  get; set; }
+            public Reactor.Async.Event                       End   {  get; set; }
         }
 
         #endregion
 
         private Reactor.Tcp.Server                        server;
-        private Reactor.Async.Event<Reactor.Http.Context> oncontext;
+        private Reactor.Async.Event<Reactor.Http.Context> onread;
         private Reactor.Async.Event<System.Exception>     onerror;
         private Reactor.Async.Event                       onend;
 
@@ -53,7 +54,7 @@ namespace Reactor.Http {
 
         public Server() {
             this.server    = Reactor.Tcp.Server.Create(this._Socket);
-            this.oncontext = Reactor.Async.Event.Create<Reactor.Http.Context>();
+            this.onread    = Reactor.Async.Event.Create<Reactor.Http.Context>();
             this.onerror   = Reactor.Async.Event.Create<System.Exception>();
             this.onend     = Reactor.Async.Event.Create();
         }
@@ -64,13 +65,14 @@ namespace Reactor.Http {
 
         public Events GetEvents() {
             return new Events {
-                Context = this.oncontext,
-                Error   = this.onerror
+                Read  = this.onread,
+                Error = this.onerror,
+                End   = this.onend
             };
         }
 
-        public void OnContext (Reactor.Action<Reactor.Http.Context> callback) {
-            this.oncontext.On(callback);
+        public void OnRead (Reactor.Action<Reactor.Http.Context> callback) {
+            this.onread.On(callback);
         }
 
         public void OnError (Reactor.Action<Exception> callback) {
@@ -78,7 +80,7 @@ namespace Reactor.Http {
         }
 
         public void RemoveContext (Reactor.Action<Reactor.Http.Context> callback) {
-            this.oncontext.Remove(callback);
+            this.onread.Remove(callback);
         }
 
         public void RemoveError (Reactor.Action<Exception> callback) {
@@ -101,8 +103,7 @@ namespace Reactor.Http {
             var request  = new Reactor.Http.IncomingMessage (socket);
             var response = new Reactor.Http.ServerResponse  (socket);
             request.BeginRequest().Then(() => {
-                var context  = new Reactor.Http.Context(request, response);
-                this.oncontext.Emit(context);
+                this.onread.Emit(Reactor.Http.Context.Create(request, response));
             }).Error(error => {
                 response.StatusCode = 400;
                 response.StatusDescription = "Bad Request";
@@ -120,7 +121,7 @@ namespace Reactor.Http {
 
         public static Server Create(Reactor.Action<Reactor.Http.Context> callback) {
             var server = new Reactor.Http.Server();
-            server.OnContext(callback);
+            server.OnRead(callback);
             return server;
         }
 

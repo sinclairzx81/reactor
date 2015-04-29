@@ -125,21 +125,43 @@ namespace Reactor.Process
         #region Events
 
         /// <summary>
-        /// Subscribes this action to the OnReadable event. When a chunk of 
+        /// Subscribes this action to the 'readable' event. When a chunk of 
         /// data can be read from the stream, it will emit a 'readable' event.
-        /// In some cases, listening for a 'readable' event will cause some 
-        /// data to be read into the internal buffer from the underlying 
-        /// system, if it hadn't already.
+        /// Listening for a 'readable' event will cause some data to be read 
+        /// into the internal buffer from the underlying resource. If a stream 
+        /// happens to be in a 'paused' state, attaching a readable event will 
+        /// transition into a pending state prior to reading from the resource.
         /// </summary>
         /// <param name="callback"></param>
         public void OnReadable (Reactor.Action callback) {
             this.onreadable.On(callback);
             this.mode = Mode.NonFlowing;
+            if (this.state == State.Paused) {
+                this.state = State.Pending;
+            }
             this._Read();
         }
 
         /// <summary>
-        /// Unsubscribes this action from the OnReadable event.
+        /// Subscribes this action once to the 'readable' event. When a chunk of 
+        /// data can be read from the stream, it will emit a 'readable' event.
+        /// Listening for a 'readable' event will cause some data to be read 
+        /// into the internal buffer from the underlying resource. If a stream 
+        /// happens to be in a 'paused' state, attaching a readable event will 
+        /// transition into a pending state prior to reading from the resource.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnceReadable (Reactor.Action callback) {
+            this.onreadable.Once(callback);
+            this.mode  = Mode.NonFlowing;
+            if (this.state == State.Paused) {
+                this.state = State.Pending;
+            }
+            this._Read();
+        }
+
+        /// <summary>
+        /// Unsubscribes this action from the 'readable' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveReadable (Reactor.Action callback) {
@@ -147,10 +169,10 @@ namespace Reactor.Process
         }
 
         /// <summary>
-        /// Subscribes this action to the OnRead event. Attaching a data event 
+        /// Subscribes this action to the 'read' event. Attaching a data event 
         /// listener to a stream that has not been explicitly paused will 
-        /// switch the stream into flowing mode. Data will then be passed 
-        /// as soon as it is available.
+        /// switch the stream into flowing mode and begin reading immediately. 
+        /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
         public void OnRead (Reactor.Action<Reactor.Buffer> callback) {
@@ -161,7 +183,21 @@ namespace Reactor.Process
         }
 
         /// <summary>
-        /// Unsubscribes this action from the OnRead event.
+        /// Subscribes this action once to the 'read' event. Attaching a data event 
+        /// listener to a stream that has not been explicitly paused will 
+        /// switch the stream into flowing mode and begin reading immediately. 
+        /// Data will then be passed as soon as it is available.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnceRead (Reactor.Action<Reactor.Buffer> callback) {
+            this.onread.Once(callback);
+            if (this.state == State.Pending) {
+                this.Resume();
+            }
+        }
+
+        /// <summary>
+        /// Unsubscribes this action from the 'read' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveRead (Reactor.Action<Reactor.Buffer> callback) {
@@ -169,7 +205,7 @@ namespace Reactor.Process
         }
 
         /// <summary>
-        /// Subscribes this action to the OnError event.
+        /// Subscribes this action to the 'error' event.
         /// </summary>
         /// <param name="callback"></param>
         public void OnError (Reactor.Action<Exception> callback) {
@@ -177,7 +213,7 @@ namespace Reactor.Process
         }
 
         /// <summary>
-        /// Unsubscribes this action from the OnError event.
+        /// Unsubscribes this action from the 'error' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveError (Reactor.Action<Exception> callback) {
@@ -185,7 +221,7 @@ namespace Reactor.Process
         }
 
         /// <summary>
-        /// Subscribes this action to the OnEnd event.
+        /// Subscribes this action to the 'end' event.
         /// </summary>
         /// <param name="callback"></param>
         public void OnEnd (Reactor.Action callback) {
@@ -193,7 +229,7 @@ namespace Reactor.Process
         }
 
         /// <summary>
-        /// Unsubscribes this action from the OnEnd event.
+        /// Unsubscribes this action from the 'end' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveEnd (Reactor.Action callback) {
@@ -205,30 +241,34 @@ namespace Reactor.Process
         #region Methods
 
         /// <summary>
-        /// The Read(count) method pulls some data out of the internal buffer 
-        /// and returns it. If there is no data available, then it will return
-        /// a zero length buffer. If the internal buffer is empty, then this 
-        /// method will begin reading from the resource again in non-flowing mode.
+        /// Will read this number of bytes out of the internal buffer. If there 
+        /// is no data available, then it will return a zero length buffer. If 
+        /// the internal buffer has been completely read, then this method will 
+        /// issue a new read request on the underlying resource in non-flowing 
+        /// mode. Any data read with a length > 0 will also be emitted as a 'read' 
+        /// event.
         /// </summary>
         /// <param name="count">The number of bytes to read.</param>
         /// <returns></returns>
-        public Reactor.Buffer Read(int count) {
-            this.mode = Mode.NonFlowing; 
+        public Reactor.Buffer Read (int count) {
             var result = Reactor.Buffer.Create(this.buffer.Read(count));
-            if (this.buffer.Length == 0) {    
+            if (result.Length > 0) {
+                this.onread.Emit(result);
+            }
+            if (this.buffer.Length == 0) {
+                this.mode = Mode.NonFlowing;
                 this._Read();
             }
             return result;
         }
 
         /// <summary>
-        /// The Read() method pulls all data out of the internal buffer 
-        /// and returns it. If there is no data available, then it will return
-        /// a zero length buffer. If the internal buffer is empty, then this 
-        /// method will begin reading from the resource again in non-flowing mode.
+        /// Will read all data out of the internal buffer. If no data is available 
+        /// then it will return a zero length buffer. This method will then issue 
+        /// a new read request on the underlying resource in non-flowing mode. Any 
+        /// data read with a length > 0 will also be emitted as a 'read' event.
         /// </summary>
-        /// <returns></returns>
-        public Reactor.Buffer Read() {
+        public Reactor.Buffer Read () {
             return this.Read(this.buffer.Length);
         }
 
@@ -236,7 +276,7 @@ namespace Reactor.Process
         /// Unshifts this buffer back to this stream.
         /// </summary>
         /// <param name="buffer">The buffer to unshift.</param>
-        public void Unshift(Reactor.Buffer buffer) {
+        public void Unshift (Reactor.Buffer buffer) {
             this.buffer.Unshift(buffer);
         }
 
@@ -247,7 +287,7 @@ namespace Reactor.Process
         /// available will remain in the internal buffer.
         /// </summary>
         public void Pause() {
-			this.mode  = Mode.NonFlowing;
+            this.mode  = Mode.NonFlowing;
             this.state = State.Paused;
         }
 
@@ -418,6 +458,23 @@ namespace Reactor.Process
         private void _Read () {
             if (this.state == State.Pending) {
                 this.state = State.Reading;
+                /* its possible that the stream has
+                 * been unshifted since the last read.
+                 * here, we check the buffer and emit
+                 * anything back prior to requesting
+                 * more data from the resource. */
+                if (this.buffer.Length > 0) {
+                    switch (this.mode) {
+                        case Mode.Flowing:
+                            this.onread.Emit(this.buffer.Clone());
+                            this.buffer.Clear();
+                            break;
+                        case Mode.NonFlowing:
+                            this.onreadable.Emit();
+                            return;
+                            break;
+                    }
+                }
                 this.reader.Read();
             }
         }

@@ -251,6 +251,8 @@ namespace Reactor.Http {
             throw new NotImplementedException();
         }
 
+        
+
         public void RemoveDrain(Action callback)
         {
             throw new NotImplementedException();
@@ -277,6 +279,11 @@ namespace Reactor.Http {
         }
 
         Async.Future IWritable.End()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void OnceDrain(Action callback)
         {
             throw new NotImplementedException();
         }

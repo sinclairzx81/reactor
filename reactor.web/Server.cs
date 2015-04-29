@@ -59,14 +59,14 @@ namespace Reactor.Web
 
             var events = this.http.GetEvents();
             
-            foreach (var listener in events.Context.Subscribers()) {
+            foreach (var listener in events.Read.Subscribers()) {
                 
-                events.Context.Remove(listener);
+                events.Read.Remove(listener);
                 
                 this.oncontext.On(listener);
             };
 
-            this.http.OnContext (this._Context);
+            this.http.OnRead (this._Context);
         }
 
         public Server(): this(Reactor.Http.Server.Create()) {

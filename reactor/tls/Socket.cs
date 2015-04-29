@@ -125,7 +125,7 @@ namespace Reactor.Tls {
             this.socket     = socket;
             this.reader     = Reactor.Streams.Reader.Create(stream);
             this.writer     = Reactor.Streams.Writer.Create(stream);
-            this.poll       = Reactor.Interval.Create(this._Poll, 1000);
+            this.poll       = Reactor.Interval.Create(this.Poll, 1000);
             this.buffer     = new Reactor.Buffer();
             this.reader.OnRead  (this._Data);
             this.reader.OnError (this._Error);
@@ -160,7 +160,7 @@ namespace Reactor.Tls {
                 this.Authenticate(networkstream).Then(stream => {
                     this.reader = Reactor.Streams.Reader.Create(stream);
                     this.writer = Reactor.Streams.Writer.Create(stream);
-                    this.poll   = Reactor.Interval.Create(this._Poll, 1000);
+                    this.poll   = Reactor.Interval.Create(this.Poll, 1000);
                     this.buffer = new Reactor.Buffer();
                     this.reader.OnRead  (this._Data);
                     this.reader.OnError (this._Error);
@@ -198,7 +198,7 @@ namespace Reactor.Tls {
                     this.Authenticate(networkstream).Then(stream => {
                         this.reader = Reactor.Streams.Reader.Create(stream);
                         this.writer = Reactor.Streams.Writer.Create(stream);
-                        this.poll   = Reactor.Interval.Create(this._Poll, 1000);
+                        this.poll   = Reactor.Interval.Create(this.Poll, 1000);
                         this.buffer = new Reactor.Buffer();
                         this.reader.OnRead  (this._Data);
                         this.reader.OnError (this._Error);
@@ -218,7 +218,7 @@ namespace Reactor.Tls {
         #region Events
 
         /// <summary>
-        /// Subscribes this action to the OnConnect event.
+        /// Subscribes this action to the 'connect' event.
         /// </summary>
         /// <param name="callback"></param>
         public void OnConnect (Reactor.Action callback) {
@@ -226,7 +226,7 @@ namespace Reactor.Tls {
         }
 
         /// <summary>
-        /// Unsubscribes this action from the OnConnect event.
+        /// Unsubscribes this action from the 'connect' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveConnect (Reactor.Action callback) {
@@ -234,11 +234,23 @@ namespace Reactor.Tls {
         }
 
         /// <summary>
-        /// Subscribes to the OnDrain event.
+        /// Subscribes this action to the 'drain' event. The event indicates
+        /// when a write operation has completed and the caller should send
+        /// more data.
         /// </summary>
         /// <param name="callback"></param>
         public void OnDrain(Reactor.Action callback) {
             this.ondrain.On(callback);
+        }
+
+        /// <summary>
+        /// Subscribes this action once to the 'drain' event. The event indicates
+        /// when a write operation has completed and the caller should send
+        /// more data.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnceDrain(Reactor.Action callback) {
+            this.ondrain.Once(callback);
         }
 
         /// <summary>
@@ -250,24 +262,49 @@ namespace Reactor.Tls {
         }
 
         /// <summary>
-        /// Subscribes this action to the OnReadable event. When a chunk of 
+        /// Subscribes this action to the 'readable' event. When a chunk of 
         /// data can be read from the stream, it will emit a 'readable' event.
-        /// In some cases, listening for a 'readable' event will cause some 
-        /// data to be read into the internal buffer from the underlying 
-        /// system, if it hadn't already.
+        /// Listening for a 'readable' event will cause some data to be read 
+        /// into the internal buffer from the underlying resource. If a stream 
+        /// happens to be in a 'paused' state, attaching a readable event will 
+        /// transition into a pending state prior to reading from the resource.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnReadable(Reactor.Action callback) {
+        public void OnReadable (Reactor.Action callback) {
             this.onreadable.On(callback);
             this.queue.Run(next => {
-                this.mode = Mode.NonFlowing; 
+                this.mode = Mode.NonFlowing;
+                if (this.state == State.Paused) {
+                    this.state = State.Pending;
+                }
                 this._Read();
                 next();
             });
         }
 
         /// <summary>
-        /// Unsubscribes this action from the OnReadable event.
+        /// Subscribes this action once to the 'readable' event. When a chunk of 
+        /// data can be read from the stream, it will emit a 'readable' event.
+        /// Listening for a 'readable' event will cause some data to be read 
+        /// into the internal buffer from the underlying resource. If a stream 
+        /// happens to be in a 'paused' state, attaching a readable event will 
+        /// transition into a pending state prior to reading from the resource.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnceReadable(Reactor.Action callback) {
+            this.onreadable.Once(callback);
+            this.queue.Run(next => {
+                this.mode = Mode.NonFlowing;
+                if (this.state == State.Paused) {
+                    this.state = State.Pending;
+                }
+                this._Read();
+                next();
+            });
+        }
+
+        /// <summary>
+        /// Unsubscribes this action from the 'readable' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveReadable(Reactor.Action callback) {
@@ -275,24 +312,41 @@ namespace Reactor.Tls {
         }
 
         /// <summary>
-        /// Subscribes this action to the OnRead event. Attaching a data event 
+        /// Subscribes this action to the 'read' event. Attaching a data event 
         /// listener to a stream that has not been explicitly paused will 
-        /// switch the stream into flowing mode. Data will then be passed 
-        /// as soon as it is available.
+        /// switch the stream into flowing mode and begin reading immediately. 
+        /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
         public void OnRead (Reactor.Action<Reactor.Buffer> callback) {
             this.onread.On(callback);
-            if (this.state == State.Pending) {
-                this.queue.Run(next => {
+            this.queue.Run(next => {
+                if (this.state == State.Pending) {
                     this.Resume();
-                    next();
-                });
-            }
+                }
+                next();
+            });
         }
 
         /// <summary>
-        /// Unsubscribes this action from the OnRead event.
+        /// Subscribes this action once to the 'read' event. Attaching a data event 
+        /// listener to a stream that has not been explicitly paused will 
+        /// switch the stream into flowing mode and begin reading immediately. 
+        /// Data will then be passed as soon as it is available.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnceRead(Reactor.Action<Reactor.Buffer> callback) {
+            this.onread.Once(callback);
+            this.queue.Run(next => {
+                if (this.state == State.Pending) {
+                    this.Resume();
+                }
+                next();
+            });
+        }
+
+        /// <summary>
+        /// Unsubscribes this action from the 'read' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveRead (Reactor.Action<Reactor.Buffer> callback) {
@@ -300,7 +354,7 @@ namespace Reactor.Tls {
         }
 
         /// <summary>
-        /// Subscribes this action to the OnError event.
+        /// Subscribes this action to the 'error' event.
         /// </summary>
         /// <param name="callback"></param>
         public void OnError (Reactor.Action<Exception> callback) {
@@ -308,7 +362,7 @@ namespace Reactor.Tls {
         }
 
         /// <summary>
-        /// Unsubscribes this action from the OnError event.
+        /// Unsubscribes this action from the 'error' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveError (Reactor.Action<Exception> callback) {
@@ -316,7 +370,7 @@ namespace Reactor.Tls {
         }
 
         /// <summary>
-        /// Subscribes this action to the OnEnd event.
+        /// Subscribes this action to the 'end' event.
         /// </summary>
         /// <param name="callback"></param>
         public void OnEnd (Reactor.Action callback) {
@@ -324,7 +378,7 @@ namespace Reactor.Tls {
         }
 
         /// <summary>
-        /// Unsubscribes this action from the OnEnd event.
+        /// Unsubscribes this action from the 'end' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveEnd (Reactor.Action callback) {
@@ -336,30 +390,34 @@ namespace Reactor.Tls {
         #region Methods
 
         /// <summary>
-        /// The Read(count) method pulls some data out of the internal buffer 
-        /// and returns it. If there is no data available, then it will return
-        /// a zero length buffer. If the internal buffer is empty, then this 
-        /// method will begin reading from the resource again in non-flowing mode.
+        /// Will read this number of bytes out of the internal buffer. If there 
+        /// is no data available, then it will return a zero length buffer. If 
+        /// the internal buffer has been completely read, then this method will 
+        /// issue a new read request on the underlying resource in non-flowing 
+        /// mode. Any data read with a length > 0 will also be emitted as a 'read' 
+        /// event.
         /// </summary>
         /// <param name="count">The number of bytes to read.</param>
         /// <returns></returns>
-        public Reactor.Buffer Read(int count) {
-            this.mode = Mode.NonFlowing; 
+        public Reactor.Buffer Read (int count) {
             var result = Reactor.Buffer.Create(this.buffer.Read(count));
-            if (this.buffer.Length == 0) {    
+            if (result.Length > 0) {
+                this.onread.Emit(result);
+            }
+            if (this.buffer.Length == 0) {
+                this.mode = Mode.NonFlowing;
                 this._Read();
             }
             return result;
         }
 
         /// <summary>
-        /// The Read() method pulls all data out of the internal buffer 
-        /// and returns it. If there is no data available, then it will return
-        /// a zero length buffer. If the internal buffer is empty, then this 
-        /// method will begin reading from the resource again in non-flowing mode.
+        /// Will read all data out of the internal buffer. If no data is available 
+        /// then it will return a zero length buffer. This method will then issue 
+        /// a new read request on the underlying resource in non-flowing mode. Any 
+        /// data read with a length > 0 will also be emitted as a 'read' event.
         /// </summary>
-        /// <returns></returns>
-        public Reactor.Buffer Read() {
+        public Reactor.Buffer Read () {
             return this.Read(this.buffer.Length);
         }
 
@@ -1021,7 +1079,27 @@ namespace Reactor.Tls {
             });
         }
 
-       /// <summary>
+
+        /// <summary>
+        /// Polls the active state on this socket.
+        /// </summary>
+        private int poll_failed = 0;
+        private void Poll () {
+            /* poll within a fiber to prevent interuptions
+             * from the main thread. allow for 4 failed
+             * attempts before signalling termination. */
+            Reactor.Fibers.Fiber.Create(() => {
+                var result = !(this.socket.Poll(1, SelectMode.SelectRead) && socket.Available == 0);
+                if (!result) {
+                    poll_failed = poll_failed + 1;
+                    if (poll_failed > 4) {
+                        throw new Exception("socket: poll detected unexpected termination");
+                    }
+                } else poll_failed = 0;
+            }).Error(this._Error);
+        }
+
+        /// <summary>
         /// Disconnects this socket.
         /// </summary>
         /// <returns></returns>
@@ -1051,50 +1129,6 @@ namespace Reactor.Tls {
         #region Machine
 
         /// <summary>
-        /// Polls the active state on this socket.
-        /// </summary>
-        private int poll_failed = 0;
-        private void _Poll () {
-            /* poll within a fiber to prevent interuptions
-             * from the main thread. allow for 4 failed
-             * attempts before signalling termination. */
-            Reactor.Fibers.Fiber.Create(() => {
-                var result = !(this.socket.Poll(1, SelectMode.SelectRead) && socket.Available == 0);
-                if (!result) {
-                    poll_failed = poll_failed + 1;
-                    if (poll_failed > 4) {
-                        throw new Exception("socket: poll detected unexpected termination");
-                    }
-                } else poll_failed = 0;
-            }).Error(this._Error);
-        }
-
-        /// <summary>
-        /// Disconnects this socket.
-        /// </summary>
-        /// <returns></returns>
-        private Reactor.Async.Future _Disconnect () {
-            return new Reactor.Async.Future((resolve, reject) => {
-                try {
-                    this.socket.BeginDisconnect(false, (result) => {
-                        Loop.Post(() => {
-                            try {
-                                socket.EndDisconnect(result);
-                                resolve();
-                            }
-                            catch (Exception error) {
-                                reject(error);
-                            }
-                        });
-                    }, null);
-                }
-                catch(Exception error) {
-                    reject(error);
-                }
-            });
-        }
-
-        /// <summary>
         /// Handles OnDrain events.
         /// </summary>
         private void _Drain () {
@@ -1113,8 +1147,16 @@ namespace Reactor.Tls {
                  * anything back prior to requesting
                  * more data from the resource. */
                 if (this.buffer.Length > 0) {
-                    this.onread.Emit(this.buffer.Clone());
-                    this.buffer.Clear();
+                    switch (this.mode) {
+                        case Mode.Flowing:
+                            this.onread.Emit(this.buffer.Clone());
+                            this.buffer.Clear();
+                            break;
+                        case Mode.NonFlowing:
+                            this.onreadable.Emit();
+                            return;
+                            break;
+                    }
                 }
                 this.reader.Read();
             }
@@ -1159,7 +1201,7 @@ namespace Reactor.Tls {
             if (this.state != State.Ended) {
                 this.state = State.Ended;
                 try { this.socket.Shutdown(SocketShutdown.Send); } catch {}
-                this._Disconnect();
+                this.Disconnect();
                 if (this.poll   != null) this.poll.Clear();
                 if (this.writer != null) this.writer.Dispose();
                 if (this.reader != null) this.reader.Dispose();

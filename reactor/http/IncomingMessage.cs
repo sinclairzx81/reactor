@@ -42,6 +42,7 @@ namespace Reactor.Http {
         private Reactor.Async.Event<Reactor.Buffer> onread;
         private Reactor.Async.Event<Exception>      onerror;
         private Reactor.Async.Event                 onend;
+
         private Reactor.Http.Headers                headers;
         private Reactor.Http.Query                  query;
         private Version                             version;
@@ -52,21 +53,33 @@ namespace Reactor.Http {
         private Encoding                            contentEncoding;
         private string[]                            acceptTypes;
         private string[]                            userLanguages;
-        
         private int                                 received;
         private bool                                ended;
 
         #region Constructors
 
+        /// <summary>
+        /// Creates a new Incoming Message. 
+        /// </summary>
+        /// <param name="socket"></param>
         internal IncomingMessage(Reactor.Tcp.Socket socket) {
             this.socket          = socket;
             this.onreadable      = new Reactor.Async.Event();
             this.onread          = new Reactor.Async.Event<Reactor.Buffer>();
             this.onerror         = new Reactor.Async.Event<Exception>();
             this.onend           = new Reactor.Async.Event();
+
+            /* initialize with reasonable defaults */
             this.headers         = new Headers();
             this.query           = new Query();
+            this.version         = null;
+            this.method          = null;
+            this.raw_url         = null;
+            this.url             = null;
+            this.contentLength   = 0;
             this.contentEncoding = Encoding.Default;
+            this.acceptTypes     = null;
+            this.userLanguages   = null;
             this.received        = 0;
             this.ended           = false;
         }
@@ -191,47 +204,111 @@ namespace Reactor.Http {
 
         #region Events
 
-        
-
-        public Reactor.Buffer Read () {
-            return this.socket.Read();
-        }
-
-        public Reactor.Buffer Read (int count) {
-            return this.socket.Read(count);
-        }
-
-
+        /// <summary>
+        /// Subscribes this action to the 'readable' event. When a chunk of 
+        /// data can be read from the stream, it will emit a 'readable' event.
+        /// In some cases, listening for a 'readable' event will cause some 
+        /// data to be read into the internal buffer from the underlying 
+        /// system, if it hadn't already.
+        /// </summary>
+        /// <param name="callback"></param>
         public void OnReadable (Reactor.Action callback) {
             this.onreadable.On(callback);
-
-        }
-        public void OnRead (Reactor.Action<Reactor.Buffer> callback) {
-            this.onread.On(callback);
-            this.socket.Resume();
-        }
-        public void RemoveRead (Reactor.Action<Reactor.Buffer> callback) {
-            this.onread.Remove(callback);
         }
 
-        public void OnError (Reactor.Action<Exception> callback) {
-            this.onerror.On(callback);
+        /// <summary>
+        /// Subscribes this action once to the 'readable' event. When a chunk of 
+        /// data can be read from the stream, it will emit a 'readable' event.
+        /// In some cases, listening for a 'readable' event will cause some 
+        /// data to be read into the internal buffer from the underlying 
+        /// system, if it hadn't already.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnceReadable(Action callback) {
+            this.onreadable.Once(callback);
         }
 
-        public void OnEnd (Reactor.Action callback) {
-            this.onend.On(callback);
-        }
-
+        /// <summary>
+        /// Unsubscribes this action from the OnReadable event.
+        /// </summary>
+        /// <param name="callback"></param>
         public void RemoveReadable (Reactor.Action callback) {
             this.onreadable.On(callback);
         }
 
+        /// <summary>
+        /// Subscribes this action to the 'read' event. Attaching a data event 
+        /// listener to a stream that has not been explicitly paused will 
+        /// switch the stream into flowing mode. Data will then be passed 
+        /// as soon as it is available.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnRead (Reactor.Action<Reactor.Buffer> callback) {
+            /* we attach on the local onread, not the 
+             * socket. in rely on this classes 'machine'
+             * to emit onread events */
+            this.onread.On(callback);
 
+            /* we do resume on this socket. we 
+             * note that 'read' events are passed 
+             * to this 'machine' dispatch this 
+             * classes 'onread'. */
+            this.socket.Resume();
+        }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnceRead(Action<Buffer> callback) {
+            /* we attach on the local onread, not the 
+             * socket. in rely on this classes 'machine'
+             * to emit onread events */
+            this.onread.Once(callback);
+
+            /* we do resume on this socket. we 
+             * note that 'read' events are passed 
+             * to this 'machine' dispatch this 
+             * classes 'onread'. */
+            this.socket.Resume();
+        }
+
+        /// <summary>
+        /// Unsubscribes this action from the OnRead event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void RemoveRead (Reactor.Action<Reactor.Buffer> callback) {
+            this.onread.Remove(callback);
+        }
+
+        /// <summary>
+        /// Subscribes this action to the OnError event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnError (Reactor.Action<Exception> callback) {
+            this.onerror.On(callback);
+        }
+
+        /// <summary>
+        /// Unsubscribes this action from the OnError event.
+        /// </summary>
+        /// <param name="callback"></param>
         public void RemoveError (Reactor.Action<Exception> callback) {
             this.onerror.Remove(callback);
         }
 
+        /// <summary>
+        /// Subscribes this action to the OnEnd event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnEnd (Reactor.Action callback) {
+            this.onend.On(callback);
+        }
+
+        /// <summary>
+        /// Unsubscribes this action from the OnEnd event.
+        /// </summary>
+        /// <param name="callback"></param>
         public void RemoveEnd (Reactor.Action callback) {
             this.onend.Remove(callback);
         }
@@ -239,6 +316,14 @@ namespace Reactor.Http {
         #endregion
 
         #region Methods
+        
+        public Reactor.Buffer Read () {
+            return this.socket.Read();
+        }
+
+        public Reactor.Buffer Read (int count) {
+            return this.socket.Read(count);
+        }
 
         public void Unshift (Reactor.Buffer buffer) {
             this.socket.Unshift(buffer);
@@ -454,38 +539,7 @@ namespace Reactor.Http {
         }
 
         /// <summary>
-        /// Parsers the QueryString
-        /// </summary>
-        /// <returns></returns>
-        private Reactor.Async.Future ReadQueryString () {
-            return Reactor.Fibers.Fiber.Create(() => {
-                var query = this.url.Query;
-                if (query == null || query.Length == 0) {
-                    return;
-                }
-                if (query[0] == '?') {
-                    query = query.Substring(1);
-                }
-                string[] components = query.Split('&');
-                foreach (string kv in components) {
-                    try {
-                        int pos = kv.IndexOf('=');
-                        if (pos == -1) {
-                            this.query.Add(null, Reactor.Http.Utility.UrlDecode(kv));
-                        }
-                        else {
-                            string key = Reactor.Http.Utility.UrlDecode(kv.Substring(0, pos));
-                            string val = Reactor.Http.Utility.UrlDecode(kv.Substring(pos + 1));
-                            this.query.Add(key, val);
-                        }
-                    }
-                    catch { }
-                }
-            });
-        }
-
-        /// <summary>
-        /// Parsers the URL.
+        /// Resolves a System.Net.Uri from the raw_url.
         /// </summary>
         /// <returns></returns>
         private Reactor.Async.Future ReadUrl () {
@@ -524,7 +578,47 @@ namespace Reactor.Http {
         }
 
         /// <summary>
-        /// Begins reading the http request from the raw socket.
+        /// Parsers the QueryString
+        /// </summary>
+        /// <returns></returns>
+        private Reactor.Async.Future ReadQueryString () {
+            return Reactor.Fibers.Fiber.Create(() => {
+                var query = this.url.Query;
+                if (query == null || query.Length == 0) {
+                    return;
+                }
+                if (query[0] == '?') {
+                    query = query.Substring(1);
+                }
+                string[] components = query.Split('&');
+                foreach (string kv in components) {
+                    try {
+                        int pos = kv.IndexOf('=');
+                        if (pos == -1) {
+                            this.query.Add(null, Reactor.Http.Utility.UrlDecode(kv));
+                        }
+                        else {
+                            string key = Reactor.Http.Utility.UrlDecode(kv.Substring(0, pos));
+                            string val = Reactor.Http.Utility.UrlDecode(kv.Substring(pos + 1));
+                            this.query.Add(key, val);
+                        }
+                    }
+                    catch { }
+                }
+            });
+        }
+
+
+
+        /// <summary>
+        /// Responsible for initializing the Incoming Message. This
+        /// method will begin reading from the underlying socket and
+        /// attempt to parse the http protocol header. On successful
+        /// parse, the method will bind the sockets read, error and
+        /// end listeners to 'this' machine. This is done as we need
+        /// to add read semantics for chunked and content-length 
+        /// bodies, but also to provide a layed abstraction between
+        /// the caller and the socket.
         /// </summary>
         internal Reactor.Async.Future BeginRequest () {
             return new Reactor.Async.Future((resolve, reject) => {
@@ -538,7 +632,7 @@ namespace Reactor.Http {
                                 this.ReadQueryString().Then(() => {
                                     /* once we have processed the request
                                      * we need to reset the socket. The
-                                     * following sets received count 
+                                     * following sets 'this' received count 
                                      * to zero, unshifts any unconsumed
                                      * data from the buffer, and binds 
                                      * the socket to local listeners. 
@@ -565,6 +659,8 @@ namespace Reactor.Http {
 
         #endregion
 
+        #region Machine
+
         /// <summary>
         /// Handles errors on this stream.
         /// </summary>
@@ -577,7 +673,9 @@ namespace Reactor.Http {
         }
 
         /// <summary>
-        /// Ends this stream.
+        /// Ends this incoming message. This signals
+        /// to the caller that 'no more data' is to
+        /// be received, and.
         /// </summary>
         private void _End () {
             if (!this.ended) {
@@ -595,33 +693,38 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="buffer"></param>
         private void _Read (Reactor.Buffer buffer) {
+
+            /* increment the received length */
             this.received += buffer.Length;
-            Console.WriteLine("_read: {0} - {1} - {2} - {3}", 
-                this.received, this.contentLength, 
-                this.received < this.contentLength ? "less" : "greater",
-                this.contentLength - this.received);
-            //Console.Write("[");    
-            //Console.Write(buffer);
-            //Console.Write("]");    
+            
             if (!this.ended) {
-                //-------------------------------------
-                // content-length:
-                //-------------------------------------
-                if (this.ContentLength > 0) {
-                    this.onread.Emit(buffer);
-                    if (this.received >= this.ContentLength) {
-                        var overflow = this.received - this.contentLength;
-                        if (overflow > 0) {
-                            // TODO: prevent overflow.
-                        }
-                        this._End();
+                /* if this request contains a content-length,
+                 * then we need to ensure the handler never
+                 * receives more data then the client has
+                 * specified. We check for this, and emit
+                 * end if the received is equal to or
+                 * greater than the specified content
+                 * length */
+                if (this.contentLength > 0) {
+                    /* detect overflow */
+                    var overflow = (int)(this.received - this.contentLength);
+                    if (overflow > 0) {
+                        buffer = buffer.Slice(0, buffer.Length - overflow);
                     }
+                    /* detect overflow */
+                    this.onread.Emit(buffer);
+                    /* signal end */
+                    if (overflow >= 0)
+                        this._End();
                 }
+
                 //-------------------------------------
                 // transfer-encoding: chunked
                 //-------------------------------------
                 // TODO
             }
         }
+
+        #endregion
     }
 }

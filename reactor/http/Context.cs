@@ -28,14 +28,42 @@ THE SOFTWARE.
 
 namespace Reactor.Http {
 
+    /// <summary>
+    /// Encapsulates HTTP request response.
+    /// </summary>
     public class Context {
 
+        /// <summary>
+        /// The incoming http request.
+        /// </summary>
         public IncomingMessage    Request  { get; private set; }
+
+        /// <summary>
+        /// The outgoing http response.
+        /// </summary>
         public ServerResponse     Response { get; private set; }
 
-        public Context(Reactor.Http.IncomingMessage request, Reactor.Http.ServerResponse response) {
+        #region Constructors
+
+        internal Context(Reactor.Http.IncomingMessage request, Reactor.Http.ServerResponse response) {
             this.Request  = request;
             this.Response = response;
         }
+
+        #endregion
+
+        #region Statics
+
+        /// <summary>
+        /// Returns a new Context.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="response"></param>
+        /// <returns></returns>
+        internal static Context Create(Reactor.Http.IncomingMessage request, Reactor.Http.ServerResponse response) {
+            return new Context(request, response);
+        }
+
+        #endregion
     }
 }

@@ -36,10 +36,20 @@ namespace Reactor
     public interface IWritable {
 
         /// <summary>
-        /// Subscribes this action to the OnDrain event.
+        /// Subscribes this action to the 'drain' event. The event indicates
+        /// when a write operation has completed and the caller should send
+        /// more data.
         /// </summary>
-        /// <param name="callback">A callback to receive the error.</param>
-        void OnDrain   (Reactor.Action callback);
+        /// <param name="callback"></param>
+        void OnDrain (Reactor.Action callback);
+
+        /// <summary>
+        /// Subscribes this action once to the 'drain' event. The event indicates
+        /// when a write operation has completed and the caller should send
+        /// more data.
+        /// </summary>
+        /// <param name="callback"></param>
+        void OnceDrain(Reactor.Action callback);
 
         /// <summary>
         /// Unsubscribes this action from the OnDrain event.
@@ -72,22 +82,25 @@ namespace Reactor
         void RemoveEnd (Reactor.Action callback);
 
         /// <summary>
-        /// Writes this buffer to the stream.
+        /// Writes this buffer to the stream. This method returns a Reactor.Future
+        /// which resolves once this buffer has been written.
         /// </summary>
-        /// <param name="buffer">The buffer to write.</param>
-        /// <param name="callback">A callback indicating when this buffer has been writen.</param>
+        /// <param name="buffer"></param>
+        /// <returns></returns>
         Reactor.Async.Future Write (Reactor.Buffer buffer);
 
         /// <summary>
-        /// Flushes this stream.
+        /// Flushes this stream. This method returns a Reactor.Future which
+        /// resolves once the stream has been flushed.
         /// </summary>
-        /// <param name="callback">A callback indicating when this stream has been flushed.</param>
+        /// <returns></returns>
         Reactor.Async.Future Flush ();
 
         /// <summary>
-        /// Ends this stream. 
+        /// Ends and disposes of the underlying resource. This method returns
+        /// a Reactor.Future which resolves once this stream has been ended.
         /// </summary>
-        /// <param name="callback">A callback indicating when this stream has ended.</param>
+        /// <returns></returns>
         Reactor.Async.Future End ();
     }
 }

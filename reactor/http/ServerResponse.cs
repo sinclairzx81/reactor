@@ -452,22 +452,30 @@ namespace Reactor.Http {
 
         public void OnDrain(Action callback)
         {
-            throw new NotImplementedException();
+            this.socket.OnDrain(callback);
+        }
+
+        public void OnceDrain(Action callback)
+        {
+            this.socket.OnceDrain(callback);
         }
 
         public void RemoveDrain(Action callback)
         {
-            throw new NotImplementedException();
+            this.socket.RemoveDrain(callback);
         }
 
         public void OnEnd(Action callback)
         {
-            throw new NotImplementedException();
+            this.socket.OnEnd(callback);
         }
 
         public void RemoveEnd(Action callback)
         {
-            throw new NotImplementedException();
+            this.socket.RemoveEnd(callback);
         }
+
+
+
     }
 }

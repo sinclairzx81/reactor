@@ -1,7 +1,6 @@
-﻿# there is a wrapping issue on the buffer, need to 
-  compute indices better than i am.
+﻿# question: does the Incoming Message need a additional
+  buffer to process data from the underlying socket?
 
-# 
 
 # conflict between IReadable IWriteable onend. consider
   not using "End" as a means of closing readstreams.
