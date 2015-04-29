@@ -492,19 +492,21 @@ namespace Reactor.Process
         /// </summary>
         /// <param name="buffer"></param>
         private void _Data (Reactor.Buffer buffer) {
-            this.state = State.Pending;
-            this.buffer.Write(buffer);
-            switch (this.mode) {
-                case Mode.Flowing:
-                    var clone = this.buffer.Clone();
-                    this.buffer.Clear();
-                    this.onread.Emit(clone);
-                    this._Read();
-                    break;
-                case Mode.NonFlowing:
-                    this.onreadable.Emit();
-                    break;
-            } 
+            if (this.state == State.Reading) {
+                this.state = State.Pending;
+                this.buffer.Write(buffer);
+                switch (this.mode) {
+                    case Mode.Flowing:
+                        var clone = this.buffer.Clone();
+                        this.buffer.Clear();
+                        this.onread.Emit(clone);
+                        this._Read();
+                        break;
+                    case Mode.NonFlowing:
+                        this.onreadable.Emit();
+                        break;
+                } 
+            }
         }
 
         /// <summary>

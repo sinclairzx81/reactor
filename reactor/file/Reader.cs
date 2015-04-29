@@ -487,24 +487,20 @@ namespace Reactor.File {
                  * the buffer, however, this rule is
                  * broken in instances where the user
                  * may have unshifted data inbetween
-                 * reads. The following flushes this
-                 * data back to the caller before 
-                 * requesting more.
+                 * reads. The following overrides the
+                 * default behaviour and calls to 
+                 * _data() directly with a cloned
+                 * buffer.
                  */
                 if (this.buffer.Length > 0) {
-                    switch (this.mode) {
-                        case Mode.Flowing:
-                            var clone = this.buffer.Clone();
-                            this.buffer.Clear();
-                            this.onread.Emit(clone);
-                            break;
-                        case Mode.NonFlowing:
-                            this.onreadable.Emit();
-                            return;
-                            break;
-                    }
+                    var clone = this.buffer.Clone();
+                    this.buffer.Clear();
+                    this.onread.Emit(clone);
+                    this._Data(clone);
                 }
-                this.reader.Read();
+                else {
+                    this.reader.Read();
+                }
             }
         }
 
@@ -513,43 +509,45 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="buffer"></param>
         private void _Data (Reactor.Buffer buffer) {
-            this.state = State.Pending;
-            /* in the case of file readers, we
-             * have semantics around read ranges,
-             * because of this, and because we
-             * read data in fixed size chunks, 
-             * the following detects for buffer
-             * overflows and trims the end of 
-             * the buffer prior to emitting
-             * back to the caller.
-             */ 
-            var length    = buffer.Length;
-            var ended     = false;
-            this.received = this.received + length;
-            if (this.received >= this.count) {
-                var overflow = this.received - this.count;
-                length = length - (int)overflow;
-                buffer = buffer.Slice(0, length);
-                ended  = true;
-            }
+            if (this.state == State.Reading) {
+                this.state = State.Pending;
+                /* in the case of file readers, we
+                 * have semantics around read ranges,
+                 * because of this, and because we
+                 * read data in fixed size chunks, 
+                 * the following detects for buffer
+                 * overflows and trims the end of 
+                 * the buffer prior to emitting
+                 * back to the caller.
+                 */ 
+                var length    = buffer.Length;
+                var ended     = false;
+                this.received = this.received + length;
+                if (this.received >= this.count) {
+                    var overflow = this.received - this.count;
+                    length = length - (int)overflow;
+                    buffer = buffer.Slice(0, length);
+                    ended  = true;
+                }
 
-            this.buffer.Write(buffer);
-            switch (this.mode) {
-                case Mode.Flowing:
-                    var clone = this.buffer.Clone();
-                    this.buffer.Clear();
-                    this.onread.Emit(clone);
-                    if(ended)
-                        this._End();
-                    else
-                        this._Read();
-                    break;
-                case Mode.NonFlowing:
-                    this.onreadable.Emit();
-                    if(ended)
-                        this._End();
-                    break;
-            } 
+                this.buffer.Write(buffer);
+                switch (this.mode) {
+                    case Mode.Flowing:
+                        var clone = this.buffer.Clone();
+                        this.buffer.Clear();
+                        this.onread.Emit(clone);
+                        if(ended)
+                            this._End();
+                        else
+                            this._Read();
+                        break;
+                    case Mode.NonFlowing:
+                        this.onreadable.Emit();
+                        if(ended)
+                            this._End();
+                        break;
+                } 
+            }
         }
 
         /// <summary>

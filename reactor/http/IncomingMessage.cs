@@ -37,11 +37,67 @@ namespace Reactor.Http {
     /// Reactor HTTP Incoming Message
     /// </summary>
     public class IncomingMessage : Reactor.IReadable {
+
+        #region States
+
+        /// <summary>
+        /// Readable state.
+        /// </summary>
+        internal enum State {
+            /// <summary>
+            /// The initial state of this stream. A stream
+            /// in a pending state signals that the stream
+            /// is waiting on the caller to issue a read request
+            /// the the underlying resource, by attaching a
+            /// OnRead, OnReadable, or calling Read().
+            /// </summary>
+            Pending,
+            /// <summary>
+            /// A stream in a reading state signals that the
+            /// stream is currently requesting data from the
+            /// underlying resource and is waiting on a 
+            /// response.
+            /// </summary>
+            Reading,
+            /// <summary>
+            /// A stream in a paused state will bypass attempts
+            /// to read on the underlying resource. A paused
+            /// stream must be resumed by the caller.
+            /// </summary>
+            Paused,
+            /// <summary>
+            /// Indicates this stream has ended. Streams can end
+            /// by way of reaching the end of the stream, or through
+            /// error.
+            /// </summary>
+            Ended
+        }
+
+        /// <summary>
+        /// Readable mode.
+        /// </summary>
+        internal enum Mode {
+            /// <summary>
+            /// This stream is using flowing semantics.
+            /// </summary>
+            Flowing,
+            /// <summary>
+            /// This stream is using non-flowing semantics.
+            /// </summary>
+            NonFlowing
+        }
+
+        #endregion
+
         private Reactor.Tcp.Socket                  socket;
         private Reactor.Async.Event                 onreadable;
         private Reactor.Async.Event<Reactor.Buffer> onread;
         private Reactor.Async.Event<Exception>      onerror;
         private Reactor.Async.Event                 onend;
+        private Reactor.Buffer                      buffer;
+        private State                               state;
+        private Mode                                mode;
+        private int                                 received;
 
         private Reactor.Http.Headers                headers;
         private Reactor.Http.Query                  query;
@@ -53,8 +109,7 @@ namespace Reactor.Http {
         private Encoding                            contentEncoding;
         private string[]                            acceptTypes;
         private string[]                            userLanguages;
-        private int                                 received;
-        private bool                                ended;
+        
 
         #region Constructors
 
@@ -64,10 +119,13 @@ namespace Reactor.Http {
         /// <param name="socket"></param>
         internal IncomingMessage(Reactor.Tcp.Socket socket) {
             this.socket          = socket;
-            this.onreadable      = new Reactor.Async.Event();
-            this.onread          = new Reactor.Async.Event<Reactor.Buffer>();
-            this.onerror         = new Reactor.Async.Event<Exception>();
-            this.onend           = new Reactor.Async.Event();
+            this.onreadable      = Reactor.Async.Event.Create();
+            this.onread          = Reactor.Async.Event.Create<Reactor.Buffer>();
+            this.onerror         = Reactor.Async.Event.Create<Exception>();
+            this.onend           = Reactor.Async.Event.Create();
+            this.buffer          = Reactor.Buffer.Create();
+            this.state           = State.Pending;
+            this.mode            = Mode.NonFlowing;
 
             /* initialize with reasonable defaults */
             this.headers         = new Headers();
@@ -81,7 +139,6 @@ namespace Reactor.Http {
             this.acceptTypes     = null;
             this.userLanguages   = null;
             this.received        = 0;
-            this.ended           = false;
         }
 
         #endregion
@@ -173,9 +230,16 @@ namespace Reactor.Http {
         }
 
         /// <summary>
+        /// The Transfer-Encoding header.
+        /// </summary>
+        public string TransferEncoding {
+            get { return this.headers["transfer-encoding"] ?? string.Empty; }
+        }
+
+        /// <summary>
         /// The HTTP referer header.
         /// </summary>
-        public string   Referer {
+        public string Referer {
             get { return this.headers["referer"] ?? string.Empty; }
         }
 
@@ -207,74 +271,77 @@ namespace Reactor.Http {
         /// <summary>
         /// Subscribes this action to the 'readable' event. When a chunk of 
         /// data can be read from the stream, it will emit a 'readable' event.
-        /// In some cases, listening for a 'readable' event will cause some 
-        /// data to be read into the internal buffer from the underlying 
-        /// system, if it hadn't already.
+        /// Listening for a 'readable' event will cause some data to be read 
+        /// into the internal buffer from the underlying resource. If a stream 
+        /// happens to be in a 'paused' state, attaching a readable event will 
+        /// transition into a pending state prior to reading from the resource.
         /// </summary>
         /// <param name="callback"></param>
         public void OnReadable (Reactor.Action callback) {
             this.onreadable.On(callback);
+            this.mode = Mode.NonFlowing;
+            if (this.state == State.Paused) {
+                this.state = State.Pending;
+            }
+            this._Read(); 
         }
 
         /// <summary>
         /// Subscribes this action once to the 'readable' event. When a chunk of 
         /// data can be read from the stream, it will emit a 'readable' event.
-        /// In some cases, listening for a 'readable' event will cause some 
-        /// data to be read into the internal buffer from the underlying 
-        /// system, if it hadn't already.
+        /// Listening for a 'readable' event will cause some data to be read 
+        /// into the internal buffer from the underlying resource. If a stream 
+        /// happens to be in a 'paused' state, attaching a readable event will 
+        /// transition into a pending state prior to reading from the resource.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnceReadable(Action callback) {
+        public void OnceReadable(Reactor.Action callback) {
             this.onreadable.Once(callback);
+            this.mode = Mode.NonFlowing;
+            if (this.state == State.Paused) {
+                this.state = State.Pending;
+            }
+            this._Read();
         }
 
         /// <summary>
-        /// Unsubscribes this action from the OnReadable event.
+        /// Unsubscribes this action from the 'readable' event.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveReadable (Reactor.Action callback) {
-            this.onreadable.On(callback);
+        public void RemoveReadable(Reactor.Action callback) {
+			this.onreadable.Remove(callback);
         }
 
         /// <summary>
         /// Subscribes this action to the 'read' event. Attaching a data event 
         /// listener to a stream that has not been explicitly paused will 
-        /// switch the stream into flowing mode. Data will then be passed 
-        /// as soon as it is available.
+        /// switch the stream into flowing mode and begin reading immediately. 
+        /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
         public void OnRead (Reactor.Action<Reactor.Buffer> callback) {
-            /* we attach on the local onread, not the 
-             * socket. in rely on this classes 'machine'
-             * to emit onread events */
             this.onread.On(callback);
-
-            /* we do resume on this socket. we 
-             * note that 'read' events are passed 
-             * to this 'machine' dispatch this 
-             * classes 'onread'. */
-            this.socket.Resume();
+            if (this.state == State.Pending) {
+                this.Resume();
+            }
         }
 
         /// <summary>
-        /// 
+        /// Subscribes this action once to the 'read' event. Attaching a data event 
+        /// listener to a stream that has not been explicitly paused will 
+        /// switch the stream into flowing mode and begin reading immediately. 
+        /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnceRead(Action<Buffer> callback) {
-            /* we attach on the local onread, not the 
-             * socket. in rely on this classes 'machine'
-             * to emit onread events */
+        public void OnceRead(Reactor.Action<Reactor.Buffer> callback) {
             this.onread.Once(callback);
-
-            /* we do resume on this socket. we 
-             * note that 'read' events are passed 
-             * to this 'machine' dispatch this 
-             * classes 'onread'. */
-            this.socket.Resume();
+            if (this.state == State.Pending) {
+                this.Resume();
+            }
         }
 
         /// <summary>
-        /// Unsubscribes this action from the OnRead event.
+        /// Unsubscribes this action from the 'read' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveRead (Reactor.Action<Reactor.Buffer> callback) {
@@ -282,7 +349,7 @@ namespace Reactor.Http {
         }
 
         /// <summary>
-        /// Subscribes this action to the OnError event.
+        /// Subscribes this action to the 'error' event.
         /// </summary>
         /// <param name="callback"></param>
         public void OnError (Reactor.Action<Exception> callback) {
@@ -290,7 +357,7 @@ namespace Reactor.Http {
         }
 
         /// <summary>
-        /// Unsubscribes this action from the OnError event.
+        /// Unsubscribes this action from the 'error' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveError (Reactor.Action<Exception> callback) {
@@ -298,7 +365,7 @@ namespace Reactor.Http {
         }
 
         /// <summary>
-        /// Subscribes this action to the OnEnd event.
+        /// Subscribes this action to the 'end' event.
         /// </summary>
         /// <param name="callback"></param>
         public void OnEnd (Reactor.Action callback) {
@@ -306,7 +373,7 @@ namespace Reactor.Http {
         }
 
         /// <summary>
-        /// Unsubscribes this action from the OnEnd event.
+        /// Unsubscribes this action from the 'end' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveEnd (Reactor.Action callback) {
@@ -316,29 +383,84 @@ namespace Reactor.Http {
         #endregion
 
         #region Methods
-        
-        public Reactor.Buffer Read () {
-            return this.socket.Read();
-        }
 
+        /// <summary>
+        /// Will read this number of bytes out of the internal buffer. If there 
+        /// is no data available, then it will return a zero length buffer. If 
+        /// the internal buffer has been completely read, then this method will 
+        /// issue a new read request on the underlying resource in non-flowing 
+        /// mode. Any data read with a length > 0 will also be emitted as a 'read' 
+        /// event.
+        /// </summary>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns></returns>
         public Reactor.Buffer Read (int count) {
-            return this.socket.Read(count);
+            var result = Reactor.Buffer.Create(this.buffer.Read(count));
+            if (result.Length > 0) {
+                this.onread.Emit(result);
+            }
+            if (this.buffer.Length == 0) {
+                this.mode = Mode.NonFlowing;
+                this._Read();
+            }
+            return result;
         }
 
+        /// <summary>
+        /// Will read all data out of the internal buffer. If no data is available 
+        /// then it will return a zero length buffer. This method will then issue 
+        /// a new read request on the underlying resource in non-flowing mode. Any 
+        /// data read with a length > 0 will also be emitted as a 'read' event.
+        /// </summary>
+        public Reactor.Buffer Read () {
+            return this.Read(this.buffer.Length);
+        }
+
+        /// <summary>
+        /// Unshifts this buffer back to this stream.
+        /// </summary>
+        /// <param name="buffer">The buffer to unshift.</param>
         public void Unshift (Reactor.Buffer buffer) {
-            this.socket.Unshift(buffer);
+            this.buffer.Unshift(buffer);
         }
 
-        public void Pause () {
-            this.socket.Pause();
+        /// <summary>
+        /// Pauses this stream. This method will cause a 
+        /// stream in flowing mode to stop emitting data events, 
+        /// switching out of flowing mode. Any data that becomes 
+        /// available will remain in the internal buffer.
+        /// </summary>
+        public void Pause() {
+			this.mode  = Mode.NonFlowing;
+            this.state = State.Paused;
         }
 
-        public void Resume () {
-            this.socket.Resume();
+        /// <summary>
+        /// This method will cause the readable stream to resume emitting data events.
+        /// This method will switch the stream into flowing mode. If you do not want 
+        /// to consume the data from a stream, but you do want to get to its end event, 
+        /// you can call readable.resume() to open the flow of data.
+        /// </summary>
+        public void Resume() {
+            this.mode  = Mode.Flowing;
+            this.state = State.Pending;
+            this._Read();
         }
 
-        public Reactor.IReadable Pipe(Reactor.IWritable writeable) {
-            return this.socket.Pipe(writeable);
+        /// <summary>
+        /// Pipes data to a writable stream.
+        /// </summary>
+        /// <param name="writable"></param>
+        /// <returns></returns>
+        public Reactor.IReadable Pipe (Reactor.IWritable writable) {
+            this.OnRead(data => {
+                this.Pause();
+                writable.Write(data)
+                        .Then(this.Resume)
+                        .Error(this._Error);
+            });
+            this.OnEnd (() => writable.End());
+            return this;
         }
 
         #endregion
@@ -608,8 +730,6 @@ namespace Reactor.Http {
             });
         }
 
-
-
         /// <summary>
         /// Responsible for initializing the Incoming Message. This
         /// method will begin reading from the underlying socket and
@@ -643,11 +763,10 @@ namespace Reactor.Http {
                                      * the caller can 'resume' processing
                                      * in a typical fashion.
                                      * */
-                                    this.received = 0;
-                                    this.socket.Unshift (unconsumed);
-                                    this.socket.OnRead  (this._Read);
-                                    this.socket.OnError (this._Error);
-                                    this.socket.OnEnd   (this._End);
+                                    this.buffer.Write(unconsumed);
+                                    this.received = unconsumed.Length;
+                                    this.socket.OnError(this._Error);
+                                    this.socket.OnEnd(this._End);
                                     resolve();
                                 }).Error(reject);
                             }).Error(reject);
@@ -662,66 +781,118 @@ namespace Reactor.Http {
         #region Machine
 
         /// <summary>
-        /// Handles errors on this stream.
+        /// Begins reading from the underlying stream.
+        /// </summary>
+        private void _Read () {
+            if (this.state == State.Pending) {
+                this.state = State.Reading;
+                /* any data resident in the buffer
+                 * needs to emitted prior to issuing
+                 * a request for more, normal operation
+                 * would assume that the callers only 
+                 * need to read if they have emptied 
+                 * the buffer, however, this rule is
+                 * broken in instances where the user
+                 * may have unshifted data inbetween
+                 * reads. The following overrides the
+                 * default behaviour and calls to 
+                 * _data() directly with a cloned
+                 * buffer.
+                 */
+                if (this.buffer.Length > 0) {
+                    var clone = this.buffer.Clone();
+                    this.buffer.Clear();
+                    this.onread.Emit(clone);
+                    this._Data(this.buffer);
+                }
+                /* here, we handle the case where
+                 * the caller is attempting to read a 
+                 * request with a content-length of 0.
+                 * in this instance, we defer emitting
+                 * end till next loop to give the caller
+                 * enough time to attach listeners.
+                 */
+                else if (this.received >= this.contentLength) {
+                    Loop.Post(this._End);
+                }
+                /* here, we make a actual request on the
+                 * underlying socket. This is a conceptually
+                 * similar approach taken by other readable
+                 * streams.
+                 */
+                else {
+                    this.socket.OnceRead(data => {
+                        this.socket.Pause();
+                        this._Data(data);
+                    }); this.socket.Resume();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles incoming data from the stream.
+        /// </summary>
+        /// <param name="buffer"></param>
+        private void _Data (Reactor.Buffer buffer) {
+            if (this.state == State.Reading) {
+                this.state = State.Pending;
+
+                bool ended = false;
+
+                if (this.TransferEncoding != "chunked") {
+                    /* non chunked content needs to be 
+                     * compared against the content-length.
+                     * here, we increment the received,
+                     * and trim the buffer if necessary. 
+                     */
+                    var length = buffer.Length;
+                    this.received = this.received + length;
+                    if (this.received >= this.contentLength) {
+                        var overflow = this.received - this.contentLength;
+                        length = length - (int)overflow;
+                        buffer = buffer.Slice(0, length);
+                        ended  = true;
+                    }
+                }
+
+                this.buffer.Write(buffer);
+                switch (this.mode) {
+                    case Mode.Flowing:
+                        var clone = this.buffer.Clone();
+                        this.buffer.Clear();
+                        this.onread.Emit(clone);
+                        if(ended)
+                            this._End();
+                        else
+                            this._Read();
+                        break;
+                    case Mode.NonFlowing:
+                        this.onreadable.Emit();
+                        if(ended)
+                            this._End();
+                        break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles stream errors.
         /// </summary>
         /// <param name="error"></param>
         private void _Error (Exception error) {
-            if(!this.ended) {
+            if (this.state != State.Ended) { 
                 this.onerror.Emit(error);
                 this._End();
             }
         }
 
         /// <summary>
-        /// Ends this incoming message. This signals
-        /// to the caller that 'no more data' is to
-        /// be received, and.
+        /// Terminates the stream.
         /// </summary>
-        private void _End () {
-            if (!this.ended) {
-                this.ended = true;
+        public void _End    () {
+            if (this.state != State.Ended) {
+                this.state = State.Ended;
                 this.onend.Emit();
-                this.onreadable.Dispose();
-                this.onread.Dispose();
-                this.onerror.Dispose();
-                this.onend.Dispose();
-            }
-        }
-
-        /// <summary>
-        /// Receives data on this stream.
-        /// </summary>
-        /// <param name="buffer"></param>
-        private void _Read (Reactor.Buffer buffer) {
-
-            /* increment the received length */
-            this.received += buffer.Length;
-            
-            if (!this.ended) {
-                /* if this request contains a content-length,
-                 * then we need to ensure the handler never
-                 * receives more data then the client has
-                 * specified. We check for this, and emit
-                 * end if the received is equal to or
-                 * greater than the specified content
-                 * length */
-                if (this.contentLength > 0) {
-                    /* detect overflow */
-                    var overflow = (int)(this.received - this.contentLength);
-                    if (overflow > 0) {
-                        buffer = buffer.Slice(0, buffer.Length - overflow);
-                    }
-                    /* detect overflow */
-                    this.onread.Emit(buffer);
-                    /* signal end */
-                    if (overflow >= 0)
-                        this._End();
-                }
-
-                //-------------------------------------
-                // transfer-encoding: chunked
-                //-------------------------------------
-                // TODO
             }
         }
 

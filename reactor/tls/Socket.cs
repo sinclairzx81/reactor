@@ -1149,24 +1149,20 @@ namespace Reactor.Tls {
                  * the buffer, however, this rule is
                  * broken in instances where the user
                  * may have unshifted data inbetween
-                 * reads. The following flushes this
-                 * data back to the caller before 
-                 * requesting more.
+                 * reads. The following overrides the
+                 * default behaviour and calls to 
+                 * _data() directly with a cloned
+                 * buffer.
                  */
                 if (this.buffer.Length > 0) {
-                    switch (this.mode) {
-                        case Mode.Flowing:
-                            var clone = this.buffer.Clone();
-                            this.buffer.Clear();
-                            this.onread.Emit(clone);
-                            break;
-                        case Mode.NonFlowing:
-                            this.onreadable.Emit();
-                            return;
-                            break;
-                    }
+                    var clone = this.buffer.Clone();
+                    this.buffer.Clear();
+                    this.onread.Emit(clone);
+                    this._Data(clone);
                 }
-                this.reader.Read();
+                else {
+                    this.reader.Read();
+                }
             }
         }
 
