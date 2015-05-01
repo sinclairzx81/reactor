@@ -48,7 +48,6 @@ namespace Reactor.Async {
     /// ]]>
     /// </example>
     public class Queue : IDisposable {
-
         private Reactor.ConcurrentQueue<Reactor.Action<Reactor.Action>> queue;
         private int                                                     concurrency;
         private int                                                     running;
@@ -57,9 +56,9 @@ namespace Reactor.Async {
         #region Constructors
 
         /// <summary>
-        /// Creates a new spool.
+        /// Creates a new queue.
         /// </summary>
-        /// <param name="concurrency"></param>
+        /// <param name="concurrency">The level of concurrency allow for processing actions.</param>
         public Queue(int concurrency) {
             this.queue       = new Reactor.ConcurrentQueue<Reactor.Action<Reactor.Action>>();
             this.concurrency = concurrency;
@@ -72,7 +71,8 @@ namespace Reactor.Async {
         #region Properties
 
         /// <summary>
-        /// Returns the number of queued operations on this spool.
+        /// Returns the number of queued actions waiting to be
+        /// processed.
         /// </summary>
         public int Pending {
             get {  return this.queue.Count; }
@@ -83,10 +83,14 @@ namespace Reactor.Async {
         #region Methods
 
         /// <summary>
-        /// Runs this operation. Callers must call "next" to continue processing.
+        /// Runs this action. Internally, this action is queued
+        /// in a pool of action and executed in turn. If the 
+        /// internal queue is empty and this queue is not explicitly
+        /// paused, this function will immediately start processing 
+        /// actions.
         /// </summary>
         /// <param name="operation"></param>
-        public void Run(Action<Action> operation) {
+        public void Run(Reactor.Action<Reactor.Action> operation) {
             this.queue.Enqueue(operation);
             if (!this.paused) {
                 this.Process();
@@ -94,14 +98,20 @@ namespace Reactor.Async {
         }
         
         /// <summary>
-        /// Pauses the processing of this queue.
+        /// Pauses this queue. Internally, actions currently
+        /// being processed will be returned to their callers,
+        /// but no future actions will be run until the caller
+        /// 'resumes' this queue.
         /// </summary>
         public void Pause() {
             this.paused = true;
         }
 
         /// <summary>
-        /// Resumes the processing of this queue.
+        /// Resumes this queue. Calling this function 
+        /// will mark the queue as 'unpaused' and issue
+        /// a call to internally process items off the 
+        /// queue.
         /// </summary>
         public void Resume() {
             this.paused = false;
@@ -113,15 +123,21 @@ namespace Reactor.Async {
         #region Machine
 
         /// <summary>
-        /// Process a item from the queue recursively.
+        /// If possible, dequeue the next action on the queue and
+        /// process it. The process function expects that the 
+        /// action being processed will eventially call 'next()', this
+        /// resumes control back to this queue, in which case this 
+        /// function check the state of the queue, and if possible,
+        /// will recursively call itself until all items
+        /// in the queue are cleared.
         /// </summary>
         private void Process() {
             if (this.queue.Count > 0) {
                 if (this.running < this.concurrency) {
-                    Action<Action> operation = null;
-                    if (this.queue.TryDequeue(out operation)) {
+                    Action<Action> action = null;
+                    if (this.queue.TryDequeue(out action)) {
                         this.running += 1;
-                        operation(() => {
+                        action(() => {
                             this.running -= 1;
                             if (!this.paused) {
                                 this.Process();
@@ -152,16 +168,16 @@ namespace Reactor.Async {
         #region Statics
 
         /// <summary>
-        /// Creates a new spool.
+        /// Creates a new queue with the specified concurrency.
         /// </summary>
-        /// <param name="concurrency"></param>
+        /// <param name="concurrency">The level of concurrency allow for processing actions.</param>
         /// <returns></returns>
         public static Queue Create(int concurrency) {
             return new Queue(concurrency);
         }
 
         /// <summary>
-        /// Creates a new spool with a concurrency of 1.
+        /// Creates a new queue with a concurrency of 1.
         /// </summary>
         /// <returns></returns>
         public static Queue Create() {
