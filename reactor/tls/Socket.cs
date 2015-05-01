@@ -471,7 +471,6 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="callback">A callback to signal when this stream has ended.</param>
         public Reactor.Async.Future End () {
-            this.Uncork();
             return new Reactor.Async.Future((resolve, reject)=>{
                 this.queue.Run(next => {
                     this.writer.End()

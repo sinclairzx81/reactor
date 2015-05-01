@@ -34,11 +34,32 @@ namespace Reactor.Streams {
     /// Provides a asynchronous write interface over System.IO.Stream.
     /// </summary>
     internal class Writer : IDisposable {
+
+        #region State
+
+        /// <summary>
+        /// Internal state of this writer.
+        /// </summary>
+        internal enum State {
+            /// <summary>
+            /// Indicates that this stream is still writing.
+            /// </summary>
+            Writing, 
+
+            /// <summary>
+            /// Indicates that this stream has ended.
+            /// </summary>
+            Ended
+        }
+
+        #endregion
+
         private System.IO.Stream                 stream;
         private Reactor.Async.Queue              queue;
         private Reactor.Async.Event              ondrain;
         private Reactor.Async.Event<Exception>   onerror;
         private Reactor.Async.Event              onend;
+        private State                            state;
 
         #region Constructors
 
@@ -52,6 +73,7 @@ namespace Reactor.Streams {
             this.ondrain = Reactor.Async.Event.Create();
             this.onerror = Reactor.Async.Event.Create<Exception>();
             this.onend   = Reactor.Async.Event.Create();
+            this.state   = State.Writing;
         }
 
         #endregion
@@ -59,7 +81,7 @@ namespace Reactor.Streams {
         #region Events
 
         /// <summary>
-        /// Subscribes to the OnDrain event.
+        /// Subscribes this action to the 'drain' event.
         /// </summary>
         /// <param name="callback"></param>
         public void OnDrain(Reactor.Action callback) {
@@ -67,7 +89,15 @@ namespace Reactor.Streams {
         }
 
         /// <summary>
-        /// Unsubscribes from the OnDrain event.
+        /// Subscribes this action once to the 'drain' event.
+        /// </summary>
+        /// <param name="action"></param>
+        public void OnceDrain(Reactor.Action action) {
+            this.ondrain.Once(action);
+        }
+
+        /// <summary>
+        /// Unsubscribes this action from the 'drain' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveDrain(Reactor.Action callback) {
@@ -75,7 +105,7 @@ namespace Reactor.Streams {
         }
 
         /// <summary>
-        /// Subscribes this action to OnError events.
+        /// Subscribes this action to the 'error' event.
         /// </summary>
         /// <param name="callback"></param>
         public void OnError (Reactor.Action<Exception> callback) {
@@ -83,7 +113,7 @@ namespace Reactor.Streams {
         }
 
         /// <summary>
-        /// Unsubscribes this action from OnError events.
+        /// Unsubscribes this action from the 'error' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveError (Reactor.Action<Exception> callback) {
@@ -91,7 +121,7 @@ namespace Reactor.Streams {
         }
 
         /// <summary>
-        /// Subscribes this action to OnEnd events.
+        /// Subscribes this action to the 'end' event.
         /// </summary>
         /// <param name="callback"></param>
         public void OnEnd (Reactor.Action callback) {
@@ -99,7 +129,7 @@ namespace Reactor.Streams {
         }
 
         /// <summary>
-        /// Unsubscribes this action from OnEnd events.
+        /// Unsubscribes this action from the 'end' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveEnd (Reactor.Action callback) {
@@ -118,33 +148,31 @@ namespace Reactor.Streams {
         public Reactor.Async.Future Write (Reactor.Buffer buffer) {
             var clone = buffer.ToArray();
             return new Reactor.Async.Future((resolve, reject) => {
-                this.queue.Run(next => {
-                    try {
-                        this.stream.BeginWrite(clone, 0, clone.Length, result => {
-                            Loop.Post(() => {
-                                try {
-                                    this.stream.EndWrite(result);
-                                    this.ondrain.Emit();
-                                    resolve();
-                                    next();
-                                }
-                                catch (Exception error) {
-                                    this.onerror.Emit(error);
-                                    this.onend.Emit();
-                                    this.Dispose();
-                                    reject(error);
-                                    next();
-                                }
-                            });
-                        }, null);
-                    }
-                    catch(Exception error) {
-                        this.onerror.Emit(error);
-                        this.onend.Emit();
-                        this.Dispose();
-                        reject(error);
-                        next();
-                    }
+                Loop.Post(() => {
+                    this.queue.Run(next => {
+                        try {
+                            this.stream.BeginWrite(clone, 0, clone.Length, result => {
+                                Loop.Post(() => {
+                                    try {
+                                        this.stream.EndWrite(result);
+                                        this._Drain();
+                                        resolve();
+                                        next();
+                                    }
+                                    catch (Exception error) {
+                                        this._Error(error);
+                                        reject(error);
+                                        next();
+                                    }
+                                });
+                            }, null);
+                        }
+                        catch(Exception error) {
+                            this._Error(error);
+                            reject(error);
+                            next();
+                        }
+                    });
                 });
             });
         }
@@ -155,19 +183,19 @@ namespace Reactor.Streams {
         /// <param name="callback">A action called once the stream has been flushed.</param>
         public Reactor.Async.Future Flush () {
             return new Reactor.Async.Future((resolve, reject) => {
-                this.queue.Run(next => {
-                    try {
-                        this.stream.Flush();
-                        resolve();
-                        next();
-                    }
-                    catch (Exception error) {
-                        this.onerror.Emit(error);
-                        this.onend.Emit();
-                        this.Dispose();
-                        reject(error);
-                        next();
-                    }   
+                Loop.Post(() => {
+                    this.queue.Run(next => {
+                        try {
+                            this.stream.Flush();
+                            resolve();
+                            next();
+                        }
+                        catch (Exception error) {
+                            this._Error(error);
+                            reject(error);
+                            next();
+                        }   
+                    });
                 });
             });
         }
@@ -178,28 +206,19 @@ namespace Reactor.Streams {
         /// <param name="callback">A action called once the stream has been ended.</param>
         public Reactor.Async.Future End () {
             this.Uncork();
-            return new Reactor.Async.Future((resolve, reject) => {  
-                this.queue.Run(next => {
-                    try {
-                        this.stream.Dispose();
-                        this.onend.Emit();
-                        this.Dispose();
+            return new Reactor.Async.Future((resolve, reject) => { 
+                Loop.Post(() => {
+                    this.queue.Run(next => {
+                        this._End();
                         resolve();
                         next();
-                    }
-                    catch (Exception error) {
-                        this.onerror.Emit(error);
-                        this.onend.Emit();
-                        this.Dispose();
-                        reject(error);
-                        next();
-                    }
+                    });
                 });
             });
         }
 
         /// <summary>
-        /// Forces buffering of all writes. Buffered data will be 
+        /// Immediately forces buffering of all writes. Buffered data will be 
         /// flushed either at .Uncork() or at .End() call.
         /// </summary>
         public void Cork() {
@@ -207,10 +226,45 @@ namespace Reactor.Streams {
         }
 
         /// <summary>
-        /// Flush all data, buffered since .Cork() call.
+        /// Resumes writing on this stream.
         /// </summary>
         public void Uncork() {
             this.queue.Resume();
+        }
+
+        #endregion
+
+        #region Machine
+
+        /// <summary>
+        /// Emits the drain event.
+        /// </summary>
+        private void _Drain() {
+            if (this.state != State.Ended) {
+                this.ondrain.Emit();
+            }
+        }
+
+        /// <summary>
+        /// Emits error on this stream, then ends.
+        /// </summary>
+        /// <param name="error"></param>
+        private void _Error(Exception error) {
+            if (this.state != State.Ended) {
+                this.onerror.Emit(error);
+                this._End();
+            }
+        }
+
+        /// <summary>
+        /// Ends and disposes of this stream.
+        /// </summary>
+        private void _End() {
+            if (this.state != State.Ended) {
+                this.state = State.Ended;
+                this.stream.Dispose();
+                this.onend.Emit();  
+            }
         }
 
         #endregion
@@ -221,8 +275,7 @@ namespace Reactor.Streams {
         /// Disposes of this writer.
         /// </summary>
         public void Dispose() {
-            this.queue.Dispose();
-            this.stream.Dispose();
+            this.End();
         }
 
         #endregion

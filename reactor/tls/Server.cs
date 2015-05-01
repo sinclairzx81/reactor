@@ -230,12 +230,12 @@ namespace Reactor.Tls {
                     var networkstream = new NetworkStream(socket, false);
                     this.Authenticate(networkstream, this.certificate).Then(stream => {
                         this.onread.Emit(new Reactor.Tls.Socket(socket, stream));
-                    }).Then(_ => {
+                    }).Then(() => {
                         if (this.listening) this._Read();
                         else this._End();
                     }).Error(this._Error);
                 })
-                .Then(_ => {
+                .Then(() => {
                     if (this.listening) this._Read();
                     else this._End();
                 }).Error(this._Error);

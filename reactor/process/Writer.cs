@@ -36,11 +36,31 @@ namespace Reactor.Process {
     /// </summary>
     public class Writer : Reactor.IWritable, IDisposable {
 
+        #region State
+
+        /// <summary>
+        /// Internal state of this writer.
+        /// </summary>
+        internal enum State {
+            /// <summary>
+            /// Indicates that this stream is still writing.
+            /// </summary>
+            Writing, 
+
+            /// <summary>
+            /// Indicates that this stream has ended.
+            /// </summary>
+            Ended
+        }
+
+        #endregion
+
         private Reactor.Async.Event            ondrain;
         private Reactor.Async.Event<Exception> onerror;
         private Reactor.Async.Event            onend;
         private Reactor.Streams.Writer         writer;
-        
+        private State                          state;
+
         #region Constructor
 
         /// <summary>
@@ -54,10 +74,11 @@ namespace Reactor.Process {
             this.ondrain = Reactor.Async.Event.Create();
             this.onerror = Reactor.Async.Event.Create<Exception>();
             this.onend   = Reactor.Async.Event.Create();
+            this.state   = State.Writing;
             this.writer  = Reactor.Streams.Writer.Create(stream);
-            this.writer.OnDrain (this.ondrain.Emit);
-            this.writer.OnError (this.onerror.Emit);
-            this.writer.OnEnd   (this.onend.Emit);
+            this.writer.OnDrain (this._Drain);
+            this.writer.OnError (this._Error);
+            this.writer.OnEnd   (this._End);
         }
 
         #endregion
@@ -304,13 +325,48 @@ namespace Reactor.Process {
 
         #endregion
 
+        #region Machine
+
+        /// <summary>
+        /// Emits the ondrain event.
+        /// </summary>
+        private void _Drain() {
+            if (this.state != State.Ended) {
+                this.ondrain.Emit();
+            }
+        }
+
+        /// <summary>
+        /// Emits the _Error event.
+        /// </summary>
+        /// <param name="error"></param>
+        private void _Error(Exception error) {
+            if (this.state != State.Ended) {
+                this.onerror.Emit(error);
+                this._End();
+            }
+        }
+
+        /// <summary>
+        /// Emits the 'end' event and disposes.
+        /// </summary>
+        private void _End() {
+            if (this.state != State.Ended) {
+                this.state = State.Ended;
+                this.writer.Dispose();
+                this.onend.Emit();
+            }
+        }
+
+        #endregion
+
         #region IDisposable
 
         /// <summary>
         /// Disposes of this stream.
         /// </summary>
         public void Dispose() {
-            this.End();
+            this._End();
         }
 
         #endregion

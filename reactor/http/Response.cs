@@ -612,7 +612,6 @@ namespace Reactor.Http
                 parser.OnEnd       (()      => {
                     // this needs fixing...
                     unconsumed = parser.Unconsumed();
-                    Console.WriteLine("asd");
                 });
                 parser.Begin();
                 if(parse_error != null) throw parse_error;
@@ -698,19 +697,6 @@ namespace Reactor.Http
         private void _Read () {
             if (this.state == State.Pending) {
                 this.state = State.Reading;
-                /* any data resident in the buffer
-                 * needs to emitted prior to issuing
-                 * a request for more, normal operation
-                 * would assume that the callers only 
-                 * need to read if they have emptied 
-                 * the buffer, however, this rule is
-                 * broken in instances where the user
-                 * may have unshifted data inbetween
-                 * reads. The following overrides the
-                 * default behaviour and calls to 
-                 * _data() directly with a cloned
-                 * buffer.
-                 */
                 if (this.buffer.Length > 0) {
                     var clone = this.buffer.Clone();
                     this.buffer.Clear();
@@ -723,8 +709,8 @@ namespace Reactor.Http
                  * end till next loop to give the caller
                  * enough time to attach listeners.
                  */
-                else if (this.received >= this.contentLength &&
-                         this.TransferEncoding != "chunked") {
+                else if (this.TransferEncoding != "chunked" && 
+                         this.received >= this.contentLength) {
                     Loop.Post(this._End);
                 }
                 /* here, we make a actual request on the
@@ -749,12 +735,11 @@ namespace Reactor.Http
             if (this.state == State.Reading) {
                 this.state = State.Pending;
                 bool ended = false;
+
+                //--------------------------------------
+                // read: content-length
+                //--------------------------------------
                 if (this.TransferEncoding != "chunked") {
-                    /* non chunked content needs to be 
-                     * compared against the content-length.
-                     * here, we increment the received,
-                     * and trim the buffer if necessary. 
-                     */
                     var length = buffer.Length;
                     this.received = this.received + length;
                     if (this.received >= this.contentLength) {
@@ -765,9 +750,49 @@ namespace Reactor.Http
                     }
                 }
 
+                //--------------------------------------
+                // read: transfer-encoding: chunked
+                //--------------------------------------
+                Console.WriteLine("processing");
                 if (this.TransferEncoding == "chunked") {
-                    // todo: parse content type chunked.
-                    // we need a protocol parser.
+                    var buf  = Reactor.Buffer.Create();
+                    var idx  = 0;
+                    var len  = 0;
+                    var open = false;
+                    var data = buffer.Read();
+                    for (int i = 0; i < data.Length; i++) {
+                        switch (data[i]) {
+                            case 13: // CR
+                                len += 1;
+                                break;
+                            case 10: // LF
+                                len += 1;
+                                open = true;
+                                break;
+                            default:
+                                if (open) {
+                                    try {
+                                        var s = System.Text.Encoding.UTF8.GetString(data, idx, len);
+                                        Console.WriteLine(s);
+                                        var l = System.Convert.ToInt32(s, 16);
+                                        Console.WriteLine("s {0} {1}", s, len);
+                                        if (l == 0) { Console.WriteLine("ASDASDASDA"); }
+                                        buf.Write(data, i, l);
+                                        i      = i + l;
+                                        len    = 0;
+                                        open   = false;
+                                        char c = (char)data[i];
+                                        Console.WriteLine((char)data[i]);
+                                        Console.WriteLine();
+                                    }
+                                    catch(Exception e) {
+                                        Console.WriteLine("err:" + e);
+                                    }
+                                }
+                                break;
+                        }
+                    }
+                    buffer = buf;
                 }
 
                 this.buffer.Write(buffer);

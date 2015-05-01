@@ -202,7 +202,6 @@ namespace Reactor.Http {
                 var buffer = Reactor.Buffer.Create(128);
                 buffer.Write("{0} {1} HTTP/1.1\r\n", this.method, this.uri.PathAndQuery);
                 buffer.Write(this.headers.ToString());
-                Console.WriteLine(buffer);
                 this.socket.Write(buffer).Then(resolve).Error(reject);
             });
         }

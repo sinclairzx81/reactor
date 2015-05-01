@@ -196,7 +196,7 @@ namespace Reactor.Tcp {
                 .Then(socket => {
                     this.onread.Emit(new Reactor.Tcp.Socket(socket));
                 })
-                .Then(_ => {
+                .Then(() => {
                     if (this.listening) this._Read();
                     else this._End();
                 }).Error(this._Error);
