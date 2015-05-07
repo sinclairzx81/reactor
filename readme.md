@@ -1,89 +1,111 @@
 # reactor
-## asynchronous evented io for .net
+## asynchronous event driven io for .net
 
 ```csharp
 Reactor.Loop.Start();
 
-var server = Reactor.Http.Server.Create(context => {
-
+Reactor.Http.Server.Create(context => {
 	context.Response.Write("hello world!!");
-
 	context.Response.End();
-	
 }).Listen(8080);
 ```
 
 ### overview
 
-Reactor is a evented, asynchronous io and networking framework written for Microsoft.Net, Mono, Xamarin, and Unity3D
-platforms. Reactor is heavily influenced by libuv and nodejs, and aims to mirror both their feature set, and ultimately 
-provide easy interoperability between .net applications and real-time network services.
+Reactor is a event driven, non blocking, asynchronous io and networking 
+framework written for Microsoft.Net, Mono, Xamarin, and Unity3D platforms. 
+Reactor is heavily influenced by nodejs and libuv and aims to bring 
+their event driven io model to .net based applications.
 
-Reactor is specifically written to target .net applications running versions as low as 2.0. Developers can 
-leverage Reactor to both consume realtime network services, as well as expose realtime services of their own.
+Reactor is specifically written to target .net 2.0 and up. It provides a 
+variety of async primitive types for legacy platforms, while still allowing 
+for tight integration with modern platform features (such as async await). 
+Developers can use Reactor to consume real-time network services, as well 
+as expose real-time network services of their own.
 
-[download reactor 0.9](https://s3.amazonaws.com/sinclair-code/reactor-0.9.zip "download 0.9")
+[download reactor 0.9.1](https://s3.amazonaws.com/sinclair-code/reactor-0.9.1.zip "download 0.9.1")
 
 ### contents
-
-* [getting started](#getting_started)
-	* [the event loop](#getting_started_event_loop)
-	* [console applications](#getting_started_console_applications)
-	* [windows forms applications](#getting_started_windows_forms_applications)
-	* [unity3D applications](#getting_started_unity3D_applications)
-* [timers](#timers)
-	* [timeout](#timers_timeout)
-	* [interval](#timers_interval)
-* [buffers](#buffers)
-* [streams](#streams)
-	* [readstream](#streams_readstream)
-	* [writestream](#streams_writestream)
+ * [the event loop](#the_event_loop)
+	* [console applications](#console_applications)
+	* [windows forms](#windows_forms)
+	* [unity3D](#unity3D)
+	* [posting to the loop](#posting_to_the_loop)
+* [streams and buffers](#streams_and_buffers)
+    * [buffers] (#streams_buffers)
+	* [readble] (#streams_readable)
+	* [writable](#streams_writeable)
 * [files](#files)
 	* [readstream](#file_readstream)
 	* [writestream](#file_writestream)
-* [http](#http)
+* [stdio](#stdio)
+	* [process](#stdio_process)
+	* [current](#current_current)	
+* [tcp](#tcp)
+	* [server](#tcp_server)
+	* [socket](#tcp_socket)
+* [tls](#tls)
+	* [server](#tls_server)
+	* [socket](#tls_socket)
+* [udp](#udp)
+	* [socket](#udp_socket)		
+* [http/https](#http_https)
 	* [server](#http_server)
 		* [request](#http_server_request)
 		* [response](#http_server_response)
 	* [requests](#http_requests)
-* [tcp](#tcp)
-	* [server](#tcp_server)
-	* [socket](#tcp_socket)
-* [udp](#udp)
-	* [socket](#udp_socket)
+* [enumerables](#enumerables)
+	* [its a bit like linq](its_a_bit_like_linq)	
+* [timers](#timers)
+	* [timeout](#timers_timeout)
+	* [interval](#timers_interval)
+* [fibers](#fibers)
+	* [creating fibers](#creating fibers)
+
 
 <a name='getting_started' />
 ### getting started
 
-The following section describes setting up a Reactor application.
+The following section outlines getting started with reactor.
 
-<a name='getting_started_event_loop' />
+<a name='the_event_loop' />
 #### the event loop
 
-At its core, reactor requires that users start an event loop. The reactor event loop internally demultiplexes asynchronous callback 
-operations back to the caller. The following describes recommended approaches to running a loop.
+Reactor operates via a single event loop which is used internally 
+to synchronize IO completion callbacks to a user defined synchronization 
+context.
+
+Starting a event loop is simple...
+
+	Reactor.Loop.Start();
+
+From a developers standpoint, once this loop has been started, it is 
+ready to start processing IO events on behalf of the reactor API's 
+throughout the application. 
+
+Stopping the loop is equally straight forward.
+
+	Reactor.Loop.Stop();
+
+The following sections outline various ways to start the event loop for a
+variety of platforms.
 
 <a name='getting_started_console_applications' />
 #### console applications
 
-The following describes running a reactor event loop in a typical console application. Calling Reactor.Loop.Start()
-will begin a background thread which will enumerate reactors internal event queue. By doing this, reactor will dispatch 
-any asynchronous completation callbacks to the caller. The in example below, we start the loop, make a request to google, 
-then (optionally) stop the loop. 
+Console applications are the simplist to get going. The following will 
+start the event loop in basic console application, followed by starting
+a http server on port 5000.
 
 ```csharp
-class Program 
-{
-	static void Main(string [] args)
-	{
+class Program {
+	static void Main(string [] args) {
 		Reactor.Loop.Start();
-
-        Reactor.Http.Request.Get("http://google.com", (exception, buffer) => {
-
-			Console.WriteLine(buffer.ToString("utf8"));
-
-			Reactor.Loop.Stop(); // optional
-        });
+		
+		Reactor.Http.Server.Create(context => {
+			context.Response.Write("hello console!!");
+			context.Response.End();
+		}).Listen(8080);
 	}
 }
 ```
@@ -91,33 +113,35 @@ class Program
 <a name='getting_started_windows_forms_applications' />
 #### windows forms applications
 
-When developing UI applications, handling asynchronous callbacks typically requires the developer to manage 
-synchronization back on the application UI thread by way of a synchronization context. Reactor provides a 
-convienient overload for starting loops that accepts a System.Threading.SynchronizationContext as a argument. 
-In the example below, the loop is started with System.Threading.SynchronizationContext.Current on OnLoad(). 
-This ensures that all async completations are always returned to the UI thread.
+Windows applications are slightly more involved. Developers familar with WinForms (or
+any other UI desktop programming) will note that all threads need to be synchronized 
+with the applications UI thread. Reactor provides a convenient means handling this 
+synchronization by allowing the user to pass the UI thread SynchronizationContext 
+to the loop at start up.
+
+	Reactor.Loop.Start(System.Threading.SynchronizationContext.Current);
+
+The result of this is that all IO events are now synced up with the current UI thread. The 
+following illustates a more complete example, Where we start the event loop in this Forms
+OnLoad(..) event. Followed by starting a http server attached to a button click event.
 
 ```csharp
-public partial class Form1 : Form
-{
-    public Form1()
-    {
+public partial class Form1 : Form {
+	
+    public Form1() {
         InitializeComponent();
     }
 
-    protected override void OnLoad(EventArgs e)
-    {
+    protected override void OnLoad(EventArgs e) {
         base.OnLoad(e);
-
         Reactor.Loop.Start(System.Threading.SynchronizationContext.Current);
     }
-
-    private void button1_Click(object sender, EventArgs e)
-    {
-        Reactor.Http.Request.Get("http://google.com", (exception, buffer) => {
-
-			this.textbox1.Text = buffer.ToString("utf8");
-        });
+	
+    private void button1_Click(object sender, EventArgs e) {
+		Reactor.Http.Server.Create(context => {
+			context.Response.Write("web servers in .net!");
+			context.Response.End();
+		}).Listen(5000);
     }
 }
 ```
@@ -125,9 +149,13 @@ public partial class Form1 : Form
 <a name='getting_started_unity3D_applications' />
 #### unity3D applications
 
-In Unity3D, a SynchronizationContext is not available to developers. Rather, Unity3D requires developers to 
-use cooroutines to orchestrate asynchrony. In these scenarios, Reactor provides a Reactor.Loop.Enumerator() that
-Unity can use to enumerate completed asynchronous operations. The example below demonstrates how.
+In Unity3D, asynchronous work is typically handled by way of coroutines. Reactor builds
+on this and exposes a loop enumerator that can be passed to Unity's StartCoroutine(..)
+method.
+
+The following example starts Reactor within a Unity3D MonoBehaviour. The loop is enumerated
+when ever this behaviours 'Update()' is fired. Here, we run a http server for from within
+Unity3D.
 
 ```csharp
 using UnityEngine;
@@ -136,18 +164,235 @@ using System.Collections;
 public class MyGameObject : MonoBehaviour {
 	
 	void Start () {
-		
-        Reactor.Http.Request.Get("http://google.com", (exception, buffer) => {
-
-			// ready to go!!
-        });
+		Reactor.Http.Server.Create(context => {
+			context.Response.Write("http servers in unity3D!");
+			context.Response.End();
+		}).Listen(5000);
 	}
 	
 	void Update () {
-
 		StartCoroutine ( Reactor.Loop.Enumerator() );
 	}
 }
+```
+
+<a name='posting_to_the_loop' />
+### posting to the loop
+
+Internally, Reactors API's are posting to the event loop with the following call...
+```csharp
+Reactor.Loop.Post(() => {
+	/* this code is executed in the
+	 * the synchronization context
+	 * passed at start up. */
+});
+```
+Developers may wish to use the event loop to help synchronize their own threads. This 
+is especially useful for UI work where many worker threads need synchronization with the
+UI thread. 
+
+Below is is a console application where we create a simple 'ticker'. The ticker is run
+on a seperate thread, but is synced back to the caller from via the Loop.Post(...). Had
+this example been a WinForms application, the caller (Main() in this instance) can be 
+sure the thread is synchronized back accordingly, and its safe for them to display 
+some message (perhaps a clock) to the user.
+
+```csharp
+class Program {
+    static void Ticker(Reactor.Action ontick) {
+        new Thread(() => {
+            while (true) {
+                /* simulate some background work. */
+                Thread.Sleep(1000);
+
+                /* call loop post to synchronize back to the caller. */
+                Loop.Post(() => {
+                    ontick();
+                });
+            }
+        }).Start();
+    }
+
+    static void Main(string[] args) {
+        Reactor.Loop.Start();
+        Ticker(() => {
+            Console.WriteLine("tick!");
+        });
+    }
+}
+```
+<a name="streams_and_buffer" />
+### streams and buffers
+
+At its core, reactor is made up of three simple things, readables, writables and buffers.
+Understanding these things will help developers get the most out of the library. 
+
+- buffers  - a container where bytes live.
+- readable - a event driven read interface to receive buffers (above)
+- writable - a asynchronous write interface to write buffers (above)
+
+The following section goes into detail about these three things.
+
+<a name="buffers" />
+#### buffers
+
+Reactor.Buffer is reactors the most basic primitive for passing data around. Internally, 
+the Reactor.Buffer is a implementation of a classic ring buffer, but with 
+added magic such as allowing for dynamic resize. To which the developer has fine level
+control.
+
+Note: the Reactor.Buffer is modelled closely on the nodejs buffer and has similar functionality. 
+See https://nodejs.org/api/buffer.html for some additional info,
+
+From a developers standpoint, buffers can be thought of as a FIFO queue, where the 
+first data written is also the first data read. heres an example.
+
+``` csharp
+var buffer = Reactor.Buffer.Create();
+buffer.Write("hello world");
+byte [] data = buffer.Read(5); // reads 'hello' out of the buffer.
+Console.WriteLine(buffer); // prints " world"
+```
+
+Additional, buffers can be 'unshifted', the following would put 'hello' back in 
+buffer.
+
+```csharp
+buffer.Unshift(data);
+Console.WriteLine(buffer); // prints "hello world"
+```
+
+On top of string shifting, Reactor.Buffer also provides number overloads for writing
+native .net value types. The following will write a series of numbers to the buffer
+and read them back out in sequence.
+
+```csharp
+var buffer = Reactor.Buffer.Create();
+for(int i = 0; i < 10; i++){
+	buffer.Write(i);
+}
+while(buffer.Length > 0) {
+	Console.Write(buffer.ReadInt32()); // prints "0123456789"
+}
+```
+
+By default, Reactor will allocate an internal 64k buffer if the caller has not explicitly
+said otherwise. You can override this default size as follows....
+
+```csharp
+var buffer = Reactor.Buffer.Create(5);
+buffer.Write("hello"); // just enough space!
+Console.WriteLine(buffer.Length);
+Console.WriteLine(buffer.Capacity);
+```
+However, lets say if you were to continue writing, the buffer will make provisions for you
+and resize in 64k chunks.
+
+```csharp
+var buffer = Reactor.Buffer.Create(5);
+buffer.Write("hello"); // just enough space!
+Console.WriteLine(buffer.Length);
+Console.WriteLine(buffer.Capacity);
+buffer.Write(" world");
+Console.WriteLine(buffer.Length);
+Console.WriteLine(buffer.Capacity); // whoa, too much!!
+```
+
+Of course, you can control the resize if you need, as follows.
+
+```csharp
+var buffer = Reactor.Buffer.Create(5, 5); // buffers increment in 5 byte chunks.
+buffer.Write("hello"); // just enough space!
+Console.WriteLine(buffer.Capacity);
+Console.WriteLine(buffer.Length);
+buffer.Write(" world");
+Console.WriteLine(buffer.Capacity); // 15 byte capacity (all good)
+Console.WriteLine(buffer.Length);   // 11 byte capacity
+Console.WriteLine(buffer);          // prints "hello world"
+```
+
+<a name="readable" />
+### readable
+
+Reactor.IReadable is the interface shared amoung all things that "stream data" (files, tcp sockets, stdio, http requests etc).
+
+Unlike a .net StreamReader, Reactor handles reading data through events, and can be thought of as
+a Rx-like observable (Reactor was designed to play nicely with Rx). The following is a example is 
+reading a file from disk. (Where a Reactor.File.Reader is a concrete implementation of Reactor.IReadable)
+
+```csharp
+var reader = Reactor.File.Reader("myfile.dat");
+reader.OnRead  (buffer => { /* you just read a buffer from disk */ });
+reader.OnError (error  => { /* something went wrong */ });
+reader.OnEnd   (()     => { /* you've read all the data! */ });
+```
+There are a couple caveats to be aware of in the above example.
+- reading happens as soon as the caller applies the 'OnRead' callback.
+- 'read' events emit a new instance of a Reactor.Buffer on each 'read'.
+- 'read' events will continue to read until there is no more data or error.
+- if a 'error' events fires, its followed immediately by a 'end' event.
+- 'end' events will 'always' fire irrespective of 'how' the stream ended (by error or success)
+- 'error' and 'end' events are garenteed to trigger 'once only'.
+- readable streams are non seekable, once reading begins, theres no going back!
+
+So the take away from this is, without error, the caller can expect events to be fired in 
+the following way...
+
+	read read read read end.
+	
+However, in case of error, the caller can expect....
+
+	read read read read error end. 
+	
+Reactor.IReadable borrows on nodejs' readstreams very heavily. And supports the usual suspects, such 
+as Pause() and Resume(). The following will read the same file, Pause() for a second, then 
+Resume() reading...
+
+```csharp
+var reader = Reactor.File.Reader("myfile.dat");
+reader.OnRead  (buffer => { 
+	reader.Pause(); // no more data please....
+	Reactor.Timeout.Create(() => { 
+		reader.Resume(); // ok, ready for more!!
+	}, 1000);
+});
+reader.OnError (error  => { /* something went wrong */ });
+reader.OnEnd   (()     => { /* you've read all the data! */ });
+```
+
+Reactor.IReadable also supports nodejs' streams2 non-flowing interface. The following is a example of 
+reading via the 'streams2' 'readable' event.
+
+```csharp
+var reader = Reactor.File.Reader("myfile.dat");
+reader.OnReadable(() => { // there is some data to be read!
+	var buffer = reader.Read();  // read it all!
+});
+reader.OnError (error  => { /* something went wrong */ });
+reader.OnEnd   (()     => { /* you've read all the data! */ });
+```
+
+The above example has the similar characteristics as streams2. They are:
+- reading will begin as soon as the caller assigns a 'readable' callback.
+- the readable event will fire as soon as there is data to be read.
+- the readable will not read more data until the caller has "Read()" all the in the readable.
+- If the readables internal buffer id drained (by calling Read()), reading will resume 
+and the 'readable' event will fire again as soon as more data becomes available.
+
+One last note, Reactor.IReadable also supports pipe-ing data. The following is a example of copying
+a file through the Pipe() interface.
+```csharp
+var reader = Reactor.File.Reader("myfile.dat");
+var writer = Reactor.File.Writer("myfile2.dat");
+reader.Pipe(writer);
+```
+You can watch this copy in progress by attaching some additional events....
+```csharp
+var reader = Reactor.File.Reader("myfile.dat");
+var writer = Reactor.File.Writer("myfile2.dat");
+reader.Pipe(writer);
+reader.OnRead(buffer => Console.WriteLine("read: {0} bytes", buffer.Length));
+reader.OnEnd (()     => Console.WriteLine("read: finished!"));
 ```
 
 <a name='timers' />

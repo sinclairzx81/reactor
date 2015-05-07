@@ -38,7 +38,7 @@ namespace Reactor {
     /// </summary>
     public class Buffer {
 
-        private readonly int resize = Reactor.Settings.DefaultBufferSize;
+        private int          resize;
         private Encoding     encoding;
         private int          capacity;
         private int          length;
@@ -48,16 +48,17 @@ namespace Reactor {
 
         #region Constructors
 
-        public Buffer (int capacity) {
+        public Buffer (int capacity, int resize) {
             this.encoding = Encoding.UTF8;
             this.capacity = capacity;
+            this.resize   = resize;
             this.length   = 0;
             this.head     = 0;
             this.tail     = 0;
             this.buffer   = new byte[capacity];
         }
 
-        public Buffer () : this(Reactor.Settings.DefaultBufferSize) { }
+        public Buffer () : this(Reactor.Settings.DefaultBufferSize, Reactor.Settings.DefaultBufferSize) { }
 
         #endregion
 
@@ -220,7 +221,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="value">The Boolean to write.</param>
         public void Write (bool value) {
-            this.Write(value);
+            this.Write(BitConverter.GetBytes(value));
         }
 
         /// <summary>
@@ -228,7 +229,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="value">The value to write.</param>
         public void Write (short value) {
-            this.Write(value);
+           this.Write(BitConverter.GetBytes(value));
         }
 
         /// <summary>
@@ -236,7 +237,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="value">The value to write.</param>
         public void Write (ushort value) {
-            this.Write(value);
+            this.Write(BitConverter.GetBytes(value));
         }
 
         /// <summary>
@@ -244,7 +245,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="value">The value to write.</param>
         public void Write (int value) {
-            this.Write(value);
+            this.Write(BitConverter.GetBytes(value));
         }
 
         /// <summary>
@@ -252,7 +253,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="value">The value to write.</param>
         public void Write (uint value) {
-            this.Write(value);
+            this.Write(BitConverter.GetBytes(value));
         }
 
         /// <summary>
@@ -260,7 +261,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="value">The value to write.</param>
         public void Write (long value) {
-            this.Write(value);
+            this.Write(BitConverter.GetBytes(value));
         }
 
         /// <summary>
@@ -268,7 +269,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="value">The value to write.</param>
         public void Write (ulong value) {
-            this.Write(value);
+            this.Write(BitConverter.GetBytes(value));
         }
 
         /// <summary>
@@ -276,7 +277,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="value">The value to write.</param>
         public void Write (float value) {
-            this.Write(value);
+            this.Write(BitConverter.GetBytes(value));
         }
 
         /// <summary>
@@ -284,7 +285,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="value">The value to write.</param>
         public void Write (double value) {
-            this.Write(value);
+            this.Write(BitConverter.GetBytes(value));
         }
 
         #endregion
@@ -414,14 +415,6 @@ namespace Reactor {
             format = string.Format(format, args);
             var buffer = this.encoding.GetBytes(format);
             this.Unshift(buffer, 0, buffer.Length);
-        }
-
-        /// <summary>
-        /// Writes this data to the buffer.
-        /// </summary>
-        /// <param name="data"></param>
-        public void Unshift (char data) {
-            this.Unshift(data.ToString());
         }
 
         /// <summary>
@@ -825,8 +818,16 @@ namespace Reactor {
         /// Creates a Reactor Buffer with this starting capacity.
         /// </summary>
         /// <returns></returns>
+        public static Reactor.Buffer Create(int capacity, int resize) {
+            return new Reactor.Buffer(capacity, resize);
+        }
+
+        /// <summary>
+        /// Creates a Reactor Buffer with this starting capacity.
+        /// </summary>
+        /// <returns></returns>
         public static Reactor.Buffer Create(int capacity) {
-            return new Reactor.Buffer(capacity);
+            return new Reactor.Buffer(capacity, Reactor.Settings.DefaultBufferSize);
         }
 
         /// <summary>
