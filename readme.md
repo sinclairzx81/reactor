@@ -8,6 +8,7 @@ Reactor.Http.Server.Create(context => {
 	context.Response.Write("hello world!!");
 	context.Response.End();
 }).Listen(8080);
+
 ```
 
 ### overview
@@ -37,6 +38,7 @@ as expose real-time network services of their own.
 	* [Reactor.Buffer](#reactor_buffer)
 	* [Reactor.IReadable](#reactor_ireadable)
 	* [Reactor.IWritable](#reactor_iwritable)
+	* [Reactor.IDuplexable](#reactor_iduplexable)
 * [Reading and Writing Files](#files)
 	* [Reactor.File.Reader](#reactor_file_reader)
 	* [Reactor.File.Writer](#reactor_file_writer)
@@ -240,28 +242,33 @@ class Program {
 <a name="streams" />
 ### Working with Streams
 
-At its core, Reactor is made up of three simple things, Reactor.IReadable, 
-Reactor.IWritable and the Reactor.Buffer. Understanding these things will 
-help developers get the most out of the library. Below is a brief summary 
-of what these are: 
+At its core, Reactor streams are made up of only two interfaces and a buffer 
+passed around between them. These types are the Reactor.IReadable, Reactor.IWritable and 
+the Reactor.Buffer. Understanding these types will help developers get the 
+most out of the library. Below is a brief summary of what these are: 
 
-- Reactor.Buffer    - a container where bytes live.
+- Reactor.Buffer    - a byte buffer.
 - Reactor.IReadable - a event driven read interface to receive buffers (above)
 - Reactor.IWritable - a asynchronous write interface to write buffers (above)
+
+there is one other interface which Reactor defines which is.
+
+- Reactor.IDuplexable - whose behaviour is that of IReadable and IWritable.
+
+The sections below outline these types in details.
 
 <a name="reactor_buffer" />
 #### Reactor.Buffer
 
-Reactor.Buffer is reactors the most basic primitive for passing data around. Internally, 
-the Reactor.Buffer is a implementation of a classic ring buffer, but with 
-added magic such as allowing for dynamic resize. To which the developer has fine level
-control.
+Reactor.Buffer is reactors the primary primitive for passing data around. Internally, 
+the Reactor.Buffer is actually a implementation of a classic ring buffer, but with 
+a few bits of added magic such as allowing for the buffer to resize. 
 
 Note: the Reactor.Buffer is modelled closely on the nodejs buffer and has similar functionality. 
 See https://nodejs.org/api/buffer.html for some additional info,
 
 From a developers standpoint, buffers can be thought of as a FIFO queue, where the 
-first data written is also the first data read. heres an example.
+first data written is also the first data read. here's an simple example.
 
 ``` csharp
 var buffer = Reactor.Buffer.Create();
@@ -270,7 +277,7 @@ byte [] data = buffer.Read(5); // reads 'hello' out of the buffer.
 Console.WriteLine(buffer); // prints " world"
 ```
 
-Additional, buffers can be 'unshifted', the following would put 'hello' back in 
+In addition, buffers can be 'unshifted', the following would put 'hello' back in 
 buffer.
 
 ```csharp
@@ -279,7 +286,7 @@ Console.WriteLine(buffer); // prints "hello world"
 ```
 
 On top of string shifting, Reactor.Buffer also provides number overloads for writing
-native .net value types. The following will write a series of numbers to the buffer
+native .net value types. The following will write a series of 32bit integers to the buffer
 and read them back out in sequence.
 
 ```csharp
@@ -291,6 +298,7 @@ while(buffer.Length > 0) {
 	Console.Write(buffer.ReadInt32()); // prints "0123456789"
 }
 ```
+Note: most implementations of Reactor.IWritable also share these overloads for convenience.
 
 By default, Reactor will allocate an internal 64k buffer if the caller has not explicitly
 said otherwise. You can override this default size as follows....
@@ -330,11 +338,13 @@ Console.WriteLine(buffer);          // prints "hello world"
 <a name="reactor_ireadable" />
 ### Reactor.IReadable
 
-Reactor.IReadable is the interface shared amoung all things that "stream data" (files, tcp sockets, stdio, http requests etc).
+Reactor.IReadable is the interface shared amoung all things that "stream data" (files,
+ tcp sockets, stdio, http requests etc).
 
-Unlike a .net StreamReader, Reactor handles reading data through events, and can be thought of as
-a Rx-like observable (Reactor was designed to play nicely with Rx). The following is a example is 
-reading a file from disk. (Where a Reactor.File.Reader is a concrete implementation of Reactor.IReadable)
+Unlike a .net StreamReader, Reactor handles reading data through events, and can be 
+thought of as a Rx-like observable (Reactor was designed to play nicely with Rx). 
+The following is a example is reading a file from disk. (Where a Reactor.File.Reader 
+is a concrete implementation of Reactor.IReadable)
 
 ```csharp
 var reader = Reactor.File.Reader.Create("myfile.dat");
@@ -545,6 +555,15 @@ Developers are free to experiment with their own implementations for Pipe(), but
 Pipe() is a pretty vanilla implementation for developers to reference to write specialized pipes 
 for their needs...
 
+<a name="reactor_iduplexable" />
+### Reactor.IDuplexable: Reactor.IReadable, Reactor.IWritable
+
+A Reactor.IDuplexable is a combiniation of a Reactor.IReadable and Reactor.IWritable. The 
+Reactor.Tcp.Socket and Reactor.Tls.Socket are both concrete implementation of this interface.
+
+In this light, developers "should" perceive duplex streams have having the characteristics
+and behaviours of both readable and writable streams simultaneously.  
+
 <a name='files' />
 ### Reading and Writing Files.
 
@@ -589,7 +608,7 @@ reader.OnEnd   (()     => Console.WriteLine("end"));
 #### Reactor.File.Writer : Reactor.IWritable
 
 Reactor.File.Writer is a asynchronous write abstraction over the System.IO.FileStream. The following
-code will open a file a file for writing, write some data then close.
+code will open a file for writing, write some text, then close.
 
 ```csharp
 var writer = Reactor.File.Writer.Create("myfile.txt");
@@ -621,6 +640,131 @@ writer.Write("world");
 writer.End();
 ```
 
+<a name='tcp' />
+### Tcp Sockets
+
+Reactor Tcp Sockets provide a event driven socket 'accept' interface over System.Net.TcpListener as well
+as a bidirectional async and event driven interface over a TCP System.Net.Socket by way of 
+System.Net.NetworkStream. 
+
+<a name='reactor_tcp_server' />
+#### Reactor.Tcp.Server
+
+The following example will create a Reactor.Tcp.Server and start it listening on port 5000. In this
+example, we specify a handler to receive any incoming sockets. 
+
+```csharp
+var server = Reactor.Tcp.Server.Create(socket => {
+	/* manage the socket here */
+});
+server.Listen(5000);
+```
+The Reactor.Tcp.Server does not keep any internal list of sockets it has accepted. This responsibility 
+is delegated to the implementor. The following code example demonstrates how a implementor might
+go about managing a pool of socket connections. In this example, we have some managment code in our 
+tcp server to add sockets to the pool of connections, and remove them on disconnection, additionally, we
+have a simple 'broadcast' interval sending out the time to each connected socket. 
+
+```csharp
+/* setup a simple tcp server */
+var sockets = new List<Reactor.Tcp.Socket>();
+var server = Reactor.Tcp.Server.Create(socket => {
+    /* push new socket on list */
+    sockets.Add(socket);
+
+    /* remove socket on end */
+    socket.OnEnd(() => 
+        sockets.Remove(socket));
+});
+server.Listen(5000);
+
+/* broadcast the time to sockets list */
+Reactor.Interval.Create(() => {
+    foreach(var socket in sockets) 
+        socket.Write(DateTime.Now.ToString());
+}, 1000);
+
+```  
+
+
+
+
+<a name='reactor_tcp_socket' />
+#### Reactor.Tcp.Socket : Reactor.IDuplexable
+
+The Reactor.Tcp.Socket are event driven abstractions over a System.Net.NetworkStream. Reactor.Tcp.Socket implements 
+Reactor.IDuplexable, and offers a bidirectional read / write interface. With shared characteristics of a Reactor.IReadable
+Reactor.IWritable. 
+
+The following source code connects to the star wars telnet server and streams some star wars.
+
+```csharp
+/* connect up and watch some star wars */
+var socket = Reactor.Tcp.Socket.Create("towel.blinkenlights.nl", 23);
+socket.OnRead   (data  => Console.WriteLine(data));
+socket.OnError  (error => Console.WriteLine(error));
+socket.OnEnd    (()    => Console.WriteLine("disconnected"));
+```
+This second example expands on the first, and does a very raw http request out to google.
+
+```csharp
+var socket = Reactor.Tcp.Socket.Create("google.com", 80);
+socket.OnRead   (data  => Console.WriteLine(data));
+socket.OnError  (error => Console.WriteLine(error));
+socket.OnEnd    (()    => Console.WriteLine("disconnected"));
+socket.Write("GET / HTTP/1.0\r\n\r\n"); 
+```
+
+A Reactor.Tcp.Socket has a 'optional' OnConnect event. Clients can use this event to signal when
+this socket has connected.
+
+```csharp
+var socket = Reactor.Tcp.Socket.Create("google.com", 80);
+socket.OnConnect(() => {
+	Console.WriteLine("connected");
+	socket.OnRead   (data  => Console.WriteLine(data));
+	socket.OnError  (error => Console.WriteLine(error));
+	socket.OnEnd    (()    => Console.WriteLine("disconnected"));
+	socket.Write("GET / HTTP/1.0\r\n\r\n");
+}); 
+```
+When developing with Reactor.Tcp.Socket, callers may terminate a TCP connection at either side by simply calling "End()"
+on the socket. The other side will be sent a socket shutdown signal, and both side "should" shutdown gracefully "firing a 
+OnEnd" at either end. The following 'full' example has a client calling 'End()' on their socket, here we watch for the 
+server OnEnd() event. 
+
+```csharp
+static void Main(string[] args) {
+    Reactor.Loop.Start();
+
+    Reactor.Tcp.Server.Create(s => {
+        Console.WriteLine("server: connection");
+        s.OnRead  (data  => Console.WriteLine("server: " + data));
+        s.OnError (error => Console.WriteLine("server: " + error));
+        s.OnEnd   (()    => Console.WriteLine("server: disconnection"));
+    	// Reactor.Timeout.Create(s.End, 2000);  // try here
+    }).Listen(5000);
+
+    var socket = Reactor.Tcp.Socket.Create(5000);
+    socket.OnConnect(() => {
+        Console.WriteLine("client: connection");
+        socket.OnRead  (data  => Console.WriteLine("client: " + data));
+        socket.OnError (error => Console.WriteLine("client: " + error));
+        socket.OnEnd   (()    => Console.WriteLine("client: disconnection"));
+    });
+
+    /* disconnect socket in 2000ms */
+    Reactor.Timeout.Create(socket.End, 2000);
+}
+```
+
+There are instances where graceful shutdown is not possible (typically in the genuine net drops), but also if
+either side is not "actively" reading on their socket (by calling OnRead(() => {}) at either sides). 
+
+Try commenting out the OnRead at either side and see what happens. In this scenario, the socket is unable to 
+receive the 'FIN' sent by the disconnecting party. In this scenario, the socket falls back to polling the
+state on the socket. and the socket will 'end' eventually with a 'error'. 
+
 <a name='timers' />
 ### timers
 
@@ -628,10 +772,10 @@ Reactor provides analogous implementations for setInterval(...) and setTimeout(.
 javascript. These are Reactor.Interval and Reactor.Timeout respectively. The following sections 
 outline their use.
 
-<a name='timers_timeout' />
-#### timeouts
+<a name='reactor_timeout' />
+#### Reactor.Timeout
 
-Reactor's timeout implementation has the same characteristics as setTimeout(...). Callers 
+Reactor's Timeout implementation has the same characteristics as setTimeout(...). Callers 
 can create Timeouts in the following way.
 
 ```csharp
@@ -660,16 +804,19 @@ action = new Reactor.Action(() => {
 });
 action();
 ```
+
 Note: The author recommends using Loop.Post(() => {}) over Timeouts in these scenarios. As follows..
 
+```csharp
 Reactor.Action action = null;
 action = new Reactor.Action(() => {
     Reactor.Loop.Post(action);
 });
 action();
+```
 
-<a name='timers_interval' />
-#### intervals
+<a name='reactor_interval' />
+#### Reactor.Interval
 
 Reactor's interval implementation has the same characteristics as setInterval(...). Callers 
 can create intervals in the following way.
@@ -749,44 +896,6 @@ request.Write(postdata);
 request.End();
 ```
 
-
-<a name='tcp' />
-### tcp
-
-Reactor provides a evented abstraction over the System.Net.Sockets.Socket TCP socket.
-
-<a name='tcp_server' />
-#### server
-
-Create a tcp socket server. The following example emits the message "hello world" to a connecting client, 
-then closes the connection with End().
-
-```csharp
-Reactor.Tcp.Server.Create(socket => {
-
-	socket.Write("hello there");
-	
-	socket.End();
-
-}).Listen(5000);
-```
-
-<a name='tcp_socket' />
-#### socket
-
-Reactor tcp sockets are evented abstractions over System.Net.Socket.Socket. Tcp sockets are implementations
-of type IDuplexable. The following code connects to the server in the previous example. (assumed to be both on localhost)
-
-```csharp
-var client = Reactor.Tcp.Socket.Create(5000);
-
-client.OnConnect += () => { // wait for connection.
-
-    client.OnData += (d) => Console.WriteLine(d.ToString("utf8"));
-
-    client.OnEnd  += ()  => Console.WriteLine("tcp transport closed");
-};
-```
 
 <a name='udp' />
 ### udp
