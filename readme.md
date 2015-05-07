@@ -26,48 +26,50 @@ as expose real-time network services of their own.
 [download reactor 0.9.1](https://s3.amazonaws.com/sinclair-code/reactor-0.9.1.zip "download 0.9.1")
 
 ### Contents
-* [The Event Loop](#the_event_loop)
-	* [Console Applications](#console_applications)
-	* [Windows Forms](#windows_forms)
-	* [Unity3D](#unity3D)
-	* [Threads and Loops](#threads_and_loops)
-* [Streams and Buffers](#streams_and_buffers)
-	* [Reactor.Buffer] (#streams_buffers)
-	* [Reactor.IReadable] (#streams_readables)
-	* [Reactor.IWritable](#streams_writeables)
-* [Files](#files)
-	* [Reactor.File.Reader](#file_readstream)
-	* [Reactor.File.Writer](#file_writestream)
-* [Stdio](#stdio)
-	* [Reactor.Process.Current](#stdio_process)
-	* [Reactor.Process.Process](#current_current)	
-* [Tcp](#tcp)
-	* [Reactor.Tcp.Server](#tcp_server)
-	* [Reactor.Tcp.Socket](#tcp_socket)
-* [Tls](#tls)
-	* [Reactor.Tls.Server](#tls_server)
-	* [Reactor.Tls.Socket](#tls_socket)
-* [Udp](#udp)
-	* [Reactor.Udp.Socket](#udp_socket)
-* [Ip](#ip)
-	* [Reactor.Ip.Socket](#ip_socket)		
-* [Http/Https](#http_https)
-	* [Reactor.Http.Server](#http_server)
-		* [Reactor.Http.ServerRequest](#http_server_request)
-		* [Reactor.Http.ServerResponse](#http_server_response)
-	* [requests](#http_requests)
-* [timers](#timers)
-	* [Reactor.Timeout](#timers_timeout)
-	* [Reactor.Interval](#timers_interval)	
-* [fibers](#fibers)
-	* [creating fibers](#creating fibers)
-* [async](#async)
-	* [Reactor.Async.Future](#async_future)
-	* [Reactor.Async.Event](#async_event)
-	* [Reactor.Async.Queue](#async_queue)
-	* [Reactor.Async.Racer](#async_racer)
-* [enumerables](#enumerables)
-	* [Reactor.Enumerable](#enumerables_enumerable)	
+* [Getting Started](#getting_started)
+* [Event Loop](#loop)
+	* [Starting and Stopping](#loop_starting_and_stopping)
+	* [Console Applications](#loop_console_applications)
+	* [Windows Forms](#loop_windows_forms)
+	* [Unity3D](#loop_unity3D)
+	* [Threads and Loops](#loop_threads_and_loops)
+* [Working with Streams](#streams)
+	* [Reactor.Buffer](#reactor_buffer)
+	* [Reactor.IReadable](#reactor_ireadable)
+	* [Reactor.IWritable](#reactor_iwritable)
+* [Reading and Writing Files](#files)
+	* [Reactor.File.Reader](#reactor_file_reader)
+	* [Reactor.File.Writer](#reactor_file_writer)
+* [Working with Stdio](#stdio)
+	* [Reactor.Process.Current](#reactor_process_current)
+	* [Reactor.Process.Process](#reactor_process_process)	
+* [Tcp Sockets](#tcp)
+	* [Reactor.Tcp.Server](#reactor_tcp_server)
+	* [Reactor.Tcp.Socket](#reactor_tcp_socket)
+* [Tls Sockets](#tls)
+	* [Reactor.Tls.Server](#reactor_tls_server)
+	* [Reactor.Tls.Socket](#reactor_tls_socket)
+* [Udp Sockets](#udp)
+	* [Reactor.Udp.Socket](#reactor_udp_socket)
+* [Ip Sockets](#ip)
+	* [Reactor.Ip.Socket](#reactor_ip_socket)		
+* [Http/Https Servers](#http_https)
+	* [Reactor.Http.Server](#reactor_http_server)
+		* [Reactor.Http.ServerRequest](#reactor_http_serverrequest)
+		* [Reactor.Http.ServerResponse](#reactor_http_serverresponse)
+	* [Reactor.Http.Request](#reactor_http_request)
+* [Timers](#timers)
+	* [Reactor.Timeout](#reactor_timeout)
+	* [Reactor.Interval](#reactor_interval)	
+* [Fibers and the ThreadPool](#fibers)
+	* [Reactor.Fibers.Fiber](#reactor_fibers_fiber)
+* [Async Primitives](#async)
+	* [Reactor.Async.Future](#reactor_async_future)
+	* [Reactor.Async.Event](#reactor_async_event)
+	* [Reactor.Async.Queue](#reactor_async_queue)
+	* [Reactor.Async.Racer](#reactor_async_racer)
+* [Enumerables and LINQ](#enumerables)
+	* [Reactor.Enumerable](#reactor_enumerable)	
 
 
 <a name='getting_started' />
@@ -75,33 +77,36 @@ as expose real-time network services of their own.
 
 The following section outlines getting started with reactor.
 
-<a name='the_event_loop' />
-#### Reactor.Loop
+<a name='loop' />
+### Event Loop
 
 Reactor operates via a single event loop which is used internally 
-to synchronize IO completion callbacks to a user defined synchronization 
+to synchronize IO completion callbacks. Users are  to a user defined synchronization 
 context.
 
-Starting a event loop is simple...
+<a name='loop_starting_and_stopping' />
+#### Starting and Stopping.
+
+Starting a Reactor event loop is simple...the following is all that is required
+to start a Reactor event loop.
 
 	Reactor.Loop.Start();
 
-From a developers standpoint, once this loop has been started, it is 
-ready to start processing IO events on behalf of the reactor API's 
-throughout the application. 
+Once this loop has been started, it is ready to start processing IO events 
+on behalf of the reactor API's throughout the application. 
 
 Stopping the loop is equally straight forward.
 
 	Reactor.Loop.Stop();
 
 The following sections outline various ways to start the event loop for a
-variety of platforms.
+variety of environments.
 
-<a name='console_applications' />
+<a name='loop_console_applications' />
 #### Console Applications
 
 Console applications are the simplist to get going. The following will 
-start the event loop in basic console application, followed by starting
+start the event loop in a basic console application, followed by starting
 a http server on port 5000.
 
 ```csharp
@@ -112,12 +117,12 @@ class Program {
 		Reactor.Http.Server.Create(context => {
 			context.Response.Write("hello console!!");
 			context.Response.End();
-		}).Listen(8080);
+		}).Listen(5000);
 	}
 }
 ```
 
-<a name='windows_forms' />
+<a name='loop_windows_forms' />
 #### Windows Forms
 
 Windows applications are slightly more involved. Developers familar with WinForms (or
@@ -153,7 +158,7 @@ public partial class Form1 : Form {
 }
 ```
 
-<a name='unity3D' />
+<a name='loop_unity3D' />
 #### Unity3D
 
 In Unity3D, asynchronous work is typically handled by way of coroutines. Reactor builds
@@ -182,11 +187,15 @@ public class MyGameObject : MonoBehaviour {
 	}
 }
 ```
+Note: Be aware that by default, if Unity currently doesn't have the users window focus, it
+will stop firing MonoBehaviour updates. This will have a direct consequence on being able
+to process events. Users of Unity may locate the "Run in background" option as a work 
+around.
 
-<a name='threads_and_loop' />
+<a name='loop_threads_and_loops' />
 ### Threads and Loops
 
-Internally, Reactors API's are posting to the event loop with the following call...
+Internally, Reactors API's are 'posting' to the event loop with the following call...
 ```csharp
 Reactor.Loop.Post(() => {
 	/* this code is executed in the
@@ -212,7 +221,7 @@ class Program {
                 /* simulate some background work. */
                 Thread.Sleep(1000);
 
-                /* call loop post to synchronize back to the caller. */
+                /* post back to the caller. */
                 Loop.Post(() => {
                     ontick();
                 });
@@ -228,19 +237,19 @@ class Program {
     }
 }
 ```
-<a name="streams_and_buffers" />
-### Streams and Buffers
+<a name="streams" />
+### Working with Streams
 
-At its core, reactor is made up of three simple things, readables, writables and buffers.
-Understanding these things will help developers get the most out of the library. 
+At its core, Reactor is made up of three simple things, Reactor.IReadable, 
+Reactor.IWritable and the Reactor.Buffer. Understanding these things will 
+help developers get the most out of the library. Below is a brief summary 
+of what these are: 
 
-- buffers  - a container where bytes live.
-- readable - a event driven read interface to receive buffers (above)
-- writable - a asynchronous write interface to write buffers (above)
+- Reactor.Buffer    - a container where bytes live.
+- Reactor.IReadable - a event driven read interface to receive buffers (above)
+- Reactor.IWritable - a asynchronous write interface to write buffers (above)
 
-The following section goes into detail about these three things.
-
-<a name="streams_buffers" />
+<a name="reactor_buffer" />
 #### Reactor.Buffer
 
 Reactor.Buffer is reactors the most basic primitive for passing data around. Internally, 
@@ -318,7 +327,7 @@ Console.WriteLine(buffer.Length);   // 11 byte capacity
 Console.WriteLine(buffer);          // prints "hello world"
 ```
 
-<a name="streams_readables" />
+<a name="reactor_ireadable" />
 ### Reactor.IReadable
 
 Reactor.IReadable is the interface shared amoung all things that "stream data" (files, tcp sockets, stdio, http requests etc).
@@ -401,7 +410,8 @@ reader.Pipe(writer);
 reader.OnRead(buffer => Console.WriteLine("read: {0} bytes", buffer.Length));
 reader.OnEnd (()     => Console.WriteLine("read: finished!"));
 ```
-<a name="streams_writables" />
+
+<a name="reactor_iwritable" />
 ### Reactor.IWritable
 
 The Reactor.IWritable interface is shared among all things that 'write' in a streaming way. (files, tcp sockets, stdio,
@@ -536,36 +546,81 @@ Pipe() is a pretty vanilla implementation for developers to reference to write s
 for their needs...
 
 <a name='files' />
-### files
+### Reading and Writing Files.
 
-Reactor provides a evented abstraction for the .net type System.IO.FileStream. The following outlines its use.
+Internally, Reactor is layering the Reactor.IReadable and Reactor.IWritable interfaces over 
+System.IO.FileStream.
 
-<a name='files_reader' />
-#### Reactor.File.Reader
+<a name='reactor_file_reader' />
+#### Reactor.File.Reader : Reactor.IReadable
 
-The following creates a reactor file readstream. The example outputs its contents to the console window.
-
-```csharp
-var readstream = Reactor.File.ReadStream.Create("input.txt");
-
-readstream.OnData += (data) => Console.Write(data.ToString("utf8"));
-
-readstream.OnEnd  += ()     => Console.Write("finished reading");
-```
-
-<a name='files_writer' />
-#### Reactor.File.Writer
-
-The followinf creates a reactor file writestream. The example writes data and ends the stream when complete.
+Reactor.File.Reader is a event driven read abstraction over the System.IO.FileStream. The following
+code will open a file for reading and process all data from this file.
 
 ```csharp
-var writestream = Reactor.File.WriteStream.Create("output.txt");
-
-writestream.Write("hello world");
-
-writestream.End();
-
+var reader = Reactor.File.Reader.Create("myfile.txt");
+reader.OnRead  (buffer => Console.WriteLine(buffer));
+reader.OnError (error  => Console.WriteLine(error));
+reader.OnEnd   (()     => Console.WriteLine("end"));
 ```
+Reactor.File.Reader supports seeking into a file and reading byte ranges... the following will skip the 
+first 10 bytes of the file, and take 100 bytes. When 100 bytes are read, this stream will emit a 'end' 
+event and dispose immediately.
+
+```csharp
+var reader = Reactor.File.Reader.Create("myfile.txt", 10, 100); // skip 10, take 100
+reader.OnRead  (buffer => Console.WriteLine(buffer));
+reader.OnError (error  => Console.WriteLine(error));
+reader.OnEnd   (()     => Console.WriteLine("end"));
+```
+
+In addition, Reactor.File.Read also provides overloads to pass through FileMode and FileShare options.
+The following will pass the FileMode 'open and create' and FileShare option 'read/write' (indicating
+that that this file can be written to simulatiously).
+
+```csharp
+var reader = Reactor.File.Reader.Create("myfile.txt", 10, 100, FileMode.OpenOrCreate, FileShare.ReadWrite);
+reader.OnRead  (buffer => Console.WriteLine(buffer));
+reader.OnError (error  => Console.WriteLine(error));
+reader.OnEnd   (()     => Console.WriteLine("end"));
+```
+
+<a name='reactor_file_writer' />
+#### Reactor.File.Writer : Reactor.IWritable
+
+Reactor.File.Writer is a asynchronous write abstraction over the System.IO.FileStream. The following
+code will open a file a file for writing, write some data then close.
+
+```csharp
+var writer = Reactor.File.Writer.Create("myfile.txt");
+writer.Write("hello");
+writer.Write("world");
+writer.End();
+```
+In the code above, the stream is disposed of as soon as the call to "End()" has completed.
+
+Like the Reactor.File.Reader, the Reactor.File.Writer supports seeking into the file to begin
+writing. The following example will skip 1000 bytes of this file and begin writing.
+
+```csharp
+var writer = Reactor.File.Writer.Create
+		("myfile.txt", 1000); 
+writer.Write("hello");
+writer.Write("world");
+writer.End();
+```
+
+Overloads for FileMode and FileShare exist also. The following will create a writer with
+a FileMode of 'Truncate' and a FileShare or 'Write'
+
+```csharp
+var writer = Reactor.File.Writer.Create
+		("myfile.txt", 1000, FileMode.Truncate, FileShare.Write);
+writer.Write("hello");
+writer.Write("world");
+writer.End();
+```
+
 <a name='timers' />
 ### timers
 
