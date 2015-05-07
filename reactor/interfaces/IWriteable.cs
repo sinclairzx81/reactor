@@ -41,7 +41,7 @@ namespace Reactor
         /// more data.
         /// </summary>
         /// <param name="callback"></param>
-        void OnDrain (Reactor.Action callback);
+        void OnDrain (Reactor.Action action);
 
         /// <summary>
         /// Subscribes this action once to the 'drain' event. The event indicates
@@ -49,37 +49,37 @@ namespace Reactor
         /// more data.
         /// </summary>
         /// <param name="callback"></param>
-        void OnceDrain(Reactor.Action callback);
+        void OnceDrain(Reactor.Action action);
 
         /// <summary>
         /// Unsubscribes this action from the OnDrain event.
         /// </summary>
         /// <param name="callback">The callback to remove.</param>
-        void RemoveDrain (Reactor.Action callback);
+        void RemoveDrain (Reactor.Action action);
 
         /// <summary>
         /// Subscribes this action to the OnError event.
         /// </summary>
         /// <param name="callback">A callback to receive the error.</param>
-        void OnError (Reactor.Action<Exception> callback);
+        void OnError (Reactor.Action<Exception> action);
 
         /// <summary>
         /// Unsubscribes this action from the OnError event.
         /// </summary>
         /// <param name="callback">The callback to remove.</param>
-        void RemoveError (Reactor.Action<Exception> callback);
+        void RemoveError (Reactor.Action<Exception> action);
 
         /// <summary>
         /// Subscribes this action to the OnEnd event.
         /// </summary>
         /// <param name="callback">A callback to receive the error.</param>
-        void OnEnd (Reactor.Action callback);
+        void OnEnd (Reactor.Action action);
 
         /// <summary>
         /// Unsubscribes this action from the OnEnd event.
         /// </summary>
         /// <param name="callback">The callback to remove.</param>
-        void RemoveEnd (Reactor.Action callback);
+        void RemoveEnd (Reactor.Action action);
 
         /// <summary>
         /// Writes this buffer to the stream. This method returns a Reactor.Future

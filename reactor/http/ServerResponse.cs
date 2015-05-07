@@ -33,142 +33,161 @@ using System.Text;
 namespace Reactor.Http {
 
     /// <summary>
-    /// Reactor HTTP Server Response.
+    /// Reactor HTTP server response.
     /// </summary>
     public class ServerResponse : Reactor.IWritable {
-        
-        #region Channels
+        private Reactor.IWritable     writable;
+        private Reactor.Async.Queue   queue;
+        private Reactor.Http.Headers  headers;
+        private Reactor.Http.Cookies  cookies;
+        private System.Version        version;
+        private System.Int32          status_code;
+        private System.String         status_description;
 
-        public class Channels {
+        private bool                  header_sent;
 
-            public Reactor.Async.Event<Exception> Error {  get; set; }
+        #region Constructors
+
+        public ServerResponse(Reactor.IWritable writable) {
+            this.writable           = writable;
+            this.queue              = Reactor.Async.Queue.Create(1);
+            this.headers            = new Reactor.Http.Headers();
+            this.cookies            = new Reactor.Http.Cookies();
+            this.version            = new Version(1, 1);
+            this.status_code        = 200; 
+            this.status_description = "OK";
+            this.header_sent        = false;
+
+            /* defaults */
+            this.headers["Server"]            = "Reactor-HTTP Server";
+            this.headers["Transfer-Encoding"] = "chunked";
+            this.headers["Connection"]        = "closed";
+            this.headers["Cache-Control"]     = "no-cache";
+            this.headers["Date"]              = DateTime.UtcNow.ToString("r");
         }
 
         #endregion
 
-        private Reactor.Tcp.Socket    socket;
-        private Reactor.Http.Headers  headers;
-        private Reactor.Http.Cookies  cookies;
-        private Version               version;
-        private string                connection;
-        private string                cache_control;
-        private Encoding              content_encoding;
-        private long                  content_length;
-        private string                content_type;
-        private int                   status_code;
-        private string                status_description;
-        private string                location;
-        private bool                  header_sent;
-
-        public ServerResponse(Reactor.Tcp.Socket socket) {
-
-            this.socket             = socket;
-            this.headers            = new Reactor.Http.Headers();
-            this.cookies            = new Reactor.Http.Cookies();
-            this.version            = new Version(1, 1);
-            this.status_code        = 200;
-            this.connection         = "close";
-            this.cache_control      = "no-cache"; 
-            this.content_encoding   = Encoding.Default;
-            this.status_description = "OK";
-            this.content_type       = string.Empty;
-            this.location           = string.Empty;
-            this.header_sent        = false;
-        }
-
         #region Properties
 
-        public Reactor.Http.Headers Headers           
-        {
-            get
-            {
+        /// <summary>
+        /// The HTTP headers for this response.
+        /// </summary>
+        public Reactor.Http.Headers Headers {
+            get {
                 return this.headers;
             }
         }
 
-        public Reactor.Http.Cookies Cookies           
-        {
-            get
-            {
+        /// <summary>
+        /// The HTTP cookies for this response.
+        /// </summary>
+        public Reactor.Http.Cookies Cookies {
+            get {
                 return this.cookies;
             }
         }
 
-        public string               Connection        
-        {
-            get
-            {
-                return this.connection;
-            }
-            set
-            {
-                this.connection = value;
-            }
-        }
-
-        public Encoding             ContentEncoding   
-        {
-            get
-            {
-                return this.ContentEncoding;
-            }
-            set
-            {
-                this.ContentEncoding = value;
-            }
-        }
-
-        public long                 ContentLength     
-        {
-            get 
-            {
-                return this.content_length; 
-            }
-            set 
-            {
-                this.content_length = value;
-            }
-        }
-
-        public string               ContentType       
-        {
-            get
-            {
-                return this.content_type;
-            }
-            set
-            {
-                this.content_type = value;
-            }
-        }
-
-        public int                  StatusCode        
-        {
-            get
-            {
+        /// <summary>
+        /// The HTTP status code.
+        /// </summary>
+        public int StatusCode {
+            get {
                 return this.status_code;
             }
-            set
-            {
+            set {
                 this.status_code = value;
             }
         }
-
-        public string               StatusDescription 
-        {
-            get
-            {
+        /// <summary>
+        /// The HTTP Status description.
+        /// </summary>
+        public string StatusDescription  {
+            get {
                 return this.status_description;
             }
-            set
-            {
+            set {
                 this.status_description = value;
+            }
+        }
+        /// <summary>
+        /// The Content-Length for this request. Note: if 
+        /// setting a value for the Content-Length, the 
+        /// transfer-encoding header will be 
+        /// removed from this response.
+        /// </summary>
+        public long ContentLength {
+            get  {
+                long result = 0;
+                long.TryParse(this.headers["Content-Length"], out result);
+                return result;
+            }
+            set  {
+                this.headers.Remove("Transfer-Encoding");
+                this.headers["Content-Length"] = value.ToString();
+            }
+        }
+
+        public string ContentType {
+            get {
+                return this.headers["Content-Type"];
+            }
+            set {
+                this.headers["Content-Type"] = value;
             }
         }
 
         #endregion
 
-        #region IWritable
+        #region Events
+
+        /// <summary>
+        /// Subscribes this action to the 'drain' event. The event indicates
+        /// when a write operation has completed and the caller should send
+        /// more data.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnDrain(Reactor.Action callback) {
+            this.writable.OnDrain(callback);
+        }
+
+        /// <summary>
+        /// Subscribes this action once to the 'drain' event. The event indicates
+        /// when a write operation has completed and the caller should send
+        /// more data.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnceDrain(Reactor.Action callback) {
+            this.writable.OnceDrain(callback);
+        }
+
+        /// <summary>
+        /// Unsubscribes from the 'drain' event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void RemoveDrain(Reactor.Action callback) {
+            this.writable.RemoveDrain(callback);
+        }
+
+        /// <summary>
+        /// Subscribes this action to the 'end' event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnEnd(Reactor.Action callback) {
+            this.writable.OnEnd(callback);
+        }
+
+        /// <summary>
+        /// Unsubscribes this action from the 'end' event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void RemoveEnd(Reactor.Action callback) {
+            this.writable.RemoveEnd(callback);
+        }
+
+        #endregion
+
+        #region Methods
 
         /// <summary>
         /// Writes this buffer to the stream. This method returns a Reactor.Future
@@ -177,19 +196,7 @@ namespace Reactor.Http {
         /// <param name="buffer"></param>
         /// <returns></returns>
         public Reactor.Async.Future Write (Reactor.Buffer buffer) {
-            if (!this.header_sent) {
-                this.header_sent = true;
-                this._WriteHeaders();
-            }
-            //-----------------------------------
-            // transfer encoding chunked
-            //-----------------------------------
-            if (this.content_length == 0) {
-                socket.Write(String.Format("{0:x}\r\n", buffer.Length));
-                buffer.Write(Encoding.ASCII.GetBytes("\r\n"));
-            }
-
-            return this.socket.Write(buffer);
+            return this._Write(buffer);
         }
 
         /// <summary>
@@ -198,11 +205,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <returns></returns>
         public Reactor.Async.Future Flush() {
-            if (!this.header_sent) {
-                this.header_sent = true;
-                this._WriteHeaders();
-            }
-            return this.socket.Flush();
+            return this._Flush();
         }
 
         /// <summary>
@@ -211,18 +214,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <returns></returns>
         public Reactor.Async.Future End () {
-            if (!this.header_sent) {
-                this.header_sent = true;
-                this._WriteHeaders();
-            }
-            //-----------------------------------
-            // chunked
-            //-----------------------------------
-            if (this.content_length == 0) {          
-                this.socket.Write("0\r\n");
-                this.socket.Write("\r\n");
-            }
-            return this.socket.End();
+            return this._End();
         }
 
         /// <summary>
@@ -230,119 +222,110 @@ namespace Reactor.Http {
         /// flushed either at .Uncork() or at .End() call.
         /// </summary>
         public void Cork() {
-            this.socket.Cork();
+            this.writable.Cork();
         }
 
         /// <summary>
         /// Flush all data, buffered since .Cork() call.
         /// </summary>
         public void Uncork() {
-             this.socket.Uncork();
+             this.writable.Uncork();
         }
 
         public void OnError     (Reactor.Action<Exception> callback)
         {
-            this.socket.OnError(callback);
+            this.writable.OnError(callback);
         }
 
         public void RemoveError (Reactor.Action<Exception> callback) {
 
-            this.socket.RemoveError(callback);
+            this.writable.RemoveError(callback);
         }
 
         #endregion
 
-        #region Channels
-
-        
-        #endregion
-
         #region Internal
 
-        private void _WriteHeaders() {
+        /// <summary>
+        /// Writes headers to this writable. If headers
+        /// have already been sent, this call is resolved
+        /// immediately. In addition, once the headers
+        /// have been sent, this method will detect
+        /// the transfer-encoding as 'chunked' and 
+        /// swap out this writable for a chunked body
+        /// writable.
+        /// </summary>
+        /// <returns></returns>
+        private Reactor.Async.Future _WriteHeaders() {
+            if(this.header_sent) return Reactor.Async.Future.Resolved();
+            return new Reactor.Async.Future((resolve, reject) => {
+                var buffer = Reactor.Buffer.Create(128);
+                buffer.Write("HTTP/{0} {1} {2}\r\n", version, status_code, status_description);
+                buffer.Write(this.headers.ToString());
+                this.writable.Write(buffer)
+                             .Then(() => {
+                                this.header_sent = true;
+                                this.writable    = (this.headers["Transfer-Encoding"] == "chunked") ? 
+                                    (Reactor.IWritable)new Reactor.Http.Protocol.ChunkedBodyWriter(this.writable) :
+                                    (Reactor.IWritable)this.writable;
+                             }).Then(resolve)
+                               .Error(reject);
+            });
+        }
 
-            var culture_info = CultureInfo.InvariantCulture;
+        /// <summary>
+        /// Writes this buffer to the underlying writable.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <returns></returns>
+        private Reactor.Async.Future _Write (Reactor.Buffer buffer) {
+            return new Reactor.Async.Future((resolve, reject) => {
+                this.queue.Run(next => {
+                    this._WriteHeaders().Then(() => {
+                        this.writable.Write(buffer)
+                                     .Then(resolve)
+                                     .Error(reject)
+                                     .Finally(next);
+                    }).Error(reject)
+                      .Finally(next);
+                });
+            });
+        }
 
-            //-------------------------------------
-            // server:
-            //-------------------------------------
-            if (headers["Server"] == null) {
+        /// <summary>
+        /// Flushes the underlying writable.
+        /// </summary>
+        /// <returns></returns>
+        private Reactor.Async.Future _Flush () {
+            return new Reactor.Async.Future((resolve, reject) => {
+                this.queue.Run(next => {
+                    this._WriteHeaders().Then(() => {
+                        this.writable.Flush()
+                                     .Then(resolve)
+                                     .Error(reject)
+                                     .Finally(next);
+                    }).Error(reject)
+                      .Finally(next);
+                });
+            });
+        }
 
-                headers.Set_Internal("Server", "Reactor-HTTP/0.9");
-            }
-
-            //-------------------------------------
-            // connection:
-            //-------------------------------------
-            if (this.connection.Length > 0) {
-
-                headers.Set_Internal("Connection", this.connection);
-            }
-
-            //-------------------------------------
-            // cache-control:
-            //-------------------------------------
-            if (this.cache_control.Length > 0) {
-
-                headers.Set_Internal("Cache-Control", this.cache_control);
-            }
-
-            //-------------------------------------
-            // date:
-            //-------------------------------------
-
-            if (headers["Date"] == null) {
-
-                headers.Set_Internal("Date", DateTime.UtcNow.ToString("r", culture_info));
-            }
-
-            //-------------------------------------
-            // content-type:
-            //-------------------------------------
-            if (this.content_type.Length > 0) {
-
-                headers.Set_Internal("Content-Type", content_type);
-            }
-
-            //-------------------------------------
-            // content-length | transfer-encoding
-            //-------------------------------------
-            if (this.content_length == 0) {
-
-                headers.Set_Internal("Transfer-Encoding", "chunked");
-            }
-            else {
-
-                headers.Set_Internal("Content-Length", content_length.ToString(culture_info));
-            }
-            
-            //-------------------------------------
-            // location:
-            //-------------------------------------
-            if (this.location.Length > 0) {
-
-                headers.Set_Internal("Location", location);
-            }
-
-            //-------------------------------------
-            // cookies:
-            //-------------------------------------
-            foreach (Cookie cookie in cookies) {
-
-                headers.Set_Internal("Set-Cookie", cookie.ToClientString());
-            }
-
-            //-------------------------------------
-            // write:
-            //-------------------------------------
-
-            var buffer = Reactor.Buffer.Create(128);
-
-            buffer.Write("HTTP/{0} {1} {2}\r\n", version, status_code, status_description);
-
-            buffer.Write(this.headers.ToString());
-
-            this.socket.Write(buffer);
+        /// <summary>
+        /// Ends the underlying writable.
+        /// </summary>
+        /// <returns></returns>
+        private Reactor.Async.Future _End () {
+            return new Reactor.Async.Future((resolve, reject) => {
+                this.queue.Run(next => {
+                    this._WriteHeaders().Then(() => {
+                        this.writable.End()
+                                     .Then(resolve)
+                                     .Error(reject)
+                                     .Finally(next);
+                    }).Error(reject)
+                      .Finally(next);
+                });
+            });
         }
 
         #endregion
@@ -480,33 +463,5 @@ namespace Reactor.Http {
         }
 
         #endregion
-
-        public void OnDrain(Action callback)
-        {
-            this.socket.OnDrain(callback);
-        }
-
-        public void OnceDrain(Action callback)
-        {
-            this.socket.OnceDrain(callback);
-        }
-
-        public void RemoveDrain(Action callback)
-        {
-            this.socket.RemoveDrain(callback);
-        }
-
-        public void OnEnd(Action callback)
-        {
-            this.socket.OnEnd(callback);
-        }
-
-        public void RemoveEnd(Action callback)
-        {
-            this.socket.RemoveEnd(callback);
-        }
-
-
-
     }
 }

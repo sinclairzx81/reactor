@@ -45,12 +45,18 @@ namespace console.tests.web
                 Console.Write("-");
                 context.Response.ContentType = "image/png";
                 var read = Reactor.File.Reader.Create("c:/input/input.png");
+                context.Response.ContentLength = read.Length;
                 read.Pipe(context.Response);
             });
             server.Get("/video", context =>{
                 context.Response.ContentType = "video/mp4";
                 var read = Reactor.File.Reader.Create("c:/input/input.mp4");
                 read.Pipe(context.Response);
+            });
+            server.Get("/redirect", context =>{
+                context.Response.StatusCode = 301;
+                context.Response.Headers["Location"] = "http://google.com";
+                context.Response.End();
             });
             server.Listen(5000);
         }

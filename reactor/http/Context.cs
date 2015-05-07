@@ -36,12 +36,12 @@ namespace Reactor.Http {
         /// <summary>
         /// The incoming http request.
         /// </summary>
-        public ServerRequest      Request  { get; private set; }
+        public Reactor.Http.ServerRequest      Request  { get; private set; }
 
         /// <summary>
         /// The outgoing http response.
         /// </summary>
-        public ServerResponse     Response { get; private set; }
+        public Reactor.Http.ServerResponse     Response { get; private set; }
 
         #region Constructors
 

@@ -156,14 +156,8 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="socket"></param>
         private void Accept (Reactor.Tcp.Socket socket) {
-            var request  = new Reactor.Http.ServerRequest (socket);
-            var response = new Reactor.Http.ServerResponse  (socket);
-            request.Begin().Then(() => {
-                this.onread.Emit(Reactor.Http.Context.Create(request, response));
-            }).Error(error => {
-                response.StatusCode = 400;
-                response.StatusDescription = "Bad Request";
-                response.End();
+            Reactor.Http.Binder.Bind(socket, context =>{
+                this.onread.Emit(context);
             });
         }
 

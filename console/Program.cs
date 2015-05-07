@@ -8,15 +8,20 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 
+
+
 namespace console {
 
     class Program {
- 
+
         static void Main(string[] args) {
 
             Reactor.Loop.Start();
+            
+            console.tests.web.WebTest.WebServerTest();
 
-            var writer = Reactor.File.Writer.Create("c:/input/not-here.txt", FileMode.OpenOrCreate);
+            var s = new Reactor.Http.QueryString();
+
         }
     }
 }

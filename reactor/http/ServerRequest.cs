@@ -27,118 +27,55 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
-using System.Globalization;
-using System.Net;
 using System.Text;
 
 namespace Reactor.Http {
 
     /// <summary>
-    /// Reactor HTTP Incoming Message
+    /// Reactor HTTP Server Request.
     /// </summary>
     public class ServerRequest : Reactor.IReadable {
-
-        #region States
-
-        /// <summary>
-        /// Readable state.
-        /// </summary>
-        internal enum State {
-            /// <summary>
-            /// The initial state of this stream. A stream
-            /// in a pending state signals that the stream
-            /// is waiting on the caller to issue a read request
-            /// the the underlying resource, by attaching a
-            /// OnRead, OnReadable, or calling Read().
-            /// </summary>
-            Pending,
-            /// <summary>
-            /// A stream in a reading state signals that the
-            /// stream is currently requesting data from the
-            /// underlying resource and is waiting on a 
-            /// response.
-            /// </summary>
-            Reading,
-            /// <summary>
-            /// A stream in a paused state will bypass attempts
-            /// to read on the underlying resource. A paused
-            /// stream must be resumed by the caller.
-            /// </summary>
-            Paused,
-            /// <summary>
-            /// Indicates this stream has ended. Streams can end
-            /// by way of reaching the end of the stream, or through
-            /// error.
-            /// </summary>
-            Ended
-        }
-
-        /// <summary>
-        /// Readable mode.
-        /// </summary>
-        internal enum Mode {
-            /// <summary>
-            /// This stream is using flowing semantics.
-            /// </summary>
-            Flowing,
-            /// <summary>
-            /// This stream is using non-flowing semantics.
-            /// </summary>
-            NonFlowing
-        }
-
-        #endregion
-
-        private Reactor.Tcp.Socket                  socket;
-        private Reactor.Async.Event                 onreadable;
-        private Reactor.Async.Event<Reactor.Buffer> onread;
-        private Reactor.Async.Event<Exception>      onerror;
-        private Reactor.Async.Event                 onend;
-        private Reactor.Buffer                      buffer;
-        private State                               state;
-        private Mode                                mode;
-        private int                                 received;
-
-        private Reactor.Http.Headers                headers;
-        private Reactor.Http.Query                  query;
-        private Version                             version;
-        private string                              method;
-        private string                              raw_url;
-        private Uri                                 url;
-        private long                                contentLength;
-        private Encoding                            contentEncoding;
-        private string[]                            acceptTypes;
-        private string[]                            userLanguages;
-        
+        private Reactor.IReadable       readable;
+        private Reactor.Http.Headers    headers;
+        private Reactor.Http.QueryString      query;
+        private System.Version          version;
+        private System.String           method;
+        private System.String           raw_url;
+        private System.Uri              url;
+        private System.Int64            contentLength;
+        private System.String           transferEncoding;
+        private System.Text.Encoding    contentEncoding;
+        private System.Net.EndPoint     localEndPoint;
+        private System.Net.EndPoint     remoteEndPoint;
 
         #region Constructors
 
-        /// <summary>
-        /// Creates a new Incoming Message. 
-        /// </summary>
-        /// <param name="socket"></param>
-        internal ServerRequest(Reactor.Tcp.Socket socket) {
-            this.socket          = socket;
-            this.onreadable      = Reactor.Async.Event.Create();
-            this.onread          = Reactor.Async.Event.Create<Reactor.Buffer>();
-            this.onerror         = Reactor.Async.Event.Create<Exception>();
-            this.onend           = Reactor.Async.Event.Create();
-            this.buffer          = Reactor.Buffer.Create();
-            this.state           = State.Pending;
-            this.mode            = Mode.NonFlowing;
-
-            /* initialize with reasonable defaults */
-            this.headers         = new Headers();
-            this.query           = new Query();
-            this.version         = null;
-            this.method          = null;
-            this.raw_url         = null;
-            this.url             = null;
-            this.contentLength   = 0;
-            this.contentEncoding = Encoding.Default;
-            this.acceptTypes     = null;
-            this.userLanguages   = null;
-            this.received        = 0;
+        internal ServerRequest(Reactor.IReadable     readable,
+                               Reactor.Http.Headers headers, 
+                               Reactor.Http.QueryString   query,
+                               System.Version        version,
+                               System.String         method,
+                               System.String         raw_url,
+                               System.Uri            url,
+                               System.Int64          contentLength,
+                               System.String         transferEncoding,
+                               System.Text.Encoding  contentEncoding,
+                               System.Net.EndPoint   localEndPoint,
+                               System.Net.EndPoint   remoteEndpoint) {
+            this.readable = (transferEncoding == "chunked") ? 
+                (Reactor.IReadable)new Reactor.Http.Protocol.ChunkedBodyReader(readable) :
+                (Reactor.IReadable)new Reactor.Http.Protocol.BodyReader(readable, contentLength);
+            this.headers          = headers;
+            this.query            = query;
+            this.version          = version;
+            this.method           = method;
+            this.raw_url          = raw_url;
+            this.url              = url;
+            this.contentLength    = contentLength;
+            this.transferEncoding = transferEncoding;
+            this.contentEncoding  = contentEncoding;
+            this.localEndPoint    = localEndPoint;
+            this.remoteEndPoint   = remoteEndPoint;
         }
 
         #endregion
@@ -155,7 +92,7 @@ namespace Reactor.Http {
         /// <summary>
         /// QueryString parameters.
         /// </summary>
-        public Query Query {
+        public QueryString Query {
             get { return this.query; }
         }
 
@@ -201,33 +138,19 @@ namespace Reactor.Http {
             get {  return this.contentEncoding; }
         }
 
-        /// <summary>
-        /// The Accept-Types header.
-        /// </summary>
-        public string[] AcceptTypes     {
-            get {  return this.acceptTypes; }
-        }
+        ///// <summary>
+        ///// The local endpoint.
+        ///// </summary>
+        //public EndPoint LocalEndPoint   {
+        //    get { return this.readable.LocalEndPoint; }
+        //}
 
-        /// <summary>
-        /// The User-Languages header.
-        /// </summary>
-        public string[] UserLanguages   {
-            get {  return this.userLanguages; }
-        }
-
-        /// <summary>
-        /// The local endpoint.
-        /// </summary>
-        public EndPoint LocalEndPoint   {
-            get { return this.socket.LocalEndPoint; }
-        }
-
-        /// <summary>
-        /// The remote endpoint.
-        /// </summary>
-        public EndPoint RemoteEndPoint  {
-            get { return this.socket.RemoteEndPoint; }
-        }
+        ///// <summary>
+        ///// The remote endpoint.
+        ///// </summary>
+        //public EndPoint RemoteEndPoint  {
+        //    get { return this.readable.RemoteEndPoint; }
+        //}
 
         /// <summary>
         /// The Transfer-Encoding header.
@@ -278,12 +201,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void OnReadable (Reactor.Action callback) {
-            this.onreadable.On(callback);
-            this.mode = Mode.NonFlowing;
-            if (this.state == State.Paused) {
-                this.state = State.Pending;
-            }
-            this._Read(); 
+            this.readable.OnReadable(callback);
         }
 
         /// <summary>
@@ -296,12 +214,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void OnceReadable(Reactor.Action callback) {
-            this.onreadable.Once(callback);
-            this.mode = Mode.NonFlowing;
-            if (this.state == State.Paused) {
-                this.state = State.Pending;
-            }
-            this._Read();
+            this.readable.OnceReadable(callback);
         }
 
         /// <summary>
@@ -309,7 +222,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveReadable(Reactor.Action callback) {
-			this.onreadable.Remove(callback);
+			this.readable.RemoveReadable(callback);
         }
 
         /// <summary>
@@ -320,10 +233,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void OnRead (Reactor.Action<Reactor.Buffer> callback) {
-            this.onread.On(callback);
-            if (this.state == State.Pending) {
-                this.Resume();
-            }
+            this.readable.OnRead(callback);
         }
 
         /// <summary>
@@ -334,10 +244,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void OnceRead(Reactor.Action<Reactor.Buffer> callback) {
-            this.onread.Once(callback);
-            if (this.state == State.Pending) {
-                this.Resume();
-            }
+            this.readable.OnceRead(callback);
         }
 
         /// <summary>
@@ -345,7 +252,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveRead (Reactor.Action<Reactor.Buffer> callback) {
-            this.onread.Remove(callback);
+            this.readable.RemoveRead(callback);
         }
 
         /// <summary>
@@ -353,7 +260,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void OnError (Reactor.Action<Exception> callback) {
-            this.onerror.On(callback);
+            this.readable.OnError(callback);
         }
 
         /// <summary>
@@ -361,7 +268,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveError (Reactor.Action<Exception> callback) {
-            this.onerror.Remove(callback);
+            this.readable.RemoveError(callback);
         }
 
         /// <summary>
@@ -369,7 +276,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void OnEnd (Reactor.Action callback) {
-            this.onend.On(callback);
+            this.readable.OnEnd(callback);
         }
 
         /// <summary>
@@ -377,7 +284,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveEnd (Reactor.Action callback) {
-            this.onend.Remove(callback);
+            this.readable.RemoveEnd(callback);
         }
 
         #endregion
@@ -395,15 +302,7 @@ namespace Reactor.Http {
         /// <param name="count">The number of bytes to read.</param>
         /// <returns></returns>
         public Reactor.Buffer Read (int count) {
-            var result = Reactor.Buffer.Create(this.buffer.Read(count));
-            if (result.Length > 0) {
-                this.onread.Emit(result);
-            }
-            if (this.buffer.Length == 0) {
-                this.mode = Mode.NonFlowing;
-                this._Read();
-            }
-            return result;
+            return this.readable.Read(count);
         }
 
         /// <summary>
@@ -413,7 +312,7 @@ namespace Reactor.Http {
         /// data read with a length > 0 will also be emitted as a 'read' event.
         /// </summary>
         public Reactor.Buffer Read () {
-            return this.Read(this.buffer.Length);
+            return this.readable.Read();
         }
 
         /// <summary>
@@ -421,7 +320,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="buffer">The buffer to unshift.</param>
         public void Unshift (Reactor.Buffer buffer) {
-            this.buffer.Unshift(buffer);
+            this.readable.Unshift(buffer);
         }
 
         /// <summary>
@@ -431,8 +330,7 @@ namespace Reactor.Http {
         /// available will remain in the internal buffer.
         /// </summary>
         public void Pause() {
-            this.mode  = Mode.NonFlowing;
-            this.state = State.Paused;
+            this.readable.Pause();
         }
 
         /// <summary>
@@ -442,9 +340,7 @@ namespace Reactor.Http {
         /// you can call readable.resume() to open the flow of data.
         /// </summary>
         public void Resume() {
-            this.mode  = Mode.Flowing;
-            this.state = State.Pending;
-            this._Read();
+            this.readable.Resume();
         }
 
         /// <summary>
@@ -453,14 +349,7 @@ namespace Reactor.Http {
         /// <param name="writable"></param>
         /// <returns></returns>
         public Reactor.IReadable Pipe (Reactor.IWritable writable) {
-            this.OnRead(data => {
-                this.Pause();
-                writable.Write(data)
-                        .Then(this.Resume)
-                        .Error(this._Error);
-            });
-            this.OnEnd (() => writable.End());
-            return this;
+            return this.readable.Pipe(writable);
         }
 
         #endregion
@@ -589,296 +478,6 @@ namespace Reactor.Http {
         /// <param name="value"></param>
         public void Unshift (double value) {
             this.Unshift(BitConverter.GetBytes(value));
-        }
-
-        #endregion
-
-        #region Internal
-
-        /// <summary>
-        /// Reads HTTP Protocol.
-        /// </summary>
-        /// <param name="buffer"></param>
-        /// <returns></returns>
-        private Reactor.Async.Future<Reactor.Buffer> ReadProtocol (Reactor.Buffer buffer) {
-            return Reactor.Fibers.Fiber.Create<Reactor.Buffer>(() => {
-                Reactor.Buffer unconsumed = null;
-                Exception parse_error = null;
-                var parser = Reactor.Http.Protocol.RequestReader.Create(buffer);
-                parser.OnMethod    (method  => { this.method  = method;  });
-                parser.OnRawUrl    (raw_url => { this.raw_url = raw_url; });
-                parser.OnVersion   (version => { this.version = version; });
-                parser.OnHeader    (header  => { this.headers.Add_Internal(header.Key, header.Value); });
-                parser.OnError     (error   => { parse_error  = error; });
-                parser.OnEnd       (()      => {
-                    // this needs fixing...
-                    unconsumed = parser.Unconsumed();
-                });
-                parser.Begin();
-                if(parse_error != null) throw parse_error;
-                return unconsumed;
-            });
-        }
-
-        /// <summary>
-        /// Parsers Headers
-        /// </summary>
-        /// <returns></returns>
-        private Reactor.Async.Future ReadHeaders () {
-            return Reactor.Fibers.Fiber.Create(() => {
-                foreach (var header in this.headers) {
-                    var lower = header.Key.ToLower(CultureInfo.InvariantCulture);
-                    switch (lower) {
-                        case "accept-language":
-                            var languages = header.Value.Split(',');
-                            for (int i = 0; i < languages.Length; i++) {
-                                languages[i] = languages[i].Trim();
-                            }
-                            this.userLanguages = languages;
-                            break;
-
-                        case "accept":
-                            var accept_types = header.Value.Split(',');
-                            for (int i = 0; i < accept_types.Length; i++) {
-                                accept_types[i] = accept_types[i].Trim();
-                            }
-                            this.acceptTypes = accept_types;
-                            break;
-
-                        case "content-length":
-                            long contentLength = 0;
-                            if (!long.TryParse(header.Value.Trim(), out contentLength)) {
-                                throw new Exception("invalid content length");
-                            }
-                            if (contentLength < 0) {
-                                throw new Exception("invalid content length");
-                            }
-                            this.contentLength = contentLength;
-                            break;
-                    }
-                }
-            });
-        }
-
-        /// <summary>
-        /// Resolves a System.Net.Uri from the raw_url.
-        /// </summary>
-        /// <returns></returns>
-        private Reactor.Async.Future ReadUrl () {
-            return Reactor.Fibers.Fiber.Create(() => {
-                var host = this.UserHostName;
-                if (version > HttpVersion.Version10 && (host.Length == 0)) {
-                    throw new Exception("Invalid host name");
-                }
-                string path;
-                Uri raw_uri = null;
-                if (Uri.TryCreate(this.raw_url, UriKind.Absolute, out raw_uri)) {
-                    path = raw_uri.PathAndQuery;
-                }
-                else {
-                    path = raw_url;
-                }
-                if (host.Length == 0) {
-                    host = this.socket.LocalEndPoint.ToString();
-                }
-                if (raw_uri != null) {
-                    host = raw_uri.Host;
-                }
-                int colon = host.IndexOf(':');
-                if (colon >= 0) {
-                    host = host.Substring(0, colon);
-                }
-
-                var local = this.socket.LocalEndPoint as IPEndPoint;
-                string base_uri = String.Format("{0}://{1}:{2}", "http", host, local.Port);
-                Uri url = null;
-                if (!Uri.TryCreate(base_uri + path, UriKind.Absolute, out url)) {
-                    throw new Exception("Invalid url: " + base_uri + path);
-                }
-                this.url = url;
-            });
-        }
-
-        /// <summary>
-        /// Parsers the QueryString
-        /// </summary>
-        /// <returns></returns>
-        private Reactor.Async.Future ReadQueryString () {
-            return Reactor.Fibers.Fiber.Create(() => {
-                var query = this.url.Query;
-                if (query == null || query.Length == 0) {
-                    return;
-                }
-                if (query[0] == '?') {
-                    query = query.Substring(1);
-                }
-                string[] components = query.Split('&');
-                foreach (string kv in components) {
-                    try {
-                        int pos = kv.IndexOf('=');
-                        if (pos == -1) {
-                            this.query.Add(null, Reactor.Http.Utility.UrlDecode(kv));
-                        }
-                        else {
-                            string key = Reactor.Http.Utility.UrlDecode(kv.Substring(0, pos));
-                            string val = Reactor.Http.Utility.UrlDecode(kv.Substring(pos + 1));
-                            this.query.Add(key, val);
-                        }
-                    }
-                    catch { }
-                }
-            });
-        }
-
-        /// <summary>
-        /// Responsible for initializing the Incoming Message. This
-        /// method will begin reading from the underlying socket and
-        /// attempt to parse the http protocol header. On successful
-        /// parse, the method will bind the sockets read, error and
-        /// end listeners to 'this' machine. This is done as we need
-        /// to add read semantics for chunked and content-length 
-        /// bodies, but also to provide a layed abstraction between
-        /// the caller and the socket.
-        /// </summary>
-        internal Reactor.Async.Future Begin () {
-            return new Reactor.Async.Future((resolve, reject) => {
-                Reactor.Action<Reactor.Buffer> onread = null;
-                onread = buffer => {
-                    this.socket.Pause();
-                    this.socket.RemoveRead(onread);
-                    this.ReadProtocol(buffer).Then(unconsumed => {
-                        this.ReadHeaders().Then(() => {
-                            this.ReadUrl().Then(() => {
-                                this.ReadQueryString().Then(() => {
-                                    this.buffer.Write(unconsumed);
-                                    this.socket.OnError(this._Error);
-                                    this.socket.OnEnd(this._End);
-                                    resolve();
-                                }).Error(reject);
-                            }).Error(reject);
-                        }).Error(reject);
-                    }).Error(reject);
-                }; this.socket.OnRead(onread);
-            });
-        }
-
-        #endregion
-
-        #region Machine
-
-        /// <summary>
-        /// Begins reading from the underlying stream.
-        /// </summary>
-        private void _Read () {
-            if (this.state == State.Pending) {
-                this.state = State.Reading;
-                /* any data resident in the buffer
-                 * needs to emitted prior to issuing
-                 * a request for more, normal operation
-                 * would assume that the callers only 
-                 * need to read if they have emptied 
-                 * the buffer, however, this rule is
-                 * broken in instances where the user
-                 * may have unshifted data inbetween
-                 * reads. The following overrides the
-                 * default behaviour and calls to 
-                 * _data() directly with a cloned
-                 * buffer.
-                 */
-                if (this.buffer.Length > 0) {
-                    var clone = this.buffer.Clone();
-                    this.buffer.Clear();
-                    this._Data(clone);
-                }
-                /* here, we handle the case where
-                 * the caller is attempting to read a 
-                 * request with a content-length of 0.
-                 * in this instance, we defer emitting
-                 * end till next loop to give the caller
-                 * enough time to attach listeners.
-                 */
-                else if (this.received >= this.contentLength) {
-                    Loop.Post(this._End);
-                }
-                /* here, we make a actual request on the
-                 * underlying socket. This is a conceptually
-                 * similar approach taken by other readable
-                 * streams.
-                 */
-                else {
-                    this.socket.OnceRead(data => {
-                        this.socket.Pause();
-                        this._Data(data);
-                    }); this.socket.Resume();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Handles incoming data from the stream.
-        /// </summary>
-        /// <param name="buffer"></param>
-        private void _Data (Reactor.Buffer buffer) {
-            if (this.state == State.Reading) {
-                this.state = State.Pending;
-
-                bool ended = false;
-
-                if (this.TransferEncoding != "chunked") {
-                    /* non chunked content needs to be 
-                     * compared against the content-length.
-                     * here, we increment the received,
-                     * and trim the buffer if necessary. 
-                     */
-                    var length = buffer.Length;
-                    this.received = this.received + length;
-                    if (this.received >= this.contentLength) {
-                        var overflow = this.received - this.contentLength;
-                        length = length - (int)overflow;
-                        buffer = buffer.Slice(0, length);
-                        ended  = true;
-                    }
-                }
-
-                this.buffer.Write(buffer);
-                switch (this.mode) {
-                    case Mode.Flowing:
-                        var clone = this.buffer.Clone();
-                        this.buffer.Clear();
-                        this.onread.Emit(clone);
-                        if(ended)
-                            this._End();
-                        else
-                            this._Read();
-                        break;
-                    case Mode.NonFlowing:
-                        this.onreadable.Emit();
-                        if(ended)
-                            this._End();
-                        break;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Handles stream errors.
-        /// </summary>
-        /// <param name="error"></param>
-        private void _Error (Exception error) {
-            if (this.state != State.Ended) { 
-                this.onerror.Emit(error);
-                this._End();
-            }
-        }
-
-        /// <summary>
-        /// Terminates the stream.
-        /// </summary>
-        public void _End    () {
-            if (this.state != State.Ended) {
-                this.state = State.Ended;
-                this.onend.Emit();
-            }
         }
 
         #endregion

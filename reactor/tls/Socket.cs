@@ -471,12 +471,10 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="callback">A callback to signal when this stream has ended.</param>
         public Reactor.Async.Future End () {
-            return new Reactor.Async.Future((resolve, reject)=>{
+            return new Reactor.Async.Future((resolve, reject) => {
                 this.queue.Run(next => {
-                    this.writer.End()
-                               .Then(resolve)
-                               .Error(reject)
-                               .Finally(next);
+                    this._End();
+                    next();          
                 });
             });
         }
@@ -1213,16 +1211,17 @@ namespace Reactor.Tls {
         /// <summary>
         /// Terminates the stream.
         /// </summary>
-        public void _End    () {
+        public void _End () {
             if (this.state != State.Ended) {
                 this.state = State.Ended;
                 try { this.socket.Shutdown(SocketShutdown.Send); } catch {}
-                this.Disconnect();
-                if (this.poll   != null) this.poll.Clear();
-                if (this.writer != null) this.writer.Dispose();
-                if (this.reader != null) this.reader.Dispose();
-                this.queue.Dispose();
-                this.onend.Emit();
+                this.Disconnect().Finally(() => {
+                    if (this.poll   != null) this.poll.Clear();
+                    if (this.writer != null) this.writer.Dispose();
+                    if (this.reader != null) this.reader.Dispose();
+                    this.queue.Dispose();
+                    this.onend.Emit();
+                });
             }
         }
 

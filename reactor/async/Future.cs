@@ -484,8 +484,8 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="resolver"></param>
         /// <returns></returns>
-        public static Future Create(Reactor.Action<Action, Action<Exception>> resolver) {
-            return new Future(resolver);
+        public static Reactor.Async.Future Create(Reactor.Action<Action, Action<Exception>> resolver) {
+            return new Reactor.Async.Future(resolver);
         }
 
         /// <summary>
@@ -493,8 +493,42 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="resolver"></param>
         /// <returns></returns>
-        public static Future<T> Create<T>(Reactor.Action<Action<T>, Action<Exception>> resolver) {
-            return new Future<T>(resolver);
+        public static Reactor.Async.Future<T> Create<T>(Reactor.Action<Action<T>, Action<Exception>> resolver) {
+            return new Reactor.Async.Future<T>(resolver);
+        }
+
+        /// <summary>
+        /// Returns a resolved future.
+        /// </summary>
+        /// <returns></returns>
+        public static Reactor.Async.Future Resolved() {
+            return new Reactor.Async.Future((resolve, reject) => resolve());
+        }
+
+        /// <summary>
+        /// Returns a resolved future.
+        /// </summary>
+        /// <param name="value">The resolved value.</param>
+        /// <returns></returns>
+        public static Reactor.Async.Future<T> Resolve<T>(T value) {
+            return new Reactor.Async.Future<T>((resolve, reject) => resolve(value));
+        }
+
+        /// <summary>
+        /// Returns a rejected future.
+        /// </summary>
+        /// <returns></returns>
+        public static Reactor.Async.Future Rejected(Exception error) {
+            return new Reactor.Async.Future((resolve, reject) => reject(error));
+        }
+
+        /// <summary>
+        /// Returns a rejected future.
+        /// </summary>
+        /// <param name="value">The rejected value.</param>
+        /// <returns></returns>
+        public static Reactor.Async.Future<T> Rejected<T>(Exception error) {
+            return new Reactor.Async.Future<T>((resolve, reject) => reject(error));
         }
 
         #endregion

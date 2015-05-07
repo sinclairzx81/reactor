@@ -44,29 +44,22 @@ namespace Reactor.Http {
     /// <summary>
     /// Reactor HTTP Utility methods.
     /// </summary>
-    public static class Utility
-    {
-        sealed class HttpQSCollection : NameValueCollection
-        {
-            public override string ToString()
-            {
-                int count = Count;
+    public static class Utility {
 
-                if (count == 0)
-                {
+        sealed class HttpQSCollection : NameValueCollection {
+
+            public override string ToString() {
+                int count = Count;
+                if (count == 0) {
                     return "";
                 }
 
                 StringBuilder sb = new StringBuilder();
-
                 string[] keys = AllKeys;
-
-                for (int i = 0; i < count; i++)
-                {
+                for (int i = 0; i < count; i++) {
                     sb.AppendFormat("{0}={1}&", keys[i], this[keys[i]]);
                 }
-                if (sb.Length > 0)
-                {
+                if (sb.Length > 0) {
                     sb.Length--;
                 }
                 return sb.ToString();
