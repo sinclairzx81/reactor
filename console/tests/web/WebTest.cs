@@ -33,10 +33,11 @@ namespace console.tests.web
             server.Post("/post", context => {
                 Console.WriteLine("POST: /post");
                 context.Request.OnRead(data =>{
-                    count+=data.Length;
+                    count += data.Length;
                     Console.WriteLine(count);
                 });
                 context.Request.OnEnd(() => {
+                    Console.WriteLine("got it");
                     context.Response.Write("got it");
                     context.Response.End();
                 });
