@@ -61,6 +61,8 @@ as expose real-time network services of their own.
 		* [Reactor.Http.ServerRequest](#reactor_http_serverrequest)
 		* [Reactor.Http.ServerResponse](#reactor_http_serverresponse)
 	* [Reactor.Http.Request](#reactor_http_request)
+* [Dns](#dns)
+	* [Reactor.Dns](#reactor_dns)
 * [Timers](#timers)
 	* [Reactor.Timeout](#reactor_timeout)
 	* [Reactor.Interval](#reactor_interval)	
