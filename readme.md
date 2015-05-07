@@ -25,52 +25,58 @@ as expose real-time network services of their own.
 
 [download reactor 0.9.1](https://s3.amazonaws.com/sinclair-code/reactor-0.9.1.zip "download 0.9.1")
 
-### contents
-* [the event loop](#the_event_loop)
-	* [console applications](#console_applications)
-	* [windows forms](#windows_forms)
-	* [unity3D](#unity3D)
-	* [threads + loop](#threads_plus_loop)
-* [streams and buffers](#streams_and_buffers)
-	* [buffers] (#streams_buffers)
-	* [readbles] (#streams_readables)
-	* [writables](#streams_writeables)
-* [files](#files)
-	* [readstream](#file_readstream)
-	* [writestream](#file_writestream)
-* [stdio](#stdio)
-	* [process](#stdio_process)
-	* [current](#current_current)	
-* [tcp](#tcp)
-	* [server](#tcp_server)
-	* [socket](#tcp_socket)
-* [tls](#tls)
-	* [server](#tls_server)
-	* [socket](#tls_socket)
-* [udp](#udp)
-	* [socket](#udp_socket)
-* [ip](#ip)
-	* [socket](#ip_socket)		
-* [http/https](#http_https)
-	* [server](#http_server)
-	* [request](#http_server_request)
-	* [response](#http_server_response)
+### Contents
+* [The Event Loop](#the_event_loop)
+	* [Console Applications](#console_applications)
+	* [Windows Forms](#windows_forms)
+	* [Unity3D](#unity3D)
+	* [Threads and Loops](#threads_and_loops)
+* [Streams and Buffers](#streams_and_buffers)
+	* [Reactor.Buffer] (#streams_buffers)
+	* [Reactor.IReadable] (#streams_readables)
+	* [Reactor.IWritable](#streams_writeables)
+* [Files](#files)
+	* [Reactor.File.Reader](#file_readstream)
+	* [Reactor.File.Writer](#file_writestream)
+* [Stdio](#stdio)
+	* [Reactor.Process.Current](#stdio_process)
+	* [Reactor.Process.Process](#current_current)	
+* [Tcp](#tcp)
+	* [Reactor.Tcp.Server](#tcp_server)
+	* [Reactor.Tcp.Socket](#tcp_socket)
+* [Tls](#tls)
+	* [Reactor.Tls.Server](#tls_server)
+	* [Reactor.Tls.Socket](#tls_socket)
+* [Udp](#udp)
+	* [Reactor.Udp.Socket](#udp_socket)
+* [Ip](#ip)
+	* [Reactor.Ip.Socket](#ip_socket)		
+* [Http/Https](#http_https)
+	* [Reactor.Http.Server](#http_server)
+		* [Reactor.Http.ServerRequest](#http_server_request)
+		* [Reactor.Http.ServerResponse](#http_server_response)
 	* [requests](#http_requests)
-* [enumerables](#enumerables)	
 * [timers](#timers)
-	* [timeout](#timers_timeout)
-	* [interval](#timers_interval)
+	* [Reactor.Timeout](#timers_timeout)
+	* [Reactor.Interval](#timers_interval)	
 * [fibers](#fibers)
 	* [creating fibers](#creating fibers)
+* [async](#async)
+	* [Reactor.Async.Future](#async_future)
+	* [Reactor.Async.Event](#async_event)
+	* [Reactor.Async.Queue](#async_queue)
+	* [Reactor.Async.Racer](#async_racer)
+* [enumerables](#enumerables)
+	* [Reactor.Enumerable](#enumerables_enumerable)	
 
 
 <a name='getting_started' />
-### getting started
+### Getting Started
 
 The following section outlines getting started with reactor.
 
 <a name='the_event_loop' />
-#### the event loop
+#### Reactor.Loop
 
 Reactor operates via a single event loop which is used internally 
 to synchronize IO completion callbacks to a user defined synchronization 
@@ -92,7 +98,7 @@ The following sections outline various ways to start the event loop for a
 variety of platforms.
 
 <a name='console_applications' />
-#### console applications
+#### Console Applications
 
 Console applications are the simplist to get going. The following will 
 start the event loop in basic console application, followed by starting
@@ -112,7 +118,7 @@ class Program {
 ```
 
 <a name='windows_forms' />
-#### windows forms applications
+#### Windows Forms
 
 Windows applications are slightly more involved. Developers familar with WinForms (or
 any other UI desktop programming) will note that all threads need to be synchronized 
@@ -148,7 +154,7 @@ public partial class Form1 : Form {
 ```
 
 <a name='unity3D' />
-#### unity3D
+#### Unity3D
 
 In Unity3D, asynchronous work is typically handled by way of coroutines. Reactor builds
 on this and exposes a loop enumerator that can be passed to Unity's StartCoroutine(..)
@@ -177,8 +183,8 @@ public class MyGameObject : MonoBehaviour {
 }
 ```
 
-<a name='threads_plus_loop' />
-### threads + loop
+<a name='threads_and_loop' />
+### Threads and Loops
 
 Internally, Reactors API's are posting to the event loop with the following call...
 ```csharp
@@ -223,7 +229,7 @@ class Program {
 }
 ```
 <a name="streams_and_buffers" />
-### streams and buffers
+### Streams and Buffers
 
 At its core, reactor is made up of three simple things, readables, writables and buffers.
 Understanding these things will help developers get the most out of the library. 
@@ -235,7 +241,7 @@ Understanding these things will help developers get the most out of the library.
 The following section goes into detail about these three things.
 
 <a name="streams_buffers" />
-#### buffers
+#### Reactor.Buffer
 
 Reactor.Buffer is reactors the most basic primitive for passing data around. Internally, 
 the Reactor.Buffer is a implementation of a classic ring buffer, but with 
@@ -313,7 +319,7 @@ Console.WriteLine(buffer);          // prints "hello world"
 ```
 
 <a name="streams_readables" />
-### readables
+### Reactor.IReadable
 
 Reactor.IReadable is the interface shared amoung all things that "stream data" (files, tcp sockets, stdio, http requests etc).
 
@@ -396,7 +402,7 @@ reader.OnRead(buffer => Console.WriteLine("read: {0} bytes", buffer.Length));
 reader.OnEnd (()     => Console.WriteLine("read: finished!"));
 ```
 <a name="streams_writables" />
-### writables
+### Reactor.IWritable
 
 The Reactor.IWritable interface is shared among all things that 'write' in a streaming way. (files, tcp sockets, stdio,
 http responses etc). 
@@ -424,7 +430,8 @@ writer.End();
 
 It is important to note, that the above code will likely buffer many of those lines being written (CPU's work faster
 than disks as it turns out), and the caller can not expect the data to be written immediately. Because of this, Reactor
-writeables all provode Reactor.Async.Future to help the caller indicate when this data has been written successfully. 
+writeables all provode Reactor.Async.Future primitive (which is similar in nature to Task<T>) to help the caller learn of 
+when this data has been written successfully. 
 
 The following example adds a bit more fluff to the previous example.
 
@@ -439,9 +446,9 @@ writer.End()
       .Then(() => Console.WriteLine("stream ended"));
 	  .Error(error => Console.WriteLine("oh no"));
 ```
-In additional to being able to keep track of single writes. IWritable also provides 'events' that achieve a 
-similar result, but from a 'global' perspective. The following code outputs the exact same output
-as the previous example.
+In addition to being able to keep track of single writes (as they happen). IWritable also provides 'events' 
+that achieve a similar result, but from top down perspective. The following code will output the exact same thing 
+as in the previous example, but we don't learn of which write completed when.
 
 ```csharp`
 var writer = Reactor.File.Writer.Create("myfile.dat");
@@ -454,6 +461,7 @@ writer.OnDrain(()    => Console.WriteLine("data written"));
 writer.OnError(error => Console.WriteLine("oh no"));
 writer.OnEnd  (()    => Console.WriteLine("stream ended."));
 ```
+
 Sometimes, you want to hold off writing on a stream and just let things buffer up. Reactor.IWritable also 
 supports the Cork() and Uncork() interfaces found nodes writable streams.
 
@@ -475,27 +483,26 @@ Reactor.Timeout.Create(() => {
 note: Reactor has a slightly different take on Cork/Uncork. In nodejs, A writable stream is automatically
 'uncorked' as soon as writable.end() is called on that stream. In contrast, Reactor requires the caller 
 to specifically 'uncork' the stream. The author feels that implicit and automatic behaviour is generally
-something to be avoided. Remember to Uncork() your streams !.
+something to be avoided whereever possible. Remember to Uncork() your streams !!
 
-That is pretty much all there is to IWritable, but it is perhaps worth while to bring up a brief mention of
-consider the matter of write contention in the context of using writables with readables. 
-
-Consider the following example...
+While Reactor.IWritable streams are very simple in nature, there are some common mistakes that developers may 
+face when working against a asynchronous write interface like this. Consider the following example...
 
 ```csharp
 Reactor.Tcp.Server.Create(socket => {
-	var reader = Reactor.File.Reader.Create("LARGEFILE.DAT");
+	var reader = Reactor.File.Reader.Create("EXTREMELY_LARGE_FILE.DAT");
 	reader.OnRead (buffer => socket.Write(buffer));
 	reader.OnEnd  (()     => socket.End());
 });
 ```
 
-There is a glaring problem with the above code, In this scenario, we have a socket (lets assume this socket originated
-from mars), and a reader reading from disk. The problem here is that this "LARGEFILE.DAT" is going
-to be "read" MUCH quicker than the socket can deliever that data to mars. The end result is that the program
-is going to "buffer up" the entirety of this file in system ram!!! obviously this is not desirable.
+In this scenario, we have a socket (lets assume it originated from mars), and a reader reading from disk. 
+The problem here is that this "EXTREMELY_LARGE_FILE.DAT" is going to be "read" MUCH quicker than the socket 
+can deliever that data to mars. The end result is that the program is going to "buffer up" the entirety of 
+this file in while it slowly pangs packets into space. Obviously this is not desirable.
 
-The author recommends that users Pipe() data in this scenario. The following would be more appropriate.
+The author recommends that users Pipe() data in this scenario whenever possible. The following would be 
+more appropriate. (and simpler)
 
 ```csharp
 Reactor.Tcp.Server.Create(socket => {
@@ -504,7 +511,7 @@ Reactor.Tcp.Server.Create(socket => {
 });
 ```
 
-Internally, Reactor will interleave reads and writes. Below is a stock implementation of Reactors
+Internally, Reactor is interleaving reads and writes. Below is a stock implementation of Reactors
 Pipe() function....
 
 ```csharp
@@ -519,158 +526,22 @@ public Reactor.IReadable Pipe (Reactor.IWritable writable) {
     return this;
 }
 ```
-This Pipe() function is common amoungst all Reactor Streams. In this scenario we do the following....
+For reference, this exact Pipe() function is common amoungst all Reactor Streams. The points of 
+interest are happening within the OnRead(() => {...}) callback, which can be read as.....
 
 	read() -> pause() -> write() -> resume() -> repeat...
 
 Developers are free to experiment with their own implementations for Pipe(), but the defacto
-Pipe() is a pretty good place to begin..
-
-
-<a name='timers' />
-### timers
-
-Reactor comes bundled with two timing primitives, Timeouts and Intervals. These are
-fashioned after javascript setTimeout() and setInterval() respectively. 
-
-<a name='timers_timeout' />
-#### timeouts
-
-Use the Timeout class set a delay.
-
-```csharp
-Reactor.Timeout.Create(() => {
-
-	Console.WriteLine("this code will be run in 1 second");
-
-}, 1000);
-```
-
-<a name='timers_interval' />
-#### intervals
-
-Use the Interval class setup a repeating interval.
-
-```csharp
-Reactor.Interval.Create(() => {
-
-	Console.WriteLine("this code will be run every 2 seconds");
-
-}, 2000);
-```
-
-Additionally, Intervals can be cleared...
-
-```csharp
-Reactor.Interval interval = null;
-
-interval = Reactor.Interval.Create(() => {
-
-	Console.WriteLine("this code will be run once");
-
-	interval.Clear();
-	
-}, 2000);
-```
-<a name='buffers' />
-### buffers
-
-Reactor has a single buffer primitive which is used to buffer data in memory, and to act as
-a container for data transmitted via a stream. The buffer contains read and write operations, 
-and is type passed back on all OnData events.
-
-```csharp
-Reactor.Tcp.Server.Create(socket => {
-	
-	socket.OnData += data => {
-	
-		// data is of type Reactor.Buffer
-	};
-
-    var buffer = Reactor.Buffer.Create();
-
-    buffer.Write(10.0f);
-
-    buffer.Write(20.0f);
-
-    buffer.Write(30.0f);
-
-    socket.Write(buffer);
-
-}).Listen(5000);
-```
-
-<a name='streams' />
-### streams
-
-Reactor aligns closely with the evented io model found in nodejs. Reactor implements IReadable, 
-IWriteable, or IDuplexable interfaces across file io, tcp, http request / response, stdio etc, with 
-the intent of enabling effecient, evented piping of data across transports.
-
-```csharp
-Reactor.Http.Server.Create(context => {
-
-	var readstream = Reactor.File.ReadStream.Create("c:/video.mp4");
-
-    context.Response.ContentLength = readstream.Length;
-
-    context.Response.ContentType = "video/mp4";
-
-    readstream.Pipe(context.Response);
-
-}).Listen(8080);
-```
-
-<a name='streams_readstream' />
-#### IReadable
-
-Supports OnData, OnEnd and OnError events. As well as Pause(), Resume() and Pipe().
-
-The following demonstrates opening a file as a readstream.
-
-```csharp
-var readstream = Reactor.File.ReadStream.Create("myfile.txt");
-
-readstream.OnData += (data) => { 
-	
-	// fired when we have read data from the file system.
-};
-
-readstream.OnEnd += () => { 
-
-	// fired when we have read to the end of the file.
-};
-
-readstream.OnError += (error) => { 
-	
-	// fired on error. error is of type System.Exception.
-};
-```
-
-<a name='streams_writestream' />
-#### IWriteable
-
-Supports Write(), Flush() and End() operations on a underlying stream.
-
-```csharp
-var writestream = Reactor.File.WriteStream.Create("myfile.txt");
-
-writestream.Write("hello");
-
-writestream.Write(123);
-
-writestream.Write(new byte[] {0, 1, 2, 3});
-
-writestream.End();
-```
+Pipe() is a pretty vanilla implementation for developers to reference to write specialized pipes 
+for their needs...
 
 <a name='files' />
 ### files
 
 Reactor provides a evented abstraction for the .net type System.IO.FileStream. The following outlines its use.
 
-<a name='files_readstream' />
-#### readstream
+<a name='files_reader' />
+#### Reactor.File.Reader
 
 The following creates a reactor file readstream. The example outputs its contents to the console window.
 
@@ -682,8 +553,8 @@ readstream.OnData += (data) => Console.Write(data.ToString("utf8"));
 readstream.OnEnd  += ()     => Console.Write("finished reading");
 ```
 
-<a name='files_writestream' />
-#### writestream
+<a name='files_writer' />
+#### Reactor.File.Writer
 
 The followinf creates a reactor file writestream. The example writes data and ends the stream when complete.
 
@@ -695,6 +566,73 @@ writestream.Write("hello world");
 writestream.End();
 
 ```
+<a name='timers' />
+### timers
+
+Reactor provides analogous implementations for setInterval(...) and setTimeout(...) found in 
+javascript. These are Reactor.Interval and Reactor.Timeout respectively. The following sections 
+outline their use.
+
+<a name='timers_timeout' />
+#### timeouts
+
+Reactor's timeout implementation has the same characteristics as setTimeout(...). Callers 
+can create Timeouts in the following way.
+
+```csharp
+Reactor.Timeout.Create(() => {
+	Console.WriteLine("buzz");
+}, 1000);
+```
+Like javascript, Timeouts can also be used to recursively loop without fear of busting the function
+stack, a common pattern in javascript, consider the following.....
+
+```csharp
+Reactor.Action action = null;
+action = new Reactor.Action(() => {
+    Console.WriteLine("still going?");
+	action(); // bang goes the stack
+});
+action();
+```
+And a timeout centric approach...
+
+```csharp
+Reactor.Action action = null;
+action = new Reactor.Action(() => {
+	Console.WriteLine("still going?");
+	Reactor.Timeout.Create(action);
+});
+action();
+```
+Note: The author recommends using Loop.Post(() => {}) over Timeouts in these scenarios. As follows..
+
+Reactor.Action action = null;
+action = new Reactor.Action(() => {
+    Reactor.Loop.Post(action);
+});
+action();
+
+<a name='timers_interval' />
+#### intervals
+
+Reactor's interval implementation has the same characteristics as setInterval(...). Callers 
+can create intervals in the following way.
+
+```csharp
+Reactor.Interval.Create(() => {
+	Console.WriteLine("loopz");
+}, 2000);
+```
+Additionally, Intervals can be cleared thusly.
+
+```csharp
+Reactor.Interval interval = null;
+interval = Reactor.Interval.Create(() => { 
+	interval.Clear();
+}, 2000);
+```
+
 
 <a name='http' />
 ### http
