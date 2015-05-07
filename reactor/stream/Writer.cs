@@ -205,7 +205,6 @@ namespace Reactor.Streams {
         /// </summary>
         /// <param name="callback">A action called once the stream has been ended.</param>
         public Reactor.Async.Future End () {
-            this.Uncork();
             return new Reactor.Async.Future((resolve, reject) => { 
                 Loop.Post(() => {
                     this.queue.Run(next => {
