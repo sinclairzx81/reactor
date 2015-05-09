@@ -35,18 +35,18 @@ namespace Reactor.Http {
     /// Reactor HTTP Server Request.
     /// </summary>
     public class ServerRequest : Reactor.IReadable {
-        private Reactor.IReadable       readable;
-        private Reactor.Http.Headers    headers;
-        private Reactor.Http.QueryString      query;
-        private System.Version          version;
-        private System.String           method;
-        private System.String           raw_url;
-        private System.Uri              url;
-        private System.Int64            contentLength;
-        private System.String           transferEncoding;
-        private System.Text.Encoding    contentEncoding;
-        private System.Net.EndPoint     localEndPoint;
-        private System.Net.EndPoint     remoteEndPoint;
+        private Reactor.IReadable        readable;
+        private Reactor.Http.Headers     headers;
+        private Reactor.Http.QueryString query;
+        private System.Version           version;
+        private System.String            method;
+        private System.String            raw_url;
+        private System.Uri               url;
+        private System.Int64             contentLength;
+        private System.String            transferEncoding;
+        private System.Text.Encoding     contentEncoding;
+        private System.Net.EndPoint      localEndPoint;
+        private System.Net.EndPoint      remoteEndPoint;
 
         #region Constructors
 
@@ -355,6 +355,87 @@ namespace Reactor.Http {
         #endregion
 
         #region Buffer
+
+        /// <summary>
+        /// Reads a boolean from this stream.
+        /// </summary>
+        /// <returns></returns>
+        public System.Boolean ReadBool () {
+            var data = this.Read(sizeof(System.Boolean));
+            return BitConverter.ToBoolean(data.ToArray(), 0);
+        }
+
+        /// <summary>
+        /// Reads a Int16 value from this stream.
+        /// </summary>
+        /// <returns></returns>
+        public System.Int16 ReadInt16 () {
+            var data = this.Read(sizeof(System.Int16));
+            return BitConverter.ToInt16(data.ToArray(), 0);
+        }
+
+        /// <summary>
+        /// Reads a UInt16 value from this stream.
+        /// </summary>
+        /// <returns></returns>
+        public System.UInt16 ReadUInt16 () {
+            var data = this.Read(sizeof(System.UInt16));
+            return BitConverter.ToUInt16(data.ToArray(), 0);
+        }
+
+        /// <summary>
+        /// Reads a Int32 value from this stream.
+        /// </summary>
+        /// <returns></returns>
+        public System.Int32 ReadInt32 () {
+            var data = this.Read(sizeof(System.Int32));
+            return BitConverter.ToInt32(data.ToArray(), 0);
+        }
+
+        /// <summary>
+        /// Reads a UInt32 value from this stream.
+        /// </summary>
+        /// <returns></returns>
+        public System.UInt32 ReadUInt32 () {
+            var data = this.Read(sizeof(System.UInt32));
+            return BitConverter.ToUInt32(data.ToArray(), 0);
+        }
+
+        /// <summary>
+        /// Reads a Int64 value from this stream.
+        /// </summary>
+        /// <returns></returns>
+        public System.Int64 ReadInt64 () {
+            var data = this.Read(sizeof(System.Int64));
+            return BitConverter.ToInt64(data.ToArray(), 0);
+        }
+
+        /// <summary>
+        /// Reads a UInt64 value from this stream.
+        /// </summary>
+        /// <returns></returns>
+        public System.UInt64 ReadUInt64 () {
+            var data = this.Read(sizeof(System.UInt64));
+            return BitConverter.ToUInt64(data.ToArray(), 0);
+        }
+
+        /// <summary>
+        /// Reads a Single precision value from this stream.
+        /// </summary>
+        /// <returns></returns>
+        public System.Single ReadSingle () {
+            var data = this.Read(sizeof(System.Single));
+            return BitConverter.ToSingle(data.ToArray(), 0);
+        }
+
+        /// <summary>
+        /// Reads a Double precision value from this stream.
+        /// </summary>
+        /// <returns></returns>
+        public System.Double ReadDouble () {
+            var data = this.Read(sizeof(System.Double));
+            return BitConverter.ToDouble(data.ToArray(), 0);
+        }
 
         /// <summary>
         /// Unshifts this data to the stream.

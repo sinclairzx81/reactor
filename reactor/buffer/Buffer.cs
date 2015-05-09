@@ -602,7 +602,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="count">The number of bytes to read.</param>
         /// <returns></returns>
-        public byte[]  Read (int count) {
+        public System.Byte[] Read (int count) {
 
             lock(this.sync) {
                 //----------------------------
@@ -641,7 +641,7 @@ namespace Reactor {
         /// Reads all data in this buffer.
         /// </summary>
         /// <returns></returns>
-        public byte[] Read() {
+        public System.Byte[] Read() {
             return this.Read(this.length);
         }
 
@@ -650,7 +650,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="count">The number of bytes to read.</param>
         /// <returns></returns>
-        public byte [] ReadBytes (int count) {
+        public System.Byte [] ReadBytes (int count) {
             return this.Read(count);
         }
 
@@ -658,7 +658,7 @@ namespace Reactor {
         /// Reads a single byte from this buffer.
         /// </summary>
         /// <returns></returns>
-        public byte ReadByte () {
+        public System.Byte ReadByte () {
             var data = this.Read(1);
             return data[0];
         }
@@ -667,7 +667,7 @@ namespace Reactor {
         /// Reads a boolean from this buffer.
         /// </summary>
         /// <returns></returns>
-        public bool ReadBool () {
+        public System.Boolean ReadBool () {
             var data = this.Read(sizeof(System.Boolean));
             return BitConverter.ToBoolean(data, 0);
         }
@@ -676,7 +676,7 @@ namespace Reactor {
         /// Reads a Int16 value from this buffer.
         /// </summary>
         /// <returns></returns>
-        public short ReadInt16 () {
+        public System.Int16 ReadInt16 () {
             var data = this.Read(sizeof(System.Int16));
             return BitConverter.ToInt16(data, 0);
         }
@@ -685,7 +685,7 @@ namespace Reactor {
         /// Reads a UInt16 value from this buffer.
         /// </summary>
         /// <returns></returns>
-        public ushort ReadUInt16 () {
+        public System.UInt16 ReadUInt16 () {
             var data = this.Read(sizeof(System.UInt16));
             return BitConverter.ToUInt16(data, 0);
         }
@@ -694,7 +694,7 @@ namespace Reactor {
         /// Reads a Int32 value from this buffer.
         /// </summary>
         /// <returns></returns>
-        public int ReadInt32 () {
+        public System.Int32 ReadInt32 () {
             var data = this.Read(sizeof(System.Int32));
             return BitConverter.ToInt32(data, 0);
         }
@@ -703,7 +703,7 @@ namespace Reactor {
         /// Reads a UInt32 value from this buffer.
         /// </summary>
         /// <returns></returns>
-        public uint ReadUInt32 () {
+        public System.UInt32 ReadUInt32 () {
             var data = this.Read(sizeof(System.UInt32));
             return BitConverter.ToUInt32(data, 0);
         }
@@ -712,7 +712,7 @@ namespace Reactor {
         /// Reads a Int64 value from this buffer.
         /// </summary>
         /// <returns></returns>
-        public long ReadInt64 () {
+        public System.Int64 ReadInt64 () {
             var data = this.Read(sizeof(System.Int64));
             return BitConverter.ToInt64(data, 0);
         }
@@ -721,7 +721,7 @@ namespace Reactor {
         /// Reads a UInt64 value from this buffer.
         /// </summary>
         /// <returns></returns>
-        public ulong ReadUInt64 () {
+        public System.UInt64 ReadUInt64 () {
             var data = this.Read(sizeof(System.UInt64));
             return BitConverter.ToUInt64(data, 0);
         }
@@ -730,7 +730,7 @@ namespace Reactor {
         /// Reads a Single precision value from this buffer.
         /// </summary>
         /// <returns></returns>
-        public float ReadSingle () {
+        public System.Single ReadSingle () {
             var data = this.Read(sizeof(System.Single));
             return BitConverter.ToSingle(data, 0);
         }
@@ -739,7 +739,7 @@ namespace Reactor {
         /// Reads a Double precision value from this buffer.
         /// </summary>
         /// <returns></returns>
-        public double ReadDouble () {
+        public System.Double ReadDouble () {
             var data = this.Read(sizeof(System.Double));
             return BitConverter.ToDouble(data, 0);
         }
