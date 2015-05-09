@@ -226,6 +226,26 @@ namespace Reactor.Async {
             return future;
         }
 
+        /// <summary>
+        /// Cancels this future. If this future has not already
+        /// resolved, a cancelled future will reject with a exception
+        /// containing the supplied message.
+        /// </summary>
+        /// <param name="reason"></param>
+        public void Cancel(string reason) {
+            this.Reject(new Exception(reason));
+        }
+
+        /// <summary>
+        /// Cancels this future. If this future has not already
+        /// resolved, a cancelled future will reject with a exception
+        /// containing the message 'cancelled'.
+        /// </summary>
+        /// <param name="reason"></param>
+        public void Cancel() {
+            this.Cancel("cancelled");
+        }
+
         #endregion
 
         #region Internals
@@ -444,6 +464,26 @@ namespace Reactor.Async {
                     break;
             }            
             return future;
+        }
+
+        /// <summary>
+        /// Cancels this future. If this future has not already
+        /// resolved, a cancelled future will reject with a exception
+        /// containing the supplied message.
+        /// </summary>
+        /// <param name="reason"></param>
+        public void Cancel(string reason) {
+            this.Reject(new Exception(reason));
+        }
+
+        /// <summary>
+        /// Cancels this future. If this future has not already
+        /// resolved, a cancelled future will reject with a exception
+        /// containing the message 'cancelled'.
+        /// </summary>
+        /// <param name="reason"></param>
+        public void Cancel() {
+            this.Cancel("cancelled");
         }
 
         #endregion
