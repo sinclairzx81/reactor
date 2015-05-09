@@ -27,29 +27,82 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Threading.Tasks;
 
 namespace Reactor.Tests
 {
     [TestClass]
     public class Reactor_File_Reader {
+        private static string sequential_file;
+
         [ClassInitialize]
         public static void Startup(TestContext context) {
+            sequential_file = context.TestResultsDirectory + "/sequential.dat";
+            Reactor.Tests.Utility.Files.CreateNumbericSequenceFile(sequential_file, 65536 * 16);
             Reactor.Loop.Start();
         }
+
         [ClassCleanup]
         public static void Shutdown() {
             Reactor.Loop.Stop();
+            Reactor.Tests.Utility.Files.Delete(sequential_file);
         }
 
         [TestMethod]
         [TestCategory("Reactor.File.Reader")]
-        public async Task Reader_Read_All() {
+        public async Task Reader_Read_All_Compare_Length () {
             await Reactor.Async.Future.Create((resolve, reject) => {
-                resolve();
-
+                var received = 0;
+                var reader   = Reactor.File.Reader.Create(sequential_file);
+                reader.OnRead(buffer => {
+                    received += buffer.Length;
+                });
+                reader.OnError(reject);
+                reader.OnEnd(() => {
+                    if (received != reader.Length) {
+                        reject(new Exception("number of bytes read incorrect. expected " + reader.Length + " got " + received));
+                        return;
+                    }
+                    resolve();
+                });
             });
         }
+
+        [TestMethod]
+        [TestCategory("Reactor.File.Reader")]
+        public async Task Reader_Read_All_Sequential_Flowing () {
+            await Reactor.Async.Future.Create((resolve, reject) => {
+                var index    = -1;
+                var reader   = Reactor.File.Reader.Create(sequential_file);
+                var expected = (reader.Length / 4) - 1;
+                reader.OnRead(buffer => {
+                    while (buffer.Length > 0) {
+                        if (buffer.Length >= 4) {
+                            var temp = buffer.ReadInt32();
+                            if (temp != (index + 1)) {
+                                reject(new System.Exception("read unexpected ordinal."));
+                                return;
+                            }
+                            index = temp;
+                        }
+                        else {
+                            reader.Unshift(buffer);
+                            break;
+                        }
+                    }
+                });
+                reader.OnError(reject);
+                reader.OnEnd(() => {
+                    if (index != expected) {
+                        reject(new System.Exception("expected index " + index + " got " + expected));
+                        return;
+                    }
+                    resolve();
+                });
+            });
+        }
+
         [TestMethod]
         [TestCategory("Reactor.File.Reader")]
         public async Task Reader_Read_Partial() {

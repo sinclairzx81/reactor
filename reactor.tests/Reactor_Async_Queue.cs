@@ -27,54 +27,42 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
 using System.Threading.Tasks;
 
 namespace Reactor.Tests {
-
+    
     [TestClass]
-    public class Reactor_Async_Racer {
+    public class Reactor_Async_Queue {
         [ClassInitialize]
         public static void Startup(TestContext context) {
             Reactor.Loop.Start();
         }
+
         [ClassCleanup]
         public static void Shutdown() {
             Reactor.Loop.Stop();
         }
 
         [TestMethod]
-        [TestCategory("Reactor.Async.Racer")]
-        public async Task Racer_Test_Condition() {
-            await Reactor.Async.Future.Create((resolve, reject) => {
-                var racer = Reactor.Async.Racer.Create();
+        [TestCategory("Reactor.Async.Queue")]
+        public async Task Queue_Test_Back_Pressure() {
+            var future = Reactor.Async.Future.Create((resolve, reject) => {
                 var count = 0;
-                Reactor.Timeout.Create(() => racer.Set(() => {
-                    if (count != 0) {
-                        reject(new Exception("detected multiple callbacks."));
-                        return;
-                    }
-                    count++;
-                }));
-                Reactor.Timeout.Create(() => racer.Set(() => {
-                    if (count != 0) {
-                        reject(new Exception("detected multiple callbacks."));
-                        return;
-                    }
-                    count++;
-                }));
-                Reactor.Timeout.Create(() => {
-                    if (count == 0) {
-                        reject(new Exception("neither callback completed."));
-                        return;
-                    }
-                    if (count > 1) {
-                        reject(new Exception("detected multiple callbacks."));
-                        return;
-                    }
-                    resolve();
-                }, 100);
+                var queue = Reactor.Async.Queue.Create(1);
+                for (int i = 0; i < 100; i++) {
+                    queue.Run(next => {
+                        Reactor.Timeout.Create(() => {
+                            next();
+                            count = count + 1;
+                            if (count == 100) {
+                                resolve();
+                            }
+                        }, 1);
+                    });
+                }
             });
+            Reactor.Timeout.Create(future.Cancel, 5000);
+            await future;
         }
     }
 }

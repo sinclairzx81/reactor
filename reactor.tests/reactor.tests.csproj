@@ -51,6 +51,7 @@
   </Choose>
   <ItemGroup>
     <Compile Include="harness\Extensions.cs" />
+    <Compile Include="Reactor_Async_Queue.cs" />
     <Compile Include="Reactor_Async_Racer.cs" />
     <Compile Include="Reactor_Buffer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -64,6 +65,7 @@
     <Compile Include="Reactor_Tcp_Server.cs" />
     <Compile Include="Reactor_Tls_Socket.cs" />
     <Compile Include="Reactor_Tcp_Socket.cs" />
+    <Compile Include="utility\Files.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\reactor\reactor.csproj">
