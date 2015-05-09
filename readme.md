@@ -1,4 +1,4 @@
-# reactor
+![](https://raw.githubusercontent.com/sinclairzx81/reactor/reactor-next/reactor/reactor.png)
 ## asynchronous event driven io for .net
 
 ```csharp

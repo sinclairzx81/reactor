@@ -430,6 +430,18 @@
   </Class>
   <Class Name="Reactor.Udp.Stun.Packet" Collapsed="true">
     <Position X="11.25" Y="5.75" Width="1.5" />
+    <NestedTypes>
+      <Enum Name="Reactor.Udp.Stun.Packet.AttributeType" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>udp\stun\Packet.cs</NewMemberFileName>
+        </TypeIdentifier>
+      </Enum>
+      <Enum Name="Reactor.Udp.Stun.Packet.IPFamily" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>udp\stun\Packet.cs</NewMemberFileName>
+        </TypeIdentifier>
+      </Enum>
+    </NestedTypes>
     <TypeIdentifier>
       <HashCode>AAAgAAAACgQAEASAACAAAAAgAEgAAAADAQCAAABAAAA=</HashCode>
       <FileName>udp\stun\Packet.cs</FileName>
