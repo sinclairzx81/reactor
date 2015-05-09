@@ -1,5 +1,34 @@
-﻿using System;
+﻿/*--------------------------------------------------------------------------
+
+Reactor
+
+The MIT License (MIT)
+
+Copyright (c) 2015 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+---------------------------------------------------------------------------*/
+
+using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Threading.Tasks;
 
 namespace Reactor.Tests
 {
@@ -32,9 +61,27 @@ namespace Reactor.Tests
         #endregion
 
         [TestMethod]
-        public void Create_Write_Full_Read_Full() {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Write_Zero_Unshift_Zero_Read_Zero() {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
+
+            buffer.Write(new byte[0]);
+            AssertBuffer(buffer, 5, 0, 0, 0, "write 0 bytes to buffer.");
+
+            buffer.Unshift(new byte[0]);
+            AssertBuffer(buffer, 5, 0, 0, 0, "write 0 bytes to buffer.");
+
+            var data = buffer.Read(0);
+            AssertBuffer(buffer, 5, 0, 0, 0, "read 0 bytes to buffer.");
+            AssertByteSequenceSame(data, new byte[0]);
+        }
+
+        [TestMethod]
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Write_Full_Read_Full() {
+            var buffer = Reactor.Buffer.Create(5, 5);
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
 
             buffer.Write(new byte[5]);
             AssertBuffer(buffer, 5, 5, 0, 0, "write 5 bytes to buffer.");
@@ -45,9 +92,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Write_Partial_Read_Full() {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Write_Partial_Read_Full() {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
             buffer.Write(new byte[3]);
             AssertBuffer(buffer, 5, 3, 0, 3, "write 3 bytes to buffer.");
             buffer.Read(5);
@@ -55,9 +103,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Write_Partial_Read_Partial() {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Write_Partial_Read_Partial() {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
 
             buffer.Write(new byte[3]);
             AssertBuffer(buffer, 5, 3, 0, 3, "write 3 bytes to buffer.");
@@ -72,9 +121,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Write_Partial_Unshift_Partial_Read_Full() {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Write_Partial_Unshift_Partial_Read_Full() {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
 
             buffer.Write(new byte[3] { 0, 0, 0 });
             AssertBuffer(buffer, 5, 3, 0, 3, "write 3 bytes to buffer.");
@@ -88,9 +138,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Unshift_Partial_Write_Partial_Read_Full() {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Unshift_Partial_Write_Partial_Read_Full() {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
 
             buffer.Unshift(new byte[2] {1, 1});
             AssertBuffer(buffer, 5, 2, 3, 0, "unshifted 2 bytes to buffer.");
@@ -104,9 +155,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Write_Full_Write_Resize_Read_Full() {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Write_Full_Write_Resize_Read_Full() {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
 
             buffer.Write(new byte[5] {0, 0, 0, 0, 0});
             AssertBuffer(buffer, 5, 5, 0, 0, "write 5 bytes to buffer.");
@@ -124,9 +176,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Write_Partial_Write_Resize_Read_Full() {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Write_Partial_Write_Resize_Read_Full() {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
 
             buffer.Write(new byte[3] {0, 0, 0});
             AssertBuffer(buffer, 5, 3, 0, 3, "write 3 bytes to buffer.");
@@ -144,9 +197,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Unshift_Full_Unshift_Resize_Read_Full() {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Unshift_Full_Unshift_Resize_Read_Full() {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
 
             buffer.Unshift(new byte[5] {0, 0, 0, 0, 0});
             AssertBuffer(buffer, 5, 5, 0, 0, "unshift 5 bytes to buffer.");
@@ -164,9 +218,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Unshift_Partial_Unshift_Resize_Read_Full() {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Unshift_Partial_Unshift_Resize_Read_Full() {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
 
             buffer.Unshift(new byte[3] {0, 0, 0});
             AssertBuffer(buffer, 5, 3, 2, 0, "unshift 3 bytes to buffer.");
@@ -184,9 +239,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Write_Partial_Unshift_Partial() {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Write_Partial_Unshift_Partial() {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
 
             buffer.Write(new byte[2] {0, 0});
             AssertBuffer(buffer, 5, 2, 0, 2, "write 2 bytes to buffer.");
@@ -200,9 +256,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Unshift_Partial_Write_Partial() {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Unshift_Partial_Write_Partial() {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
 
             buffer.Unshift(new byte[2] {0, 0});
             AssertBuffer(buffer, 5, 2, 3, 0, "unshift 2 bytes to buffer.");
@@ -216,9 +273,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Write_Read_Overrun () {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Write_Read_Overrun () {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
 
             buffer.Write(new byte[2] {0, 0});
             AssertBuffer(buffer, 5, 2, 0, 2, "write 2 bytes to buffer.");
@@ -229,9 +287,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Unshift_Read_Overrun () {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Unshift_Read_Overrun () {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
 
             buffer.Unshift(new byte[2] {0, 0});
             AssertBuffer(buffer, 5, 2, 3, 0, "unshift 2 bytes to buffer.");
@@ -242,9 +301,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Read_Overrun() {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Read_Overrun() {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
 
             var data = buffer.Read(10000);
             AssertBuffer(buffer, 5, 0, 0, 0, "unshift 2 bytes to buffer.");
@@ -252,9 +312,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Fill() {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Fill() {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
             
             buffer.Fill((byte)1);
             AssertBuffer(buffer, 5, 5, 0, 0, "fill buffer from empty");
@@ -265,9 +326,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Write_Partial_Fill() {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Write_Partial_Fill() {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
             
             buffer.Write(new byte[2] {0, 0});
             AssertBuffer(buffer, 5, 2, 0, 2, "write 2 bytes to buffer.");
@@ -281,9 +343,10 @@ namespace Reactor.Tests
         }
 
         [TestMethod]
-        public void Create_Unshift_Partial_Fill() {
+        [TestCategory("Reactor.Buffer")]
+        public void Buffer_Unshift_Partial_Fill() {
             var buffer = Reactor.Buffer.Create(5, 5);
-            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            AssertBuffer(buffer, 5, 0, 0, 0, "Buffer buffer of capacity 5.");
             
             buffer.Unshift(new byte[2] {0, 0});
             AssertBuffer(buffer, 5, 2, 3, 0, "unshift 2 bytes to buffer.");

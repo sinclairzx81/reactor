@@ -50,6 +50,8 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="harness\Extensions.cs" />
+    <Compile Include="Reactor_Async_Racer.cs" />
     <Compile Include="Reactor_Buffer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
