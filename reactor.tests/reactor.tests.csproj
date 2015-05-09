@@ -54,8 +54,12 @@
     <Compile Include="Reactor_Async_Racer.cs" />
     <Compile Include="Reactor_Buffer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Reactor_Dns.cs" />
+    <Compile Include="Reactor_Fibers_Fiber.cs" />
     <Compile Include="Reactor_File_Reader.cs" />
     <Compile Include="Reactor_File_Writer.cs" />
+    <Compile Include="Reactor_Process_Current.cs" />
+    <Compile Include="Reactor_Process_Process.cs" />
     <Compile Include="Reactor_Tls_Server.cs" />
     <Compile Include="Reactor_Tcp_Server.cs" />
     <Compile Include="Reactor_Tls_Socket.cs" />

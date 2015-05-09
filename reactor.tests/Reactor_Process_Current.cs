@@ -26,22 +26,29 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using System.Runtime.CompilerServices;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Threading;
 using System.Threading.Tasks;
 
-namespace Reactor.Tests {
-    public static class Extensions {
-        public static TaskAwaiter<object> GetAwaiter(this Reactor.Async.Future future) {
-            var tcs = new TaskCompletionSource<object>(); 
-            future.Then  (() => tcs.SetResult(null));
-            future.Error (error => tcs.SetException(error));
-            return tcs.Task.GetAwaiter();
+namespace Reactor.Tests
+{
+    [TestClass]
+    public class Reactor_Process_Current {
+        [ClassInitialize]
+        public static void Startup(TestContext context) {
+            Reactor.Loop.Start();
         }
-        public static TaskAwaiter<T> GetAwaiter<T>(this Reactor.Async.Future<T> future) {
-            var tcs = new TaskCompletionSource<T>(); 
-            future.Then  (result => tcs.SetResult(result));
-            future.Error (error => tcs.SetException(error));
-            return tcs.Task.GetAwaiter();
+        [ClassCleanup]
+        public static void Shutdown() {
+            Reactor.Loop.Stop();
+        }
+
+        [TestMethod]
+        [TestCategory("Reactor.Process.Current")]
+        public async Task Test() {
+            await Reactor.Async.Future.Create((resolve, reject) => {
+                resolve();
+            });
         }
     }
 }

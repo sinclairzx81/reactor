@@ -26,22 +26,43 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using System.Runtime.CompilerServices;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Threading.Tasks;
 
 namespace Reactor.Tests {
-    public static class Extensions {
-        public static TaskAwaiter<object> GetAwaiter(this Reactor.Async.Future future) {
-            var tcs = new TaskCompletionSource<object>(); 
-            future.Then  (() => tcs.SetResult(null));
-            future.Error (error => tcs.SetException(error));
-            return tcs.Task.GetAwaiter();
+
+    [TestClass]
+    public class Reactor_Dns {
+        [ClassInitialize]
+        public static void Startup(TestContext context) {
+            Reactor.Loop.Start();
         }
-        public static TaskAwaiter<T> GetAwaiter<T>(this Reactor.Async.Future<T> future) {
-            var tcs = new TaskCompletionSource<T>(); 
-            future.Then  (result => tcs.SetResult(result));
-            future.Error (error => tcs.SetException(error));
-            return tcs.Task.GetAwaiter();
+
+        [ClassCleanup]
+        public static void Shutdown() {
+            Reactor.Loop.Stop();
+        }
+
+        [TestMethod]
+        [TestCategory("Reactor.Dns")]
+        public async Task Resolve_Google_A_Records() {
+            await Reactor.Async.Future.Create((resolve, reject) => {
+                Reactor.Dns.GetHostAddresses("google.com").Then(result => {
+                    Assert.IsTrue(result.Length > 0, "unable to resolve google a records, probably not connected to the internet.");
+                    resolve();
+                }).Error(reject);
+            });
+        }
+
+        [TestMethod]
+        [TestCategory("Reactor.Dns")]
+        public async Task Resolve_Google_Host_Entry() {
+            await Reactor.Async.Future.Create((resolve, reject) => {
+                Reactor.Dns.GetHostEntry("58.28.64.34").Then(result => {
+                    Assert.IsTrue(result.HostName != null, "unable to resolve host entry, probably not connected to the internet.");
+                    resolve();
+                }).Error(reject);
+            });
         }
     }
 }
