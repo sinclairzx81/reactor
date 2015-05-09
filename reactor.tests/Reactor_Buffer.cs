@@ -6,16 +6,18 @@ namespace Reactor.Tests
     [TestClass]
     public class Reactor_Buffer {
 
+        #region Helpers
+
         private void AssertBuffer(Reactor.Buffer buffer, 
                                   int capacity, 
                                   int length, 
                                   int head, 
                                   int tail,
                                   string message = "") {
-            Assert.IsTrue(buffer.Capacity == capacity, "capacity : expected " + capacity + " got " + buffer.Capacity + ". on " + message); 
-            Assert.IsTrue(buffer.Length   == length,   "length   : expected " + length   + " got " + buffer.Length   + ". on " + message); 
-            Assert.IsTrue(buffer.Head     == head,     "head     : expected " + head     + " got " + buffer.Head     + ". on " + message);          
-            Assert.IsTrue(buffer.Tail     == tail,     "tail     : expected " + tail     + " got " + buffer.Tail     + ". on " + message); 
+            Assert.IsTrue(buffer.Capacity == capacity, "CAPACITY : expected " + capacity + " got " + buffer.Capacity + ". on " + message); 
+            Assert.IsTrue(buffer.Length   == length,   "LENGTH : expected " + length   + " got " + buffer.Length   + ". on " + message); 
+            Assert.IsTrue(buffer.Head     == head,     "HEAD : expected " + head     + " got " + buffer.Head     + ". on " + message);          
+            Assert.IsTrue(buffer.Tail     == tail,     "TAIL : expected " + tail     + " got " + buffer.Tail     + ". on " + message); 
         }
 
         private void AssertByteSequenceSame(byte [] src, 
@@ -26,6 +28,8 @@ namespace Reactor.Tests
                 Assert.IsTrue(src[i] == compare[i], "byte at index " + i + " not equal.");
             }
         }
+
+        #endregion
 
         [TestMethod]
         public void Create_Write_Full_Read_Full() {
@@ -177,6 +181,119 @@ namespace Reactor.Tests
             var data = buffer.Read(11);
             AssertBuffer(buffer, 15, 0, 11, 11, "read 11 bytes from buffer.");
             AssertByteSequenceSame(data, new byte [11] {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0});
+        }
+
+        [TestMethod]
+        public void Create_Write_Partial_Unshift_Partial() {
+            var buffer = Reactor.Buffer.Create(5, 5);
+            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+
+            buffer.Write(new byte[2] {0, 0});
+            AssertBuffer(buffer, 5, 2, 0, 2, "write 2 bytes to buffer.");
+
+            buffer.Unshift(new byte[2]{ 1, 1 });
+            AssertBuffer(buffer, 5, 4, 3, 2, "unshift 2 bytes to buffer.");
+
+            var data = buffer.Read(4);
+            AssertBuffer(buffer, 5, 0, 2, 2, "read 4 bytes from buffer.");
+            AssertByteSequenceSame(data, new byte [4] {1, 1, 0, 0});
+        }
+
+        [TestMethod]
+        public void Create_Unshift_Partial_Write_Partial() {
+            var buffer = Reactor.Buffer.Create(5, 5);
+            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+
+            buffer.Unshift(new byte[2] {0, 0});
+            AssertBuffer(buffer, 5, 2, 3, 0, "unshift 2 bytes to buffer.");
+
+            buffer.Write(new byte[2]{ 1, 1 });
+            AssertBuffer(buffer, 5, 4, 3, 2, "write 2 bytes to buffer.");
+
+            var data = buffer.Read(4);
+            AssertBuffer(buffer, 5, 0, 2, 2, "read 4 bytes from buffer.");
+            AssertByteSequenceSame(data, new byte [4] { 0, 0, 1, 1});
+        }
+
+        [TestMethod]
+        public void Create_Write_Read_Overrun () {
+            var buffer = Reactor.Buffer.Create(5, 5);
+            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+
+            buffer.Write(new byte[2] {0, 0});
+            AssertBuffer(buffer, 5, 2, 0, 2, "write 2 bytes to buffer.");
+
+            var data = buffer.Read(10000);
+            AssertBuffer(buffer, 5, 0, 2, 2, "read 10000 bytes from buffer.");
+            AssertByteSequenceSame(data, new byte [2] { 0, 0 });
+        }
+
+        [TestMethod]
+        public void Create_Unshift_Read_Overrun () {
+            var buffer = Reactor.Buffer.Create(5, 5);
+            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+
+            buffer.Unshift(new byte[2] {0, 0});
+            AssertBuffer(buffer, 5, 2, 3, 0, "unshift 2 bytes to buffer.");
+
+            var data = buffer.Read(10000);
+            AssertBuffer(buffer, 5, 0, 0, 0, "read 10000 bytes from buffer.");
+            AssertByteSequenceSame(data, new byte [2] { 0, 0 });
+        }
+
+        [TestMethod]
+        public void Create_Read_Overrun() {
+            var buffer = Reactor.Buffer.Create(5, 5);
+            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+
+            var data = buffer.Read(10000);
+            AssertBuffer(buffer, 5, 0, 0, 0, "unshift 2 bytes to buffer.");
+            AssertByteSequenceSame(data, new byte [0] {  });
+        }
+
+        [TestMethod]
+        public void Create_Fill() {
+            var buffer = Reactor.Buffer.Create(5, 5);
+            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            
+            buffer.Fill((byte)1);
+            AssertBuffer(buffer, 5, 5, 0, 0, "fill buffer from empty");
+
+            var data = buffer.Read(5);
+            AssertBuffer(buffer, 5, 0, 0, 0, "fill buffer from empty");
+            AssertByteSequenceSame(data, new byte[] {1, 1, 1, 1, 1});
+        }
+
+        [TestMethod]
+        public void Create_Write_Partial_Fill() {
+            var buffer = Reactor.Buffer.Create(5, 5);
+            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            
+            buffer.Write(new byte[2] {0, 0});
+            AssertBuffer(buffer, 5, 2, 0, 2, "write 2 bytes to buffer.");
+
+            buffer.Fill((byte)1);
+            AssertBuffer(buffer, 5, 5, 0, 0, "fill buffer from non empty.");
+
+            var data = buffer.Read(5);
+            AssertBuffer(buffer, 5, 0, 0, 0, "read 5 bytes from buffer.");
+            AssertByteSequenceSame(data, new byte[] {0, 0, 1, 1, 1});
+        }
+
+        [TestMethod]
+        public void Create_Unshift_Partial_Fill() {
+            var buffer = Reactor.Buffer.Create(5, 5);
+            AssertBuffer(buffer, 5, 0, 0, 0, "create buffer of capacity 5.");
+            
+            buffer.Unshift(new byte[2] {0, 0});
+            AssertBuffer(buffer, 5, 2, 3, 0, "unshift 2 bytes to buffer.");
+
+            buffer.Fill((byte)1);
+            AssertBuffer(buffer, 5, 5, 3, 3, "fill buffer from non empty.");
+
+            var data = buffer.Read(5);
+            AssertBuffer(buffer, 5, 0, 3, 3, "read 5 bytes from buffer.");
+            AssertByteSequenceSame(data, new byte[] {0, 0, 1, 1, 1});
         }
     }
 }
