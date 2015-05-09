@@ -27,17 +27,20 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Reactor.Tests
-{
+namespace Reactor.Tests {
+
     [TestClass]
     public class Reactor_Process_Process {
+
         [ClassInitialize]
         public static void Startup(TestContext context) {
             Reactor.Loop.Start();
         }
+
         [ClassCleanup]
         public static void Shutdown() {
             Reactor.Loop.Stop();
@@ -45,10 +48,26 @@ namespace Reactor.Tests
 
         [TestMethod]
         [TestCategory("Reactor.Process.Process")]
-        public async Task Start_Node_Ping_Pong() {
-            await Reactor.Async.Future.Create((resolve, reject) => {
-                resolve();
+        public async Task Process_Read_IpConfig() {
+            var process = Reactor.Process.Process.Create("ipconfig");
+            var future = Reactor.Async.Future.Create((resolve, reject) => {
+                var got_data = false;
+                process.Out.OnRead(data => {
+                    got_data = true;
+                });
+                process.Out.OnEnd(() => {
+                    if (!got_data) {
+                        reject(new Exception("got no data."));
+                        return;
+                    }
+                    resolve();
+                });
             });
+            Reactor.Timeout.Create(() => {
+                future.Cancel();
+                process.Kill();
+            }, 5000);           
+            await future;
         }
     }
 }
