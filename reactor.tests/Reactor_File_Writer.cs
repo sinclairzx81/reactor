@@ -26,16 +26,43 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using System.Runtime.CompilerServices;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Threading.Tasks;
 
 namespace Reactor.Tests {
-    public static class Extensions {
-        public static TaskAwaiter<object> GetAwaiter(this Reactor.Async.Future future) {
-            var tcs = new TaskCompletionSource<object>(); 
-            future.Then  (() => tcs.SetResult(null));
-            future.Error (error => tcs.SetException(error));
-            return tcs.Task.GetAwaiter();
+
+    [TestClass]
+    public class Reactor_File_Writer {
+        [ClassInitialize]
+        public static void Startup(TestContext context) {
+            Reactor.Loop.Start();
+        }
+        [ClassCleanup]
+        public static void Shutdown() {
+            Reactor.Loop.Stop();
+        }
+
+        [TestMethod]
+        [TestCategory("Reactor.File.Writer")]
+        public async Task Writer_Write_All() {
+            await Reactor.Async.Future.Create((resolve, reject) => {
+                resolve();
+            });
+        }
+        [TestMethod]
+        [TestCategory("Reactor.File.Writer")]
+        public async Task Writer_Write_Partial() {
+            await Reactor.Async.Future.Create((resolve, reject) => {
+                resolve();
+            });
+        }
+
+        [TestMethod]
+        [TestCategory("Reactor.File.Writer")]
+        public async Task Reader_Write_Events() {
+            await Reactor.Async.Future.Create((resolve, reject) => {
+                resolve();
+            });
         }
     }
 }

@@ -26,16 +26,19 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using System.Runtime.CompilerServices;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Threading.Tasks;
 
-namespace Reactor.Tests {
-    public static class Extensions {
-        public static TaskAwaiter<object> GetAwaiter(this Reactor.Async.Future future) {
-            var tcs = new TaskCompletionSource<object>(); 
-            future.Then  (() => tcs.SetResult(null));
-            future.Error (error => tcs.SetException(error));
-            return tcs.Task.GetAwaiter();
+namespace Reactor.Tests
+{
+    [TestClass]
+    public class Reactor_Tls_Server {
+        [TestMethod]
+        [TestCategory("Reactor.Tls.Server")]
+        public async Task Server_Create_Shutdown() {
+            await Reactor.Async.Future.Create((resolve, reject) => {
+                resolve();
+            });
         }
     }
 }

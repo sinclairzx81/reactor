@@ -26,16 +26,19 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using System.Runtime.CompilerServices;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Threading.Tasks;
 
 namespace Reactor.Tests {
-    public static class Extensions {
-        public static TaskAwaiter<object> GetAwaiter(this Reactor.Async.Future future) {
-            var tcs = new TaskCompletionSource<object>(); 
-            future.Then  (() => tcs.SetResult(null));
-            future.Error (error => tcs.SetException(error));
-            return tcs.Task.GetAwaiter();
+
+    [TestClass]
+    public class Reactor_Tcp_Socket {
+        [TestMethod]
+        [TestCategory("Reactor.Tcp.Socket")]
+        public async Task Socket_Connect_Disconnect() {
+            await Reactor.Async.Future.Create((resolve, reject) => {
+                resolve();
+            });
         }
     }
 }
