@@ -75,7 +75,7 @@ namespace Reactor {
         }
 
         /// <summary>
-        /// The total capacity for this buffer.
+        /// The capacity for this buffer.
         /// </summary>
         public int  Capacity {
             get  { return this.capacity; }
@@ -86,6 +86,20 @@ namespace Reactor {
         /// </summary>
         public int  Length {
             get { return length; }
+        }
+
+        /// <summary>
+        /// Gets the 'head' index of this buffer.
+        /// </summary>
+        public int Head {
+            get {  return this.head; }
+        }
+
+        /// <summary>
+        /// Gets the 'tail' index of this buffer.
+        /// </summary>
+        public int Tail { 
+            get { return this.tail; }
         }
 
         #endregion

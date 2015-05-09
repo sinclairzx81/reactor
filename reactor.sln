@@ -20,6 +20,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "reactor.web.socket", "react
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "reactor.fusion", "reactor.fusion\reactor.fusion.csproj", "{80CAE9BC-CFFC-4FBC-837B-0BA3940504E1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "reactor.tests", "reactor.tests\reactor.tests.csproj", "{0A4E13CC-BFDC-4200-982D-5C8D811F50F6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -46,6 +48,10 @@ Global
 		{80CAE9BC-CFFC-4FBC-837B-0BA3940504E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{80CAE9BC-CFFC-4FBC-837B-0BA3940504E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{80CAE9BC-CFFC-4FBC-837B-0BA3940504E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0A4E13CC-BFDC-4200-982D-5C8D811F50F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A4E13CC-BFDC-4200-982D-5C8D811F50F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A4E13CC-BFDC-4200-982D-5C8D811F50F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A4E13CC-BFDC-4200-982D-5C8D811F50F6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
