@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <ClassDiagram MajorVersion="1" MinorVersion="1">
   <Class Name="Reactor.Async.Event" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="7.75" Y="6.25" Width="1.5" />
+    <Position X="16.5" Y="3.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AABAAAAAACAAAAAAAIAABBCAAAQAAEAAAAAAAQAAAIA=</HashCode>
       <FileName>async\Event.cs</FileName>
@@ -9,7 +9,7 @@
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Async.Event&lt;T&gt;" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="9.5" Y="6.25" Width="1.5" />
+    <Position X="18.25" Y="3.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AABAAAAAACAAAAAAAIAABBCAAAQAAAAAAAAAAQAAAIA=</HashCode>
       <FileName>async\Event.cs</FileName>
@@ -17,57 +17,57 @@
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Async.Future&lt;T&gt;" Collapsed="true">
-    <Position X="13" Y="6.25" Width="1.5" />
+    <Position X="7.75" Y="4.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>ABAAAAAAAADgAQAAAQAACAAAAAAAIACAAAAAAEAAAIA=</HashCode>
+      <HashCode>ABAAAAAAAADgAQAAAQAACAAAAAAAIAAAAAAAAEAAAIA=</HashCode>
       <FileName>async\Future.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Async.Future" Collapsed="true">
-    <Position X="14.75" Y="6.25" Width="1.5" />
+    <Position X="9.5" Y="4.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAAAAAAAAADgAQAAAQAACAAAAAAAIECAAAAAAEAAAIA=</HashCode>
+      <HashCode>AAAAAAAAAATgAQAAAQAACAAAAAAAIEAAAAAAAEAAAIA=</HashCode>
       <FileName>async\Future.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Async.Deferred&lt;T&gt;" Collapsed="true">
-    <Position X="7.75" Y="5.25" Width="1.5" />
+    <Position X="18.25" Y="2.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAACAAAAAgAAAAAAAAAAAAAAAAQAAgAEAAIA=</HashCode>
       <FileName>async\Future.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Async.Deferred" Collapsed="true">
-    <Position X="9.5" Y="5.25" Width="1.5" />
+    <Position X="16.5" Y="2.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAACAAAAAgAAAAAAAAAAAAAAAAQAAgAEAAIA=</HashCode>
       <FileName>async\Future.cs</FileName>
     </TypeIdentifier>
   </Class>
+  <Class Name="Reactor.Async.Queue" Collapsed="true" BaseTypeListCollapsed="true">
+    <Position X="16.5" Y="5.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAgAAAAACAAAAAAAgBAAAAAAAgAAEAAAAAAIAgAIAI=</HashCode>
+      <FileName>async\Queue.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" Collapsed="true" />
+  </Class>
   <Class Name="Reactor.Async.Racer" Collapsed="true">
-    <Position X="11.25" Y="8.25" Width="1.5" />
+    <Position X="18.25" Y="5.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAgAABAAAAAAAAAAAAAAAAEAAAAAAAAAAAAA=</HashCode>
       <FileName>async\Racer.cs</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="Reactor.Async.Spool" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="9.5" Y="10.25" Width="1.5" />
-    <TypeIdentifier>
-      <HashCode>AAAgAAAAACAAAAAAAABAAAAAAAgAAEAAAgAAIAgAIAI=</HashCode>
-      <FileName>async\Spool.cs</FileName>
-    </TypeIdentifier>
-    <Lollipop Position="0.2" Collapsed="true" />
-  </Class>
   <Class Name="Reactor.Buffer" Collapsed="true">
-    <Position X="6" Y="4.25" Width="1.5" />
+    <Position X="11.25" Y="1.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAQAAAQCgAAAAAAEAEIAgABigAACCMAAAUBREAHAAhA=</HashCode>
+      <HashCode>AAQAAAQCgIAAAIAEAEIAgABigAACCMAAAUBTEAHAAhA=</HashCode>
       <FileName>buffer\Buffer.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.ConcurrentQueue&lt;T&gt;" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="9.5" Y="4.25" Width="1.5" />
+    <Position X="18.25" Y="1.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AABAEAABiAAEABAQBAAAAAQAAAAAAAAEAAAAAAJAIgI=</HashCode>
       <FileName>collections\ConcurrentQueue.cs</FileName>
@@ -75,7 +75,7 @@
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.ConcurrentStack&lt;T&gt;" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="11.25" Y="4.25" Width="1.5" />
+    <Position X="6" Y="2.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AABAEAAAiAAEABAQBAAAAIQAAAAAAAAEAAAAAANAOAI=</HashCode>
       <FileName>collections\ConcurrentStack.cs</FileName>
@@ -83,21 +83,21 @@
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.DynamicAction" Collapsed="true">
-    <Position X="14.75" Y="5.25" Width="1.5" />
+    <Position X="9.5" Y="3.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AABAAAQAAAAAAAAAAAAAAgAAAAAAAUAkAAAAAAAACAA=</HashCode>
       <FileName>delegates\DynamicAction.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Dns" Collapsed="true">
-    <Position X="11.25" Y="5.25" Width="1.5" />
+    <Position X="6" Y="3.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>IAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAA=</HashCode>
       <FileName>dns\Dns.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Enumerable&lt;T&gt;" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="16.5" Y="5.25" Width="1.5" />
+    <Position X="11.25" Y="3.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>MKAACEAMCAAAGRAAIAAEDASAAAFAAAAEAIlCQQBQEgQ=</HashCode>
       <FileName>enumerable\Enumerable.cs</FileName>
@@ -105,21 +105,21 @@
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Enumerable" Collapsed="true">
-    <Position X="18.25" Y="5.25" Width="1.5" />
+    <Position X="13" Y="3.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>MKAAAEAcCAAAGQIAAAAUDASAAAFAAEAEAItCQQBQEgQ=</HashCode>
       <FileName>enumerable\Enumerable.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Context" Collapsed="true">
-    <Position X="13" Y="4.25" Width="1.5" />
+    <Position X="9.5" Y="2.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAEAACAIAAAAAAAAAAAACABAAAABYAAAIAAAAAA=</HashCode>
       <FileName>loop\Context.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Loop" Collapsed="true">
-    <Position X="13" Y="7.25" Width="1.5" />
+    <Position X="18.25" Y="4.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAEAACAAAAAAAAAAAAAACAAAAAAAIAAAAAAAAAA=</HashCode>
       <FileName>loop\Loop.cs</FileName>
@@ -127,42 +127,42 @@
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Messages" Collapsed="true">
-    <Position X="18.25" Y="7.25" Width="1.5" />
+    <Position X="9.5" Y="5.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAEAAAAAACAAAAAAAAAACACAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>loop\Messages.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Runtime" Collapsed="true">
-    <Position X="6" Y="9.25" Width="1.5" />
+    <Position X="11.25" Y="6.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAACAAAAEAAgAAIgAAAAIAAAABIQAAAAAAAAA=</HashCode>
       <FileName>loop\Runtime.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Settings" Collapsed="true">
-    <Position X="14.75" Y="9.25" Width="1.5" />
+    <Position X="7.75" Y="7.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>settings\Settings.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Interval" Collapsed="true">
-    <Position X="9.5" Y="7.25" Width="1.5" />
+    <Position X="16.5" Y="4.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAQAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAABAAAA=</HashCode>
       <FileName>timers\Interval.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Timeout" Collapsed="true">
-    <Position X="11.25" Y="10.25" Width="1.5" />
+    <Position X="16.5" Y="7.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAQAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAA=</HashCode>
       <FileName>timers\Timeout.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Domains.Domain" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="13" Y="5.25" Width="1.5" />
+    <Position X="7.75" Y="3.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAACAAAAAAAAACAAAAAAAAAEAAIAAAAAAAAAA=</HashCode>
       <FileName>domains\Domain.cs</FileName>
@@ -170,182 +170,205 @@
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Fibers.Fiber" Collapsed="true">
-    <Position X="11.25" Y="6.25" Width="1.5" />
+    <Position X="6" Y="4.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAA=</HashCode>
       <FileName>fibers\Fiber.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.File.Reader" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="16.5" Y="8.25" Width="1.5" />
+    <Position X="6" Y="6.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>QQSoAIAACCCAIQCABFAigABgAgAAAEBEAABEAAgYCAA=</HashCode>
+      <HashCode>QQSoAIAACCCAIQCABFAigAJgAgAAAEBEAABEAAoYCAA=</HashCode>
       <FileName>file\Reader.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.File.Writer" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="18.25" Y="10.25" Width="1.5" />
+    <Position X="7.75" Y="8.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AQIAAIAAACCAAAAAAAAiAAAAAgMAAEABAQAAAAEIAAA=</HashCode>
+      <HashCode>AQIAAIAAACCAIAAAAAAigAAAAiMAAFBVAQAAAAEIAAA=</HashCode>
       <FileName>file\Writer.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
+  <Class Name="Reactor.Http.Binder" Collapsed="true">
+    <Position X="6" Y="1.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>http\Binder.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Reactor.Http.Context" Collapsed="true">
+    <Position X="7.75" Y="2.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAABAAAAAAAAAAAAAAAAAgEAAAAAAAAAAAAA=</HashCode>
+      <FileName>http\Context.cs</FileName>
+    </TypeIdentifier>
+  </Class>
   <Class Name="Reactor.Http.Cookie" Collapsed="true">
-    <Position X="16.5" Y="4.25" Width="1.5" />
+    <Position X="11.25" Y="2.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>IAQIICCEAAAEQQIGpAECAIQgGgAkALwBIAAgQAAAACA=</HashCode>
-      <FileName>http\components\Cookies.cs</FileName>
+      <FileName>http\Cookies.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Http.Cookies" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="18.25" Y="4.25" Width="1.5" />
+    <Position X="13" Y="2.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAIAAgAAAACAABAQCAAQEAQAAAAAAAAAAAAAAAAAIQo=</HashCode>
-      <FileName>http\components\Cookies.cs</FileName>
+      <FileName>http\Cookies.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Http.Headers" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="16.5" Y="6.25" Width="1.5" />
+    <Position X="13" Y="4.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AIIAAAAAMAAABQBECEAIBAQAEAIIAwBEABAAABAAgAA=</HashCode>
-      <FileName>http\components\Headers.cs</FileName>
+      <FileName>http\Headers.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
-  <Class Name="Reactor.Http.Query" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="9.5" Y="8.25" Width="1.5" />
+  <Class Name="Reactor.Http.QueryString" Collapsed="true" BaseTypeListCollapsed="true">
+    <Position X="14.75" Y="5.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AIIAAAAAMAAABQBECEAIBAQAEAAIAwBEABAAABAAgAA=</HashCode>
-      <FileName>http\components\Query.cs</FileName>
-    </TypeIdentifier>
-    <Lollipop Position="0.2" Collapsed="true" />
-  </Class>
-  <Class Name="Reactor.Http.Context" Collapsed="true">
-    <Position X="14.75" Y="4.25" Width="1.5" />
-    <TypeIdentifier>
-      <HashCode>AAAAAAAAAABAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAA=</HashCode>
-      <FileName>http\Context.cs</FileName>
-    </TypeIdentifier>
-  </Class>
-  <Class Name="Reactor.Http.IncomingMessage" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="7.75" Y="7.25" Width="1.5" />
-    <TypeIdentifier>
-      <HashCode>IQQoIKAACQCQJSCAEBAqgQAyGgEJABhFGQEdAggISCA=</HashCode>
-      <FileName>http\IncomingMessage.cs</FileName>
-    </TypeIdentifier>
-    <Lollipop Position="0.2" Collapsed="true" />
-  </Class>
-  <Class Name="Reactor.Http.Request" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="18.25" Y="8.25" Width="1.5" />
-    <TypeIdentifier>
-      <HashCode>AQIAAQAAAACABCgAAAAoAAAACgMsAFAAAAFgBAEIAAA=</HashCode>
-      <FileName>http\Request.cs</FileName>
+      <FileName>http\QueryString.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Http.Server" Collapsed="true">
-    <Position X="7.75" Y="9.25" Width="1.5" />
+    <Position X="16.5" Y="6.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AQAAAIAAAEKAAEIAAAACAAAAAAAAAEAAIAAAAAAACAI=</HashCode>
+      <HashCode>AYAAAIAACACAAECAAAAigAAAAgAAAEAAIAAAAAAACAI=</HashCode>
       <FileName>http\Server.cs</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="Reactor.Http.ServerResponse" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="13" Y="9.25" Width="1.5" />
+  <Class Name="Reactor.Http.ServerRequest" Collapsed="true" BaseTypeListCollapsed="true">
+    <Position X="18.25" Y="6.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AQIAAiAAAACAIAEEAAApAAACCgMmABAAIAEYAAsMCCA=</HashCode>
+      <HashCode>IQQoICABCACQICAAABAogAIgGgAIEBgECAAZAgoICCA=</HashCode>
+      <FileName>http\ServerRequest.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" Collapsed="true" />
+  </Class>
+  <Class Name="Reactor.Http.ServerResponse" Collapsed="true" BaseTypeListCollapsed="true">
+    <Position X="6" Y="7.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AQIAAiAAAICAAAAEAABogAAACgMEABBQIACYAAkMCgA=</HashCode>
       <FileName>http\ServerResponse.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Http.Utility" Collapsed="true">
-    <Position X="13" Y="10.25" Width="1.5" />
+    <Position X="18.25" Y="7.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AACABGAIAAgAEIQAAAgBAAEAAAhACYAEBAAAIACAACA=</HashCode>
       <FileName>http\utility\Utility.cs</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="Reactor.Http.Parsers.LineReader" Collapsed="true">
-    <Position X="11.25" Y="7.25" Width="1.5" />
+  <Class Name="Reactor.Http.Protocol.BodyReader" Collapsed="true" BaseTypeListCollapsed="true">
+    <Position X="7.75" Y="1.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>QAAAAIAAAQCAIACAAAACgAAAAgAAEEBAAABEAAAAQAA=</HashCode>
-      <FileName>http\parsers\HttpParser.cs</FileName>
-    </TypeIdentifier>
-  </Class>
-  <Class Name="Reactor.Http.Parsers.HttpParser" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="6" Y="7.25" Width="1.5" />
-    <TypeIdentifier>
-      <HashCode>QQAAAIACASCAIgAAAAACIAAAAgEAEEBAAABQQgAQEEI=</HashCode>
-      <FileName>http\parsers\HttpParser.cs</FileName>
+      <HashCode>QQQoAIAACACAIQCAABAigAIgEgAAAABEAABEAAoICAA=</HashCode>
+      <FileName>http\protocol\body\BodyReader.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
+  <Class Name="Reactor.Http.Protocol.BodyWriter" Collapsed="true" BaseTypeListCollapsed="true">
+    <Position X="9.5" Y="1.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AQIAAAAAAACAAAAAAAAggAAAAgMAABAQAACAAAEIAAA=</HashCode>
+      <FileName>http\protocol\body\BodyWriter.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" Collapsed="true" />
+  </Class>
+  <Class Name="Reactor.Http.Protocol.ChunkedBodyReader" Collapsed="true" BaseTypeListCollapsed="true">
+    <Position X="14.75" Y="1.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AQQoAAAACACAAAAAABAggAIgAgAAAAAAAAAAAAoICAA=</HashCode>
+      <FileName>http\protocol\body\ChunkedBodyReader.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" Collapsed="true" />
+  </Class>
+  <Class Name="Reactor.Http.Protocol.ChunkedBodyWriter" Collapsed="true" BaseTypeListCollapsed="true">
+    <Position X="16.5" Y="1.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AQIAAAAAAACAAAAAAAAggAAAAgMAABAQAACAAAEIAAA=</HashCode>
+      <FileName>http\protocol\body\ChunkedBodyWriter.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" Collapsed="true" />
+  </Class>
+  <Class Name="Reactor.Http.Protocol.HeaderReader" Collapsed="true">
+    <Position X="11.25" Y="4.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAABAAAAAAAAAAAAAAAAAiIAAAAgABAAAAAIAAAAA=</HashCode>
+      <FileName>http\protocol\header\HeaderReader.cs</FileName>
+    </TypeIdentifier>
+  </Class>
   <Class Name="Reactor.IP.Message" Collapsed="true">
-    <Position X="16.5" Y="7.25" Width="1.5" />
+    <Position X="7.75" Y="5.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAQAA=</HashCode>
       <FileName>ip\Message.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.IP.Socket" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="7.75" Y="10.25" Width="1.5" />
+    <Position X="9.5" Y="7.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>QQYAwIQASGCBYBCACEQihAhQQiQAAEJEAEFgAESEAIE=</HashCode>
+      <HashCode>QQYAwIQASGCBYBCACERihAhQQiQAAEJEAEEgAESEAIE=</HashCode>
       <FileName>ip\Socket.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Process.Current" Collapsed="true">
-    <Position X="6" Y="5.25" Width="1.5" />
+    <Position X="14.75" Y="2.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>QAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAACA=</HashCode>
       <FileName>process\Current.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Process.Process" Collapsed="true">
-    <Position X="7.75" Y="8.25" Width="1.5" />
+    <Position X="13" Y="5.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>YAACCAAIAFRIEQgiAEIgBAJYIBAGAMJAQCAAAASESDA=</HashCode>
       <FileName>process\Process.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Process.Reader" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="14.75" Y="8.25" Width="1.5" />
+    <Position X="9.5" Y="6.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>QQQoAIAACCCAIACAABAigAAgAgAAAEBEAABEAAgYCAA=</HashCode>
+      <HashCode>QQQoAIAACCCAIACAABAigAIgAgAAAEBEAABEAAoYCAA=</HashCode>
       <FileName>process\Reader.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Process.Writer" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="14.75" Y="10.25" Width="1.5" />
+    <Position X="6" Y="8.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AQIAAIAAACCAAAAAAAAiAAAAAgMAAEABAQAAAAEIAAA=</HashCode>
+      <HashCode>AQIAAIAAACCAIAAAAAAigAAAAiMAAFBVAQAAAAEIAAA=</HashCode>
       <FileName>process\Writer.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Streams.Reader" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="13" Y="8.25" Width="1.5" />
+    <Position X="7.75" Y="6.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>QQAAAIAACCCAAACAAAAigAAgAgAAAEAACABAAAAAAAA=</HashCode>
+      <HashCode>QQAAAIAACCCAAACAAABigAAgAgAAAEAACAAAAAAAAAA=</HashCode>
       <FileName>stream\Reader.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Streams.Writer" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="16.5" Y="10.25" Width="1.5" />
+    <Position X="9.5" Y="8.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AQIAAIAAACCAAAAAAAAiAAAAAgMAAEABCABAAAEIAAA=</HashCode>
+      <HashCode>AQIAAIAAACCAIAAAAABigAAAAiMAAFBVCAAAAAEIAAA=</HashCode>
       <FileName>stream\Writer.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Tcp.Server" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="9.5" Y="9.25" Width="1.5" />
+    <Position X="13" Y="6.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>QYAAAIAACCCAIECAAAAigAAAAoAAAMBAAAAAAAAAAAA=</HashCode>
       <FileName>tcp\Server.cs</FileName>
@@ -353,15 +376,15 @@
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Tcp.Socket" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="16.5" Y="9.25" Width="1.5" />
+    <Position X="11.25" Y="7.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>QQYoAIQACGCBYBCAGBQihIhwaicEAEJFBUlkAE2cCIE=</HashCode>
+      <HashCode>QQYoAIQACGCBYBCACBRihIpwYicECFJVBUlkAA+cCIE=</HashCode>
       <FileName>tcp\Socket.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Tls.Server" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="11.25" Y="9.25" Width="1.5" />
+    <Position X="14.75" Y="6.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>QYAAAIAACCCAIECAAAAigAIAAoAAAMBAQAAAAAAAAAA=</HashCode>
       <FileName>tls\Server.cs</FileName>
@@ -369,212 +392,212 @@
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Tls.Socket" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="18.25" Y="9.25" Width="1.5" />
+    <Position X="13" Y="7.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>QQYoAIQACGCBYRCACBQihIpwaicEAEJFBUlkAE2cCIE=</HashCode>
+      <HashCode>QQYoAIQACGCBYRCACBRihIpwYicECFJVBUlkAA+cCIE=</HashCode>
       <FileName>tls\Socket.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Udp.Message" Collapsed="true">
-    <Position X="14.75" Y="7.25" Width="1.5" />
+    <Position X="6" Y="5.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAQAA=</HashCode>
       <FileName>udp\Message.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Udp.Socket" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="6" Y="10.25" Width="1.5" />
+    <Position X="14.75" Y="7.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>QQYAwIQASGCBYBCACEQihAhQQiQAAEJEAEFgAESEAIE=</HashCode>
+      <HashCode>QQYAwIQASGCBYBCACERihAhQQiQAAEJEAEEgAESEAIE=</HashCode>
       <FileName>udp\Socket.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Udp.Stun.ErrorCode" Collapsed="true">
-    <Position X="6" Y="6.25" Width="1.5" />
+    <Position X="14.75" Y="3.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAAAAIAAAAgAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>udp\stun\Packet.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Udp.Stun.ChangeRequest" Collapsed="true">
-    <Position X="7.75" Y="4.25" Width="1.5" />
+    <Position X="13" Y="1.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAAAAAAAAAAACAAAAAAAAAACAAAAAAAAAA=</HashCode>
       <FileName>udp\stun\Packet.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Udp.Stun.Packet" Collapsed="true">
-    <Position X="6" Y="8.25" Width="1.5" />
+    <Position X="11.25" Y="5.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAgAAAACgQAEASAACAAAAAgAEgAAAADAQCAAABAAAA=</HashCode>
       <FileName>udp\stun\Packet.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Udp.Stun.Hole" Collapsed="true">
-    <Position X="18.25" Y="6.25" Width="1.5" />
+    <Position X="14.75" Y="4.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAAAAAAAAAEBAAAAAAAggAQAAAAgAAIAAA=</HashCode>
       <FileName>udp\stun\Stun.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Interface Name="Reactor.IDuplexable" Collapsed="true">
-    <Position X="0.5" Y="5.5" Width="1.5" />
+    <Position X="1.75" Y="3" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>interfaces\IDuplexable.cs</FileName>
     </TypeIdentifier>
   </Interface>
   <Interface Name="Reactor.IReadable" Collapsed="true">
-    <Position X="0.5" Y="4.25" Width="1.5" />
+    <Position X="0.5" Y="1.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AQQgAAAACACAAAAAABAggAAgAgAAAAAAAAAAAAgICAA=</HashCode>
+      <HashCode>AQQgAAAACACAAAAAABAggAIgAgAAAAAAAAAAAAoICAA=</HashCode>
       <FileName>interfaces\IReadable.cs</FileName>
     </TypeIdentifier>
   </Interface>
   <Interface Name="Reactor.IWritable" Collapsed="true">
-    <Position X="3.5" Y="4.25" Width="1.5" />
+    <Position X="3.5" Y="1.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AQIAAAAAAACAAAAAAAAgAAAAAgMAAAAAAAAAAAEIAAA=</HashCode>
+      <HashCode>AQIAAAAAAACAAAAAAAAggAAAAgMAABAQAAAAAAEIAAA=</HashCode>
       <FileName>interfaces\IWriteable.cs</FileName>
     </TypeIdentifier>
   </Interface>
   <Interface Name="Reactor.Domains.IDomain" Collapsed="true">
-    <Position X="6" Y="11.5" Width="1.5" />
+    <Position X="6" Y="10" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAA=</HashCode>
       <FileName>domains\Domain.cs</FileName>
     </TypeIdentifier>
   </Interface>
   <Enum Name="Reactor.Udp.Stun.PacketType" Collapsed="true">
-    <Position X="6" Y="12.5" Width="1.5" />
+    <Position X="6" Y="11" Width="1.5" />
     <TypeIdentifier>
       <HashCode>BACAAAACAAAAAAAAABAAAAgAAAAAAAACAAAAAAAAAAA=</HashCode>
       <FileName>udp\stun\Packet.cs</FileName>
     </TypeIdentifier>
   </Enum>
   <Delegate Name="Reactor.Action" Collapsed="true">
-    <Position X="6" Y="13.5" Width="1.5" />
+    <Position X="6" Y="12" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>delegates\Action.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Action&lt;T0&gt;" Collapsed="true">
-    <Position X="18.25" Y="13.5" Width="1.5" />
+    <Position X="18.25" Y="12" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAA=</HashCode>
       <FileName>delegates\Action.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Action&lt;T0, T1&gt;" Collapsed="true">
-    <Position X="16.5" Y="13.5" Width="1.5" />
+    <Position X="16.5" Y="12" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAACAAA=</HashCode>
       <FileName>delegates\Action.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Action&lt;T0, T1, T2&gt;" Collapsed="true">
-    <Position X="14.75" Y="13.5" Width="1.5" />
+    <Position X="14.75" Y="12" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAACAAAAAAAAgAAAAAAAAAAAAAAAAACAAA=</HashCode>
       <FileName>delegates\Action.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Action&lt;T0, T1, T2, T3&gt;" Collapsed="true">
-    <Position X="6" Y="14.25" Width="1.5" />
+    <Position X="6" Y="12.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAACAgAAAAAAgAAAAAAAAAAAAAAAAACAAA=</HashCode>
       <FileName>delegates\Action.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Action&lt;T0, T1, T2, T3, T4&gt;" Collapsed="true">
-    <Position X="11.25" Y="13.5" Width="1.5" />
+    <Position X="11.25" Y="12" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAACAgAAAAAAgAAAACAAAAAAAAAAAACAAA=</HashCode>
       <FileName>delegates\Action.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Action&lt;T0, T1, T2, T3, T4, T5&gt;" Collapsed="true">
-    <Position X="9.5" Y="13.5" Width="1.5" />
+    <Position X="9.5" Y="12" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAACAgAAAAAAgAAAACAAAAAAAAAAAACgAA=</HashCode>
       <FileName>delegates\Action.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Action&lt;T0, T1, T2, T3, T4, T5, T6&gt;" Collapsed="true">
-    <Position X="7.75" Y="13.5" Width="1.5" />
+    <Position X="7.75" Y="12" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAACAAAAAACAgAAAAAAgAAAACAAAAAAAAAAAACgAA=</HashCode>
       <FileName>delegates\Action.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Action&lt;T0, T1, T2, T3, T4, T5, T6, T7&gt;" Collapsed="true">
-    <Position X="13" Y="13.5" Width="1.5" />
+    <Position X="13" Y="12" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAACAAACAACAgAAAAAAgAAAACAAAAAAAAAAAACgAA=</HashCode>
       <FileName>delegates\Action.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Func&lt;TResult&gt;" Collapsed="true">
-    <Position X="9.5" Y="14.25" Width="1.5" />
+    <Position X="9.5" Y="12.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>delegates\Func.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Func&lt;T0, TResult&gt;" Collapsed="true">
-    <Position X="11.25" Y="14.25" Width="1.5" />
+    <Position X="11.25" Y="12.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAA=</HashCode>
       <FileName>delegates\Func.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Func&lt;T0, T1, TResult&gt;" Collapsed="true">
-    <Position X="13" Y="14.25" Width="1.5" />
+    <Position X="13" Y="12.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAACAAA=</HashCode>
       <FileName>delegates\Func.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Func&lt;T0, T1, T2, TResult&gt;" Collapsed="true">
-    <Position X="14.75" Y="14.25" Width="1.5" />
+    <Position X="14.75" Y="12.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAACAAAAAAAAgAAAAAAAAAAAAAAAAACAAA=</HashCode>
       <FileName>delegates\Func.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Func&lt;T0, T1, T2, T3, TResult&gt;" Collapsed="true">
-    <Position X="16.5" Y="14.25" Width="1.5" />
+    <Position X="16.5" Y="12.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAACAgAAAAAAgAAAAAAAAAAAAAAAAACAAA=</HashCode>
       <FileName>delegates\Func.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Func&lt;T0, T1, T2, T3, T4, TResult&gt;" Collapsed="true">
-    <Position X="18.25" Y="14.25" Width="1.5" />
+    <Position X="18.25" Y="12.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAACAgAAAAAAgAAAACAAAAAAAAAAAACAAA=</HashCode>
       <FileName>delegates\Func.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Func&lt;T0, T1, T2, T3, T4, T5, TResult&gt;" Collapsed="true">
-    <Position X="6" Y="15" Width="1.5" />
+    <Position X="6" Y="13.5" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAACAgAAAAAAgAAAACAAAAAAAAAAAACgAA=</HashCode>
       <FileName>delegates\Func.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Func&lt;T0, T1, T2, T3, T4, T5, T6, TResult&gt;" Collapsed="true">
-    <Position X="7.75" Y="14.25" Width="1.5" />
+    <Position X="7.75" Y="12.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAACAAAAAACAgAAAAAAgAAAACAAAAAAAAAAAACgAA=</HashCode>
       <FileName>delegates\Func.cs</FileName>
     </TypeIdentifier>
   </Delegate>
   <Delegate Name="Reactor.Func&lt;T0, T1, T2, T3, T4, T5, T6, T7, TResult&gt;" Collapsed="true">
-    <Position X="7.75" Y="15" Width="1.5" />
+    <Position X="7.75" Y="13.5" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAACAAACAACAgAAAAAAgAAAACAAAAAAAAAAAACgAA=</HashCode>
       <FileName>delegates\Func.cs</FileName>
