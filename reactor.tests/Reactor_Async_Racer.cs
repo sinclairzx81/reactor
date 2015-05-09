@@ -34,10 +34,12 @@ namespace Reactor.Tests {
 
     [TestClass]
     public class Reactor_Async_Racer {
+        
         [ClassInitialize]
         public static void Startup(TestContext context) {
             Reactor.Loop.Start();
         }
+
         [ClassCleanup]
         public static void Shutdown() {
             Reactor.Loop.Stop();
