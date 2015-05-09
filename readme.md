@@ -86,8 +86,8 @@ The following section outlines getting started with reactor.
 ### Event Loop
 
 Reactor operates via a single event loop which is used internally 
-to synchronize IO completion callbacks. Users are  to a user defined synchronization 
-context.
+to synchronize IO completion callbacks. Callers may select the synchronization
+context to which all IO events are returned on. 
 
 <a name='loop_starting_and_stopping' />
 #### Starting and Stopping.
@@ -601,7 +601,9 @@ The following will pass the FileMode 'open and create' and FileShare option 'rea
 that that this file can be written to simulatiously).
 
 ```csharp
-var reader = Reactor.File.Reader.Create("myfile.txt", 10, 100, FileMode.OpenOrCreate, FileShare.ReadWrite);
+var reader = Reactor.File.Reader.Create("myfile.txt", 10, 100, 
+										FileMode.OpenOrCreate, 
+										FileShare.ReadWrite);
 reader.OnRead  (buffer => Console.WriteLine(buffer));
 reader.OnError (error  => Console.WriteLine(error));
 reader.OnEnd   (()     => Console.WriteLine("end"));
@@ -636,8 +638,9 @@ Overloads for FileMode and FileShare exist also. The following will create a wri
 a FileMode of 'Truncate' and a FileShare or 'Write'
 
 ```csharp
-var writer = Reactor.File.Writer.Create
-		("myfile.txt", 1000, FileMode.Truncate, FileShare.Write);
+var writer = Reactor.File.Writer.Create("myfile.txt", 1000, 
+                                        FileMode.Truncate, 
+										FileShare.Write);
 writer.Write("hello");
 writer.Write("world");
 writer.End();
