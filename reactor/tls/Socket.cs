@@ -441,9 +441,10 @@ namespace Reactor.Tls {
         /// <param name="buffer">The buffer to write.</param>
         /// <param name="callback">A callback to signal when this buffer has been written.</param>
         public Reactor.Async.Future Write (Reactor.Buffer buffer) {
-            return new Reactor.Async.Future((resolve, reject)=>{
+            return new Reactor.Async.Future((resolve, reject) => {
+                var clone = buffer.ToArray();
                 this.queue.Run(next => {
-                    this.writer.Write(buffer)
+                    this.writer.Write(clone)
                                .Then(resolve)
                                .Error(reject)
                                .Finally(next);
@@ -1246,9 +1247,9 @@ namespace Reactor.Tls {
             if (this.state == State.Pending) {
                 this.state = State.Reading;
                 if (this.buffer.Length > 0) {
-                    var clone = this.buffer.Clone();
+                    var data = this.buffer.ToArray();
                     this.buffer.Clear();
-                    this._Data(clone);
+                    this._Data(data);
                 }
                 else {
                     this.reader.Read();
@@ -1260,10 +1261,10 @@ namespace Reactor.Tls {
         /// Handles incoming data from the stream.
         /// </summary>
         /// <param name="buffer"></param>
-        private void _Data (Reactor.Buffer buffer) {
+        private void _Data (byte [] data) {
             if (this.state == State.Reading) {
                 this.state = State.Pending;
-                this.buffer.Write(buffer);
+                this.buffer.Write(data);
                 switch (this.mode) {
                     case Mode.Flowing:
                         var clone = this.buffer.Clone();

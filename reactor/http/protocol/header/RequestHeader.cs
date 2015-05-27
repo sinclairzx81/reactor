@@ -38,7 +38,7 @@ namespace Reactor.Http.Protocol {
     /// Provides functionality to read a HTTP header from a 
     /// Reactor.IReadable.
     /// </summary>
-    public static class HeaderReader {
+    public static class RequestHeader {
 
         #region Line Reader
 
@@ -148,17 +148,17 @@ namespace Reactor.Http.Protocol {
         /// Encapsulates the result of a header read result.
         /// </summary>
         public class Result {
-            public Reactor.Http.Headers Headers          { get; set; }
-            public Reactor.Http.QueryString   Query            { get; set; }
-            public Reactor.Http.Cookies Cookies          { get; set; }
-            public System.String         RawUrl           { get; set; }
-            public System.String         Method           { get; set; }
-            public System.Version        Version          { get; set; }
-            public System.Uri            Url              { get; set; }
-            public System.Int64          ContentLength    { get; set; }
-            public System.String         UserHostName     { get; set; }
-            public System.String         TransferEncoding { get; set; }
-            public System.Text.Encoding  ContentEncoding  { get; set; }
+            public Reactor.Http.Headers     Headers          { get; set; }
+            public Reactor.Http.QueryString Query            { get; set; }
+            public Reactor.Http.Cookies     Cookies          { get; set; }
+            public System.String            RawUrl           { get; set; }
+            public System.String            Method           { get; set; }
+            public System.Version           Version          { get; set; }
+            public System.Uri               Url              { get; set; }
+            public System.Int64             ContentLength    { get; set; }
+            public System.String            UserHostName     { get; set; }
+            public System.String            TransferEncoding { get; set; }
+            public System.Text.Encoding     ContentEncoding  { get; set; }
             internal Result() {
                 this.Headers          = new Headers();
                 this.Query            = new QueryString();

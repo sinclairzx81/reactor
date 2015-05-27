@@ -159,7 +159,8 @@ namespace Reactor.File {
         /// <param name="buffer">The buffer to write.</param>
         /// <param name="callback">A callback to signal when this data has been written.</param>
         public Reactor.Async.Future Write (Reactor.Buffer buffer) {
-            return this.writer.Write(buffer);
+            var clone = buffer.ToArray();
+            return this.writer.Write(clone);
         }
 
         /// <summary>

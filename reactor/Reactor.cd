@@ -19,14 +19,14 @@
   <Class Name="Reactor.Async.Future&lt;T&gt;" Collapsed="true">
     <Position X="7.75" Y="4.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>ABAAAAAAAADgAQAAAQAACAAAAAAAIAAAAAAAAEAAAIA=</HashCode>
+      <HashCode>ABAAAAAAQADgAQAAAQAACAAAAAAAIAAAAAAAAEAAAIA=</HashCode>
       <FileName>async\Future.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Async.Future" Collapsed="true">
     <Position X="9.5" Y="4.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAAAAAAAAATgAQAAAQAACAAAAAAAIEAAAAAAAEAAAIA=</HashCode>
+      <HashCode>AAAAAAAAQATgAQAAAQAACAAAAAAAIEAAAAAAAEAAAIA=</HashCode>
       <FileName>async\Future.cs</FileName>
     </TypeIdentifier>
   </Class>
@@ -161,13 +161,12 @@
       <FileName>timers\Timeout.cs</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="Reactor.Domains.Domain" Collapsed="true" BaseTypeListCollapsed="true">
+  <Class Name="Reactor.Domain" Collapsed="true" BaseTypeListCollapsed="true">
     <Position X="7.75" Y="3.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAACAAAAAAAAACAAAAAAAAAEAAIAAAAAAAAAA=</HashCode>
       <FileName>domains\Domain.cs</FileName>
     </TypeIdentifier>
-    <Lollipop Position="0.2" Collapsed="true" />
   </Class>
   <Class Name="Reactor.Fibers.Fiber" Collapsed="true">
     <Position X="6" Y="4.75" Width="1.5" />
@@ -179,7 +178,7 @@
   <Class Name="Reactor.File.Reader" Collapsed="true" BaseTypeListCollapsed="true">
     <Position X="6" Y="6.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>QQSoAIAACCCAIQCABFAigAJgAgAAAEBEAABEAAoYCAA=</HashCode>
+      <HashCode>QQSoAIQCCCCAIQCABFAigAJgAgACAEBEAEBVEAoYCAA=</HashCode>
       <FileName>file\Reader.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
@@ -247,7 +246,7 @@
   <Class Name="Reactor.Http.ServerRequest" Collapsed="true" BaseTypeListCollapsed="true">
     <Position X="18.25" Y="6.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>IQQoICABCACQICAAABAogAIgGgAIEBgECAAZAgoICCA=</HashCode>
+      <HashCode>IQQoICQDCACQICAAABAogAIgGgAKEBgECEAZEgoICCA=</HashCode>
       <FileName>http\ServerRequest.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
@@ -299,11 +298,12 @@
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
-  <Class Name="Reactor.Http.Protocol.HeaderReader" Collapsed="true">
+  <Class Name="Reactor.Http.Protocol.ResponseHeader" Collapsed="true">
     <Position X="11.25" Y="4.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAAAABAAAAAAAAAAAAAAAAAiIAAAAgABAAAAAIAAAAA=</HashCode>
-      <FileName>http\protocol\header\HeaderReader.cs</FileName>
+      <HashCode>AAAAABAAAAAAAAAAAAAAAAAgIAAAAgAAAAAAAIAAAAA=</HashCode>
+      <FileName>http\protocol\header\ResponseHeader.cs</FileName>
+      <NewMemberFileName>http\protocol\header\RequestHeader.cs</NewMemberFileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.IP.Message" Collapsed="true">
@@ -331,14 +331,14 @@
   <Class Name="Reactor.Process.Process" Collapsed="true">
     <Position X="13" Y="5.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>YAACCAAIAFRIEQgiAEIgBAJYIBAGAMJAQCAAAASESDA=</HashCode>
+      <HashCode>YAACCAAIAFRIEQgigEIgBAJYIBAGAIJAQCAAAASESDA=</HashCode>
       <FileName>process\Process.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Reactor.Process.Reader" Collapsed="true" BaseTypeListCollapsed="true">
     <Position X="9.5" Y="6.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>QQQoAIAACCCAIACAABAigAIgAgAAAEBEAABEAAoYCAA=</HashCode>
+      <HashCode>QQQoAIQCCCCAIACAABAigAIgAgACAEBEAEBVEAoYCAA=</HashCode>
       <FileName>process\Reader.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
@@ -378,7 +378,7 @@
   <Class Name="Reactor.Tcp.Socket" Collapsed="true" BaseTypeListCollapsed="true">
     <Position X="11.25" Y="7.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>QQYoAIQACGCBYBCACBRihIpwYicECFJVBUlkAA+cCIE=</HashCode>
+      <HashCode>QQYoAIQCCGCBYBCACBRihIpwYicGCFJVBUl1EA+cCIE=</HashCode>
       <FileName>tcp\Socket.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
@@ -394,7 +394,7 @@
   <Class Name="Reactor.Tls.Socket" Collapsed="true" BaseTypeListCollapsed="true">
     <Position X="13" Y="7.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>QQYoAIQACGCBYRCACBRihIpwYicECFJVBUlkAA+cCIE=</HashCode>
+      <HashCode>QQYoAIQCCGCBYRCACBRihIpwYicGCFJVBUl1EA+cCIE=</HashCode>
       <FileName>tls\Socket.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
@@ -473,13 +473,6 @@
     <TypeIdentifier>
       <HashCode>AQIAAAAAAACAAAAAAAAggAAAAgMAABAQAAAAAAEIAAA=</HashCode>
       <FileName>interfaces\IWriteable.cs</FileName>
-    </TypeIdentifier>
-  </Interface>
-  <Interface Name="Reactor.Domains.IDomain" Collapsed="true">
-    <Position X="6" Y="10" Width="1.5" />
-    <TypeIdentifier>
-      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAA=</HashCode>
-      <FileName>domains\Domain.cs</FileName>
     </TypeIdentifier>
   </Interface>
   <Enum Name="Reactor.Udp.Stun.PacketType" Collapsed="true">

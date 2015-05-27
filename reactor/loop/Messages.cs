@@ -60,9 +60,16 @@ namespace Reactor
         {
             var action = this.Pop();
 
-            while (action != null)
-            {
-                action();
+            while (action != null) {
+
+                try {
+
+                    action();
+                }
+                catch (System.Exception exception) {
+
+                    System.Console.WriteLine(exception);
+                }
 
                 yield return 0;
 

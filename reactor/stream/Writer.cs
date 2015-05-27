@@ -145,13 +145,12 @@ namespace Reactor.Streams {
         /// </summary>
         /// <param name="buffer">The buffer to write.</param>
         /// <param name="callback">A action called once the write has completed.</param>
-        public Reactor.Async.Future Write (Reactor.Buffer buffer) {
-            var clone = buffer.ToArray();
+        public Reactor.Async.Future Write (byte [] data) {
             return new Reactor.Async.Future((resolve, reject) => {
                 Loop.Post(() => {
                     this.queue.Run(next => {
                         try {
-                            this.stream.BeginWrite(clone, 0, clone.Length, result => {
+                            this.stream.BeginWrite(data, 0, data.Length, result => {
                                 Loop.Post(() => {
                                     try {
                                         this.stream.EndWrite(result);

@@ -60,8 +60,11 @@
     <Compile Include="http\protocol\body\BodyWriter.cs" />
     <Compile Include="http\protocol\body\ChunkedBodyReader.cs" />
     <Compile Include="http\protocol\body\ChunkedBodyWriter.cs" />
-    <Compile Include="http\protocol\header\HeaderReader.cs" />
+    <Compile Include="http\protocol\header\ResponseHeader.cs" />
+    <Compile Include="http\protocol\header\RequestHeader.cs" />
     <Compile Include="http\QueryString.cs" />
+    <Compile Include="http\Request.cs" />
+    <Compile Include="http\Response.cs" />
     <Compile Include="http\Server.cs" />
     <Compile Include="http\ServerRequest.cs" />
     <Compile Include="http\ServerResponse.cs" />

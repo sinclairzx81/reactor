@@ -50,18 +50,18 @@ namespace Reactor.Http {
 
         #region Constructors
 
-        internal ServerRequest(Reactor.IReadable     readable,
-                               Reactor.Http.Headers headers, 
+        internal ServerRequest(Reactor.IReadable          readable,
+                               Reactor.Http.Headers       headers, 
                                Reactor.Http.QueryString   query,
-                               System.Version        version,
-                               System.String         method,
-                               System.String         raw_url,
-                               System.Uri            url,
-                               System.Int64          contentLength,
-                               System.String         transferEncoding,
-                               System.Text.Encoding  contentEncoding,
-                               System.Net.EndPoint   localEndPoint,
-                               System.Net.EndPoint   remoteEndpoint) {
+                               System.Version             version,
+                               System.String              method,
+                               System.String              raw_url,
+                               System.Uri                 url,
+                               System.Int64               contentLength,
+                               System.String              transferEncoding,
+                               System.Text.Encoding       contentEncoding,
+                               System.Net.EndPoint        localEndPoint,
+                               System.Net.EndPoint        remoteEndpoint) {
             this.readable = (transferEncoding == "chunked") ? 
                 (Reactor.IReadable)new Reactor.Http.Protocol.ChunkedBodyReader(readable) :
                 (Reactor.IReadable)new Reactor.Http.Protocol.BodyReader(readable, contentLength);

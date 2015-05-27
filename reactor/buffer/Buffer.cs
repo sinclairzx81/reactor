@@ -141,6 +141,7 @@ namespace Reactor {
                 //-----------------------------------
                 var space = (this.capacity - this.length);
                 if (count > space) {
+
                     //------------------------------
                     // calculate new buffer size. 
                     //------------------------------
@@ -603,7 +604,6 @@ namespace Reactor {
         /// <param name="count">The number of bytes to read.</param>
         /// <returns></returns>
         public System.Byte[] Read (int count) {
-
             lock(this.sync) {
                 //----------------------------
                 // ignore counts of 0
@@ -866,7 +866,7 @@ namespace Reactor {
         /// </summary>
         /// <returns>A Buffer</returns>
         public static Reactor.Buffer Create(byte[] data, int index, int count) {
-            var buffer = new Reactor.Buffer();
+            var buffer = new Reactor.Buffer(count, Reactor.Settings.DefaultBufferSize);
             buffer.Write(data, index, count);
             return buffer;
         }
@@ -876,7 +876,7 @@ namespace Reactor {
         /// </summary>
         /// <returns>A Buffer</returns>
         public static Reactor.Buffer Create(byte[] data) {
-            var buffer = new Reactor.Buffer();
+            var buffer = new Reactor.Buffer(data.Length, Reactor.Settings.DefaultBufferSize);
             buffer.Write(data);
             return buffer;
         }
@@ -886,8 +886,9 @@ namespace Reactor {
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
-        public static Reactor.Buffer Create(string data) {
-            var buffer = new Reactor.Buffer();
+        public static Reactor.Buffer Create(string text) {
+            var data   = System.Text.Encoding.UTF8.GetBytes(text);
+            var buffer = new Reactor.Buffer(data.Length, Reactor.Settings.DefaultBufferSize);
             buffer.Write(data);
             return buffer;
         }

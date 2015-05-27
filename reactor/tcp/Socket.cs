@@ -256,7 +256,7 @@ namespace Reactor.Tcp {
         /// Unsubscribes from the OnDrain event.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveDrain(Reactor.Action callback) {
+        public void RemoveDrain (Reactor.Action callback) {
             this.ondrain.Remove(callback);
         }
 
@@ -435,8 +435,9 @@ namespace Reactor.Tcp {
         /// <param name="callback">A callback to signal when this buffer has been written.</param>
         public Reactor.Async.Future Write (Reactor.Buffer buffer) {
             return new Reactor.Async.Future((resolve, reject) => {
+                var data = buffer.ToArray();
                 this.queue.Run(next => {
-                    this.writer.Write(buffer)
+                    this.writer.Write(data)
                                .Then(resolve)
                                .Error(reject)
                                .Finally(next);
@@ -449,7 +450,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="callback">A callback to signal when this buffer has been flushed.</param>
         public Reactor.Async.Future Flush () {
-            return new Reactor.Async.Future((resolve, reject)=>{
+            return new Reactor.Async.Future((resolve, reject) => {
                 this.queue.Run(next => {
                     this.writer.Flush()
                                .Then(resolve)
@@ -1208,9 +1209,9 @@ namespace Reactor.Tcp {
             if (this.state == State.Pending) {
                 this.state = State.Reading;
                 if (this.buffer.Length > 0) {
-                    var clone = this.buffer.Clone();
+                    var data = this.buffer.ToArray();
                     this.buffer.Clear();
-                    this._Data(clone);
+                    this._Data(data);
                 }
                 else {
                     this.reader.Read();
@@ -1222,10 +1223,10 @@ namespace Reactor.Tcp {
         /// Handles incoming data from the stream.
         /// </summary>
         /// <param name="buffer"></param>
-        private void _Data (Reactor.Buffer buffer) {
+        private void _Data (byte [] data) {
             if (this.state == State.Reading) {
                 this.state = State.Pending;
-                this.buffer.Write(buffer);
+                this.buffer.Write(data);
                 switch (this.mode) {
                     case Mode.Flowing:
                         var clone = this.buffer.Clone();

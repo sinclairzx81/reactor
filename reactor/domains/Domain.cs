@@ -28,63 +28,45 @@ THE SOFTWARE.
 
 using System;
 
-namespace Reactor.Domains
-{
-    public interface IDomain
-    {
-        void Stop();
-    }
+namespace Reactor {
 
-    public class Domain : MarshalByRefObject, IDomain
-    {
+    /// <summary>
+    /// Provides functionality for spawning new AppDomains. Each 
+    /// domain automatically starts a Reactor.Loop.
+    /// </summary>
+    public class Domain : MarshalByRefObject {
         private AppDomain domain;
 
-        private void Start (AppDomain domain, Reactor.Action callback)
-        {
+        private void Start (AppDomain domain, Reactor.Action callback) {
             this.domain = domain;
-
             Reactor.Loop.Start();
-
             Reactor.Loop.Post(callback);
         }
 
-        public  void Stop  ()
-        {
+        public  void Stop  () {
             Reactor.Loop.Stop();
-
             AppDomain.Unload(this.domain);
         }
 
         #region Statics
 
-        public static IDomain Create (string name, Reactor.Action callback)
-        {
-            var setup = new AppDomainSetup()
-            {
+        public static Domain Create (string name, Reactor.Action callback) {
+            var setup = new AppDomainSetup() {
                 ApplicationBase    = AppDomain.CurrentDomain.SetupInformation.ApplicationBase,
-
                 ConfigurationFile  = AppDomain.CurrentDomain.SetupInformation.ConfigurationFile,
-
                 ApplicationName    = AppDomain.CurrentDomain.SetupInformation.ApplicationName,
-
                 LoaderOptimization = LoaderOptimization.MultiDomainHost
             };
 
             var appdomain = AppDomain.CreateDomain(name, null, setup);
-
             var domain    = (Domain)appdomain.CreateInstanceAndUnwrap(
-
                 typeof(Domain).Assembly.FullName, 
-
                 typeof(Domain).FullName);
-  
             domain.Start(appdomain, callback);
-
             return domain;
         }
 
-        public static IDomain Create (Reactor.Action callback)
-        {
+        public static Domain Create (Reactor.Action callback) {
             return Domain.Create(Guid.NewGuid().ToString(), callback);
         }
 

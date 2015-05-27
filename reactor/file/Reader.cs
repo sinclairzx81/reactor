@@ -561,9 +561,9 @@ namespace Reactor.File {
             if (this.state == State.Pending) {
                 this.state = State.Reading;
                 if (this.buffer.Length > 0) {
-                    var clone = this.buffer.Clone();
+                    var data = this.buffer.ToArray();
                     this.buffer.Clear();
-                    this._Data(clone);
+                    this._Data(data);
                 }
                 else {
                     this.reader.Read();
@@ -575,7 +575,7 @@ namespace Reactor.File {
         /// Handles incoming data from the stream.
         /// </summary>
         /// <param name="buffer"></param>
-        private void _Data (Reactor.Buffer buffer) {
+        private void _Data (byte [] data) {
             if (this.state == State.Reading) {
                 this.state = State.Pending;
                 /* in the case of file readers, we
@@ -587,17 +587,19 @@ namespace Reactor.File {
                  * the buffer prior to emitting
                  * back to the caller.
                  */ 
-                var length    = buffer.Length;
+                var length    = data.Length;
                 var ended     = false;
                 this.received = this.received + length;
                 if (this.received >= this.count) {
                     var overflow = this.received - this.count;
                     length = length - (int)overflow;
-                    buffer = buffer.Slice(0, length);
+                    var truncate = new byte[length];
+                    System.Buffer.BlockCopy(data, 0, truncate, 0, truncate.Length);
+                    data   = truncate;
                     ended  = true;
                 }
 
-                this.buffer.Write(buffer);
+                this.buffer.Write(data);
                 switch (this.mode) {
                     case Mode.Flowing:
                         var clone = this.buffer.Clone();

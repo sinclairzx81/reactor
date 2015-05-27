@@ -36,7 +36,7 @@ namespace Reactor.Streams {
     /// </summary>
     internal class Reader : IDisposable {
         private System.IO.Stream                      stream;
-        private Reactor.Async.Event<Reactor.Buffer>   onread;
+        private Reactor.Async.Event<byte[]>           onread;
         private Reactor.Async.Event<Exception>        onerror;
         private Reactor.Async.Event                   onend;
         private Reactor.Async.Queue                   queue;
@@ -52,7 +52,7 @@ namespace Reactor.Streams {
         public Reader (System.IO.Stream stream, int buffersize) {
             this.stream       = stream;
             this.queue        = Reactor.Async.Queue.Create(1);
-            this.onread       = Reactor.Async.Event.Create<Reactor.Buffer>();
+            this.onread       = Reactor.Async.Event.Create<byte[]>();
             this.onerror      = Reactor.Async.Event.Create<Exception>();
             this.onend        = Reactor.Async.Event.Create();
             this.read_buffer  = new byte[buffersize];
@@ -66,7 +66,7 @@ namespace Reactor.Streams {
         /// Subscribes this action to OnRead events.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnRead(Reactor.Action<Reactor.Buffer> callback) {
+        public void OnRead(Reactor.Action<byte[]> callback) {
             this.onread.On(callback);
         }
 
@@ -74,7 +74,7 @@ namespace Reactor.Streams {
         /// Unsubscribes this action from OnRead events.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveRead(Reactor.Action<Reactor.Buffer> callback) {
+        public void RemoveRead(Reactor.Action<byte[]> callback) {
             this.onread.Remove(callback);
         }
 
@@ -130,8 +130,9 @@ namespace Reactor.Streams {
                                     next();
                                     return;
                                 }
-                                var buffer = Reactor.Buffer.Create(this.read_buffer, 0, read);
-                                this.onread.Emit(buffer);
+                                var data = new byte[read];
+                                System.Buffer.BlockCopy(this.read_buffer, 0, data, 0, data.Length);
+                                this.onread.Emit(data);
                                 next();
                             }
                             catch (Exception error) {
