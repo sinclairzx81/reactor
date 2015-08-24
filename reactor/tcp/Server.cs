@@ -27,6 +27,7 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 
@@ -63,7 +64,7 @@ namespace Reactor.Tcp {
 
         #endregion
 
-        private System.Net.Sockets.TcpListener            listener;
+        private System.Net.Sockets.Socket                 socket;
         private Reactor.Async.Event<Reactor.Tcp.Socket>   onread;
         private Reactor.Async.Event<Exception>            onerror;
         private Reactor.Async.Event                       onend;
@@ -138,22 +139,73 @@ namespace Reactor.Tcp {
         #region Methods
 
         /// <summary>
-        /// Starts this server listening on this port.
+        /// Starts this server listening on this endpoint.
         /// </summary>
-        /// <param name="port">The port to listen on.</param>
-        public void Listen(int port) {
+        /// <param name="local">The local endpoint to bind to.</param>
+        /// <param name="options">Socket options.</param>
+        public Server Listen(IPEndPoint local, IEnumerable<Option> options) {
             if (!this.listening) {
                 try {
                     this.listening = true;
-                    this.listener  = new TcpListener(IPAddress.Any, port);
-                    this.listener.ExclusiveAddressUse = false;
-                    this.listener.Start();
+                    this.socket    = new System.Net.Sockets.Socket(local.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                    foreach (var option in options) {
+                        switch (option.ValueType) {
+                            case OptionValueType.Object: 
+                                this.socket.SetSocketOption(option.SocketOptionLevel, 
+                                                            option.SocketOptionName, 
+                                                            (System.Object)option.Value);
+                                break;
+                            case OptionValueType.Boolean: 
+                                this.socket.SetSocketOption(option.SocketOptionLevel, 
+                                                            option.SocketOptionName, 
+                                                            (System.Boolean)option.Value);
+                                break;
+                            case OptionValueType.ByteArray: 
+                                this.socket.SetSocketOption(option.SocketOptionLevel, 
+                                                       option.SocketOptionName, 
+                                                       (System.Byte[])option.Value);
+                                break;
+                            case OptionValueType.Int32: 
+                                this.socket.SetSocketOption(option.SocketOptionLevel, 
+                                                            option.SocketOptionName, 
+                                                           (System.Int32)option.Value);
+                                break;
+                        }
+                    }
+                    this.socket.Bind(local);
+                    this.socket.Listen(1);
                     this._Read();
                 }
                 catch (Exception error) {
                     this._Error(error);
                 }
             }
+            return this;
+        }
+        
+        /// <summary>
+        /// Starts this server listening on this port.
+        /// </summary>
+        /// <param name="port">The local endpoint to bind to.</param>
+        public Server Listen(IPEndPoint local) {
+            return this.Listen(local, new Option[] {});
+        }
+
+        /// <summary>
+        /// Starts this server on localhost bound to this port.
+        /// </summary>
+        /// <param name="port">The port to bind to.</param>
+        /// <param name="options">Socket options.</param>
+        public Server Listen(int port, IEnumerable<Option> options) {
+            return this.Listen(new IPEndPoint(IPAddress.Loopback, port), new Option[] {});
+        }
+
+        /// <summary>
+        /// Starts this server on localhost bound to this port.
+        /// </summary>
+        /// <param name="port">The port to listen on.</param>
+        public Server Listen(int port) {
+            return this.Listen(new IPEndPoint(IPAddress.Loopback, port), new Option[] {});
         }
 
         #endregion
@@ -167,10 +219,10 @@ namespace Reactor.Tcp {
         private Reactor.Async.Future<System.Net.Sockets.Socket> Accept () {
             return new Reactor.Async.Future<System.Net.Sockets.Socket>((resolve, reject) => {
                 try {
-                    this.listener.BeginAcceptSocket(result => {
+                    this.socket.BeginAccept(result => {
                         Loop.Post(() => {
                             try {
-                                var socket = listener.EndAcceptSocket(result);
+                                var socket = this.socket.EndAccept(result);
                                 resolve(socket);
                             }
                             catch(Exception error) {
@@ -184,6 +236,7 @@ namespace Reactor.Tcp {
                 }
             });
         }
+
         #endregion
 
         #region Machine
@@ -192,14 +245,11 @@ namespace Reactor.Tcp {
         /// Reads incoming sockets.
         /// </summary>
         private void _Read() {
-            this.Accept()
-                .Then(socket => {
-                    this.onread.Emit(new Reactor.Tcp.Socket(socket));
-                })
-                .Then(() => {
-                    if (this.listening) this._Read();
-                    else this._End();
-                }).Error(this._Error);
+            this.Accept().Then(socket => {
+                this.onread.Emit(new Reactor.Tcp.Socket(socket));
+                if (this.listening) this._Read();
+                else this._End();
+            }).Error(this._Error);
         }
 
         /// <summary>
@@ -216,7 +266,8 @@ namespace Reactor.Tcp {
         /// </summary>
         private void _End() {
             try {
-                this.listener.Stop();
+                this.socket.Shutdown(SocketShutdown.Both);
+                this.socket.Close();
                 this.listening = false;
             }
             catch { }

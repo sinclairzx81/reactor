@@ -27,6 +27,7 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -35,7 +36,7 @@ using System.Security.Cryptography.X509Certificates;
 namespace Reactor.Tls {
 
     /// <summary>
-    /// Reactor TCP server.
+    /// Reactor TLS server.
     /// </summary>
     public class Server : IDisposable {
 
@@ -65,7 +66,7 @@ namespace Reactor.Tls {
 
         #endregion
 
-        private System.Net.Sockets.TcpListener            listener;
+        private System.Net.Sockets.Socket                 socket;
         private X509Certificate2                          certificate;
         private Reactor.Async.Event<Reactor.Tls.Socket>   onread;
         private Reactor.Async.Event<Exception>            onerror;
@@ -142,22 +143,73 @@ namespace Reactor.Tls {
         #region Methods
 
         /// <summary>
-        /// Starts this server listening on this port.
+        /// Starts this server listening on this endpoint.
         /// </summary>
-        /// <param name="port">The port to listen on.</param>
-        public void Listen(int port) {
+        /// <param name="local">The local endpoint to bind to.</param>
+        /// <param name="options">Socket options.</param>
+        public Server Listen(IPEndPoint local, IEnumerable<Option> options) {
             if (!this.listening) {
                 try {
                     this.listening = true;
-                    this.listener  = new TcpListener(IPAddress.Any, port);
-                    this.listener.ExclusiveAddressUse = false;
-                    this.listener.Start();
+                    this.socket = new System.Net.Sockets.Socket(local.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                    foreach (var option in options) {
+                        switch (option.ValueType) {
+                            case OptionValueType.Object: 
+                                this.socket.SetSocketOption(option.SocketOptionLevel, 
+                                                            option.SocketOptionName, 
+                                                            (System.Object)option.Value);
+                                break;
+                            case OptionValueType.Boolean: 
+                                this.socket.SetSocketOption(option.SocketOptionLevel, 
+                                                            option.SocketOptionName, 
+                                                            (System.Boolean)option.Value);
+                                break;
+                            case OptionValueType.ByteArray: 
+                                this.socket.SetSocketOption(option.SocketOptionLevel, 
+                                                       option.SocketOptionName, 
+                                                       (System.Byte[])option.Value);
+                                break;
+                            case OptionValueType.Int32: 
+                                this.socket.SetSocketOption(option.SocketOptionLevel, 
+                                                            option.SocketOptionName, 
+                                                           (System.Int32)option.Value);
+                                break;
+                        }
+                    }
+                    this.socket.Bind(local);
+                    this.socket.Listen(1);
                     this._Read();
                 }
                 catch (Exception error) {
                     this._Error(error);
                 }
             }
+            return this;
+        }
+
+        /// <summary>
+        /// Starts this server listening on this port.
+        /// </summary>
+        /// <param name="port">The local endpoint to bind to.</param>
+        public Server Listen(IPEndPoint local) {
+            return this.Listen(local, new Option[] {});
+        }
+
+        /// <summary>
+        /// Starts this server on localhost bound to this port.
+        /// </summary>
+        /// <param name="port">The port to bind to.</param>
+        /// <param name="options">Socket options.</param>
+        public Server Listen(int port, IEnumerable<Option> options) {
+            return this.Listen(new IPEndPoint(IPAddress.Loopback, port), new Option[] {});
+        }
+
+        /// <summary>
+        /// Starts this server on localhost bound to this port.
+        /// </summary>
+        /// <param name="port">The port to listen on.</param>
+        public Server Listen(int port) {
+            return this.Listen(new IPEndPoint(IPAddress.Loopback, port), new Option[] {});
         }
 
         #endregion
@@ -171,10 +223,10 @@ namespace Reactor.Tls {
         private Reactor.Async.Future<System.Net.Sockets.Socket> Accept () {
             return new Reactor.Async.Future<System.Net.Sockets.Socket>((resolve, reject) => {
                 try {
-                    this.listener.BeginAcceptSocket(result => {
+                    this.socket.BeginAccept(result => {
                         Loop.Post(() => {
                             try {
-                                var socket = listener.EndAcceptSocket(result);
+                                var socket = this.socket.EndAccept(result);
                                 resolve(socket);
                             }
                             catch(Exception error) {
@@ -225,20 +277,14 @@ namespace Reactor.Tls {
         /// Reads incoming sockets.
         /// </summary>
         private void _Read() {
-            this.Accept()
-                .Then(socket => {
-                    var networkstream = new NetworkStream(socket, false);
-                    this.Authenticate(networkstream, this.certificate).Then(stream => {
-                        this.onread.Emit(new Reactor.Tls.Socket(socket, stream));
-                    }).Then(() => {
-                        if (this.listening) this._Read();
-                        else this._End();
-                    }).Error(this._Error);
-                })
-                .Then(() => {
+            this.Accept().Then(socket => {
+                var networkstream = new NetworkStream(socket, false);
+                this.Authenticate(networkstream, this.certificate).Then(stream => {
+                    this.onread.Emit(new Reactor.Tls.Socket(socket, stream));
                     if (this.listening) this._Read();
                     else this._End();
                 }).Error(this._Error);
+            }).Error(this._Error);
         }
 
         /// <summary>
@@ -255,7 +301,8 @@ namespace Reactor.Tls {
         /// </summary>
         private void _End() {
             try {
-                this.listener.Stop();
+                this.socket.Shutdown(SocketShutdown.Both);
+                this.socket.Close();
                 this.listening = false;
             }
             catch { }
@@ -279,14 +326,6 @@ namespace Reactor.Tls {
         /// <summary>
         /// Creates a new TLS server.
         /// </summary>
-        /// <returns></returns>
-        public static Server Create(X509Certificate2 certificate) {
-            return new Server(certificate);
-        }
-
-        /// <summary>
-        /// Creates a new TLS server.
-        /// </summary>
         /// <param name="callback">A callback to receive incoming sockets.</param>
         /// <returns></returns>
         public static Server Create(X509Certificate2 certificate, Reactor.Action<Reactor.Tls.Socket> callback) {
@@ -295,7 +334,14 @@ namespace Reactor.Tls {
             return server;
         }
 
+        /// <summary>
+        /// Creates a new TLS server.
+        /// </summary>
+        /// <returns></returns>
+        public static Server Create(X509Certificate2 certificate) {
+            return new Server(certificate);
+        }
+
         #endregion
     }
-
 }

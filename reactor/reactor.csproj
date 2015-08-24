@@ -74,6 +74,8 @@
     <Compile Include="stream\Reader.cs" />
     <Compile Include="stream\Writer.cs" />
     <Compile Include="tcp\Socket.cs" />
+    <Compile Include="tcp\Option.cs" />
+    <Compile Include="tls\Option.cs" />
     <Compile Include="udp\Message.cs" />
     <Compile Include="udp\Socket.cs" />
     <Compile Include="domains\Domain.cs" />

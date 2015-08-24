@@ -28,6 +28,7 @@ THE SOFTWARE.
 
 using Reactor.Async;
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 
@@ -141,9 +142,9 @@ namespace Reactor.Tcp {
         /// <summary>
         /// Creates a new socket.
         /// </summary>
-        /// <param name="endpoint">The endpoint to connect to.</param>
+        /// <param name="remote">The endpoint to connect to.</param>
         /// <param name="port">The port to connect to.</param>
-        public Socket (System.Net.IPAddress endpoint, int port) {
+        public Socket (System.Net.IPEndPoint local, System.Net.IPEndPoint remote, IEnumerable<Option> options) {
             this.queue      = Reactor.Async.Queue.Create(1);
             this.onconnect  = Reactor.Async.Event.Create();
             this.ondrain    = Reactor.Async.Event.Create();
@@ -155,7 +156,7 @@ namespace Reactor.Tcp {
             this.mode       = Mode.NonFlowing;
             this.corked     = false;
             this.queue.Pause();
-            this.Connect(endpoint, port).Then(socket => {
+            this.Connect(local, remote, options).Then(socket => {
                 this.socket = socket;
                 var stream  = new NetworkStream(socket);
                 this.reader = Reactor.Streams.Reader.Create(stream);
@@ -179,7 +180,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="endpoint">The endpoint to connect to.</param>
         /// <param name="port">The port to connect to.</param>
-        public Socket (string hostname, int port) {
+        public Socket (string hostname, int port, IEnumerable<Option> options) {
             this.queue      = Reactor.Async.Queue.Create(1);
             this.onconnect  = Reactor.Async.Event.Create();
             this.ondrain    = Reactor.Async.Event.Create();
@@ -191,8 +192,10 @@ namespace Reactor.Tcp {
             this.mode       = Mode.NonFlowing;
             this.corked     = false;
             this.queue.Pause();
-            this.ResolveHost(hostname).Then(endpoint => {
-                this.Connect(endpoint, port).Then(socket => {
+            this.ResolveHostName(hostname).Then(ipaddress => {
+                var local  = new IPEndPoint(IPAddress.Any, 0);
+                var remote = new IPEndPoint(ipaddress, port);
+                this.Connect(local, remote, options).Then(socket => {
                     this.socket = socket;
                     var stream  = new NetworkStream(socket);
                     this.reader = Reactor.Streams.Reader.Create(stream);
@@ -719,46 +722,6 @@ namespace Reactor.Tcp {
             set { this.socket.Blocking = value; }
         }
 
-        /// <summary>
-        /// Sets the specified Socket option to the specified Boolean value.
-        /// </summary>
-        /// <param name="optionLevel"></param>
-        /// <param name="optionName"></param>
-        /// <param name="optionValue"></param>
-        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, bool optionValue) {
-            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
-        }
-
-        /// <summary>
-        /// Sets the specified Socket option to the specified value, represented as a byte array.
-        /// </summary>
-        /// <param name="optionLevel"></param>
-        /// <param name="optionName"></param>
-        /// <param name="optionValue"></param>
-        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, byte[] optionValue) {
-            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
-        }
-
-        /// <summary>
-        /// Sets the specified Socket option to the specified integer value.
-        /// </summary>
-        /// <param name="optionLevel"></param>
-        /// <param name="optionName"></param>
-        /// <param name="optionValue"></param>
-        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, int optionValue) {
-            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
-        }
-
-        /// <summary>
-        /// Sets the specified Socket option to the specified value, represented as an object.
-        /// </summary>
-        /// <param name="optionLevel"></param>
-        /// <param name="optionName"></param>
-        /// <param name="optionValue"></param>
-        public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, object optionValue) {
-            this.socket.SetSocketOption(optionLevel, optionName, optionValue);
-        }
-
         #endregion
 
         #region Buffer
@@ -1107,7 +1070,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="hostname">The hostname or ip to resolve.</param>
         /// <returns></returns>
-        private Reactor.Async.Future<System.Net.IPAddress> ResolveHost (string hostname) {
+        private Reactor.Async.Future<System.Net.IPAddress> ResolveHostName (string hostname) {
             return new Reactor.Async.Future<System.Net.IPAddress>((resolve, reject) => {
                 Reactor.Dns.GetHostAddresses(hostname)
                            .Then(addresses => {
@@ -1125,25 +1088,52 @@ namespace Reactor.Tcp {
         /// <param name="endpoint">The endpoint.</param>
         /// <param name="port">The port.</param>
         /// <returns></returns>
-        private Reactor.Async.Future<System.Net.Sockets.Socket> Connect (System.Net.IPAddress endpoint, int port) {
+        private Reactor.Async.Future<System.Net.Sockets.Socket> Connect (IPEndPoint local, IPEndPoint remote, IEnumerable<Option> options) {
             return new Reactor.Async.Future<System.Net.Sockets.Socket>((resolve, reject) => {
-                var socket   = new System.Net.Sockets.Socket(endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                try {
-                    socket.BeginConnect(endpoint, port, result => {
-                        Loop.Post(() => {
-                            try {
-                                socket.EndConnect(result);
-                                resolve(socket);
-                            }
-                            catch (Exception error) {
-                                reject(error);
-                            }
-                        });
-                    }, null);
-                }
-                catch(Exception error) {
-                    reject(error);
-                }
+                Loop.Post(() => {
+                    var socket = new System.Net.Sockets.Socket(local.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                    foreach (var option in options) {
+                        switch (option.ValueType) {
+                            case OptionValueType.Object: 
+                                socket.SetSocketOption(option.SocketOptionLevel, 
+                                                       option.SocketOptionName, 
+                                                       (System.Object)option.Value);
+                                break;
+                            case OptionValueType.Boolean: 
+                                socket.SetSocketOption(option.SocketOptionLevel, 
+                                                       option.SocketOptionName, 
+                                                       (System.Boolean)option.Value);
+                                break;
+                            case OptionValueType.ByteArray: 
+                                socket.SetSocketOption(option.SocketOptionLevel, 
+                                                       option.SocketOptionName, 
+                                                       (System.Byte[])option.Value);
+                                break;
+                            case OptionValueType.Int32: 
+                                socket.SetSocketOption(option.SocketOptionLevel, 
+                                                       option.SocketOptionName, 
+                                                       (System.Int32)option.Value);
+                                break;
+                        }
+                    }
+                    socket.Bind(local);
+                    try {
+                        socket.BeginConnect(remote.Address, remote.Port, result => {
+                            Loop.Post(() => {
+                                try {
+                                    socket.EndConnect(result);
+                                    resolve(socket);
+                                }
+                                catch (Exception error) {
+                                    reject(error);
+                                }
+                            });
+                        }, null);
+                    }
+                    catch(Exception error) {
+                        reject(error);
+                    }
+                });
             });
         }
 
@@ -1205,7 +1195,7 @@ namespace Reactor.Tcp {
         /// <summary>
         /// Begins reading from the underlying stream.
         /// </summary>
-        private void _Read () {
+        private void _Read  () {
             if (this.state == State.Pending) {
                 this.state = State.Reading;
                 if (this.buffer.Length > 0) {
@@ -1223,7 +1213,7 @@ namespace Reactor.Tcp {
         /// Handles incoming data from the stream.
         /// </summary>
         /// <param name="buffer"></param>
-        private void _Data (byte [] data) {
+        private void _Data  (byte [] data) {
             if (this.state == State.Reading) {
                 this.state = State.Pending;
                 this.buffer.Write(data);
@@ -1255,7 +1245,7 @@ namespace Reactor.Tcp {
         /// <summary>
         /// Terminates the stream.
         /// </summary>
-        public void _End    () {
+        private void _End   () {
             if (this.state != State.Ended) {
                 this.state = State.Ended;
                 try { this.socket.Shutdown(SocketShutdown.Send); } catch {}
@@ -1285,32 +1275,70 @@ namespace Reactor.Tcp {
         #region Statics
 
         /// <summary>
-        /// Creates a new socket. Connects to localhost on this port.
+        /// Creates a new socket.
         /// </summary>
-        /// <param name="port">The port to connect to.</param>
+        /// <param name="local">The local endpoint to bind this socket to.</param>
+        /// <param name="remote">The remote endpoint of this socket.</param>
+        /// <param name="options">Socket options.</param>
         /// <returns></returns>
-        public static Socket Create (int port) {
-            return new Socket("localhost", port);
+        public static Socket Create (IPEndPoint local, IPEndPoint remote, IEnumerable<Reactor.Tcp.Option> options) {
+            return new Socket(local, remote, options);
         }
 
         /// <summary>
         /// Creates a new socket.
         /// </summary>
-        /// <param name="hostname">The endpoint to connect to.</param>
-        /// <param name="port">The port to connect to.</param>
+        /// <param name="remote">The remote endpoint of this socket.</param>
+        /// <param name="options">Socket options.</param>
+        /// <returns></returns>
+        public static Socket Create (IPEndPoint remote, IEnumerable<Reactor.Tcp.Option> options) {
+            return new Socket(new System.Net.IPEndPoint(IPAddress.Any, 0), 
+                              remote, 
+                              options);
+        }
+
+        /// <summary>
+        /// Creates a new socket.
+        /// </summary>
+        /// <param name="remote">The remote endpoint of this socket.</param>
+        /// <param name="options">Socket options.</param>
+        /// <returns></returns>
+        public static Socket Create (IPEndPoint remote) {
+            return new Socket(new System.Net.IPEndPoint(IPAddress.Any, 0), 
+                              remote, 
+                              new Reactor.Tcp.Option[] {});
+        }
+
+        /// <summary>
+        /// Creates a new socket.
+        /// </summary>
+        /// <param name="hostname">The hostname or ip address of the remote host.</param>
+        /// <param name="port">The port on the remote host.</param>
+        /// <param name="options">Socket options.</param>
+        /// <returns></returns>
+        public static Socket Create (string hostname, int port, IEnumerable<Reactor.Tcp.Option> options) {
+            return new Socket(hostname, port, options);
+        }
+
+        /// <summary>
+        /// Creates a new socket.
+        /// </summary>
+        /// <param name="hostname">The hostname or ip address of the remote host.</param>
+        /// <param name="port">The port on the remote host.</param>
         /// <returns></returns>
         public static Socket Create (string hostname, int port) {
-            return new Socket(hostname, port);
+            return new Socket(hostname, port, new Reactor.Tcp.Option[] {});
         }
-
+        
         /// <summary>
-        /// Creates a new socket.
+        /// Creates a new socket. Connects to localhost on given port.
         /// </summary>
-        /// <param name="hostname">The endpoint to connect to.</param>
-        /// <param name="port">The port to connect to.</param>
+        /// <param name="port">The port to connect to on localhost.</param>
         /// <returns></returns>
-        public static Socket Create (IPAddress address, int port) {
-            return new Socket(address, port);
+        public static Socket Create (int port) {
+            return new Socket(new IPEndPoint(IPAddress.Any, 0), 
+                              new IPEndPoint(IPAddress.Loopback, port), 
+                              new Reactor.Tcp.Option[] {});         
         }
 
         #endregion
