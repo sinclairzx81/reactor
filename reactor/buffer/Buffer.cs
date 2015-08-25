@@ -27,79 +27,70 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
+using System.IO;
 using System.Text;
 
-namespace Reactor {
+namespace Reactor
+{
+    public class Buffer : IDisposable {
 
-    /// <summary>
-    /// A specialized Ring Buffer / FIFO byte queue which supports 
-    /// dynamic resize on capacity. It is passed on all Reactor IO read
-    /// events.
-    /// </summary>
-    public class Buffer {
-
-        private object       sync;
-        private int          resize;
+        private MemoryStream stream;
         private Encoding     encoding;
-        private int          capacity;
-        private int          length;
         private int          head;
         private int          tail;
-        private byte[]       buffer;
 
-        #region Constructors
+        #region Constructor
 
-        public Buffer (int capacity, int resize) {
-            this.sync     = new object();
-            this.encoding = Encoding.UTF8;
-            this.capacity = capacity;
-            this.resize   = resize;
-            this.length   = 0;
+        public Buffer(int capacity) {
+            this.stream   = new MemoryStream(capacity);
             this.head     = 0;
             this.tail     = 0;
-            this.buffer   = new byte[capacity];
+            this.encoding = Encoding.UTF8;
         }
 
-        public Buffer () : this(Reactor.Settings.DefaultBufferSize, Reactor.Settings.DefaultBufferSize) { }
+        public Buffer(): this(Reactor.Settings.DefaultBufferSize)
+        {
+
+        }
 
         #endregion
 
-        #region Propeties
+        #region Properties
 
         /// <summary>
         /// Gets or sets this buffers default text encoding. Default is UTF8.
         /// </summary>
         public Encoding Encoding {
-            get {  return this.encoding; }
-            set {  this.encoding = value; }
+            get { lock (this.stream) return this.encoding; }
+            set { lock(this.stream) this.encoding = value; }
         }
 
         /// <summary>
         /// The capacity for this buffer.
         /// </summary>
-        public int  Capacity {
-            get  { return this.capacity; }
+        public int Capacity {
+            get  { lock (this.stream) return this.stream.Capacity; }
         }
 
         /// <summary>
         /// The length of this buffer.
         /// </summary>
         public int  Length {
-            get { return length; }
+            get { lock (this.stream) return this.tail - this.head; }
         }
 
         /// <summary>
         /// Gets the 'head' index of this buffer.
         /// </summary>
         public int Head {
-            get {  return this.head; }
+            get { lock (this.stream) return this.head; }
         }
 
         /// <summary>
         /// Gets the 'tail' index of this buffer.
         /// </summary>
         public int Tail { 
-            get { return this.tail; }
+            get { lock (this.stream) return this.tail; }
         }
 
         #endregion
@@ -113,89 +104,11 @@ namespace Reactor {
         /// <param name="offset"></param>
         /// <param name="count"></param>
         public void Write (byte[] data, int offset, int count) {
-            lock (this.sync) {
-                //-----------------------------
-                // ignore 0 counts.
-                //-----------------------------
-                if (count == 0) return;
-                //-----------------------------------
-                // here, we are being a bit lazy
-                // and realigning the buffer to be
-                // at offset 0. this makes the copy
-                // operations a bit more tangible
-                // later on, but needs to be optimized.
-                //-----------------------------------
-                if (offset > 0) {
-                    var temp = new byte[count];
-                    System.Buffer.BlockCopy(data, offset, temp, 0, count);
-                    data = temp;
-                }
-                //-----------------------------------
-                // if the incoming data exceeds the 
-                // maximum space of this buffer, we 
-                // need to resize the buffer. here,
-                // we calculate a new buffer based
-                // on the resize, and copy the old
-                // and new data into it. Indices
-                // are reset and offsets begin at 0.
-                //-----------------------------------
-                var space = (this.capacity - this.length);
-                if (count > space) {
-
-                    //------------------------------
-                    // calculate new buffer size. 
-                    //------------------------------
-                    var overflow    = count - space;
-                    var newsize     = this.capacity + overflow;
-                    var remainder   = newsize % this.resize;
-                    if (remainder > 0) {
-                        newsize = newsize + (this.resize - remainder);
-                    }
-                    //------------------------------
-                    // copy old data to temp.
-                    //------------------------------
-                    var temp = new byte[newsize];
-                    if (this.head >= this.tail) {
-                        var src_0        = this.head;
-                        var dst_0        = 0;
-                        var count_0      = (this.capacity - this.head);
-                        System.Buffer.BlockCopy(this.buffer, src_0, temp, dst_0, count_0);
-                        var src_1        = 0;
-                        var dst_1        = count_0;
-                        var count_1      = this.tail;
-                        System.Buffer.BlockCopy(this.buffer, src_1, temp, dst_1, count_1);
-                    }
-                    else {
-                        System.Buffer.BlockCopy(this.buffer, this.head, temp, 0, this.length);
-                    }
-                    //------------------------------
-                    // update indices.
-                    //------------------------------
-                    this.buffer   = temp;
-                    this.capacity = newsize;
-                    this.head     = 0;
-                    this.tail     = this.length;
-
-                    //------------------------------
-                    // copy new data.
-                    //------------------------------
-                    System.Buffer.BlockCopy(data, 0, this.buffer, this.tail, count);
-                    this.length = (this.length + count);
-                    this.tail   = (this.tail   + count) % this.capacity;
-                    return;
-                }
-                var overrun = (count + this.tail) - capacity;
-                if (overrun > 0) {
-                    System.Buffer.BlockCopy(data, 0, this.buffer, this.tail, this.capacity - this.tail);
-                    System.Buffer.BlockCopy(data, this.capacity - this.tail, this.buffer, 0, count - (this.capacity - this.tail));
-                    this.length = (this.length + count);
-                    this.tail   = (this.tail   + count) % this.capacity;
-                }
-                else {
-                    System.Buffer.BlockCopy(data, 0, this.buffer, this.tail, count);
-                    this.length = (this.length + count);
-                    this.tail   = (this.tail   + count) % this.capacity;
-                }
+            lock (this.stream) {
+                var length = this.stream.Length;
+                this.stream.Seek(this.tail, SeekOrigin.Begin);
+                this.stream.Write(data, 0, count);
+                this.tail += count;
             }
         }
 
@@ -309,93 +222,156 @@ namespace Reactor {
 
         #endregion
 
+        #region Read
+
+        /// <summary>
+        /// Reads bytes from this buffer.
+        /// </summary>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns></returns>
+        public System.Byte[] Read (int count) {
+            lock (this.stream) {
+                var length = this.stream.Length;
+                if (count > length) 
+                    count = (int)length;
+
+                var data = new byte[count];
+                this.stream.Seek(this.head, SeekOrigin.Begin);
+                var read = this.stream.Read(data, 0, count);
+                this.head += read;
+                return data;
+            }
+        }
+
+        /// <summary>
+        /// Reads bytes from this buffer.
+        /// </summary>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns></returns>
+        public System.Byte [] ReadBytes (int count) {
+            return this.Read(count);
+        }
+
+        /// <summary>
+        /// Reads a single byte from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public System.Byte ReadByte () {
+            var data = this.Read(1);
+            return data[0];
+        }
+
+        /// <summary>
+        /// Reads a boolean from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public System.Boolean ReadBool () {
+            var data = this.Read(sizeof(System.Boolean));
+            return BitConverter.ToBoolean(data, 0);
+        }
+
+        /// <summary>
+        /// Reads a Int16 value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public System.Int16 ReadInt16 () {
+            var data = this.Read(sizeof(System.Int16));
+            return BitConverter.ToInt16(data, 0);
+        }
+
+        /// <summary>
+        /// Reads a UInt16 value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public System.UInt16 ReadUInt16 () {
+            var data = this.Read(sizeof(System.UInt16));
+            return BitConverter.ToUInt16(data, 0);
+        }
+
+        /// <summary>
+        /// Reads a Int32 value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public System.Int32 ReadInt32 () {
+            var data = this.Read(sizeof(System.Int32));
+            return BitConverter.ToInt32(data, 0);
+        }
+
+        /// <summary>
+        /// Reads a UInt32 value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public System.UInt32 ReadUInt32 () {
+            var data = this.Read(sizeof(System.UInt32));
+            return BitConverter.ToUInt32(data, 0);
+        }
+
+        /// <summary>
+        /// Reads a Int64 value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public System.Int64 ReadInt64 () {
+            var data = this.Read(sizeof(System.Int64));
+            return BitConverter.ToInt64(data, 0);
+        }
+
+        /// <summary>
+        /// Reads a UInt64 value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public System.UInt64 ReadUInt64 () {
+            var data = this.Read(sizeof(System.UInt64));
+            return BitConverter.ToUInt64(data, 0);
+        }
+
+        /// <summary>
+        /// Reads a Single precision value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public System.Single ReadSingle () {
+            var data = this.Read(sizeof(System.Single));
+            return BitConverter.ToSingle(data, 0);
+        }
+
+        /// <summary>
+        /// Reads a Double precision value from this buffer.
+        /// </summary>
+        /// <returns></returns>
+        public System.Double ReadDouble () {
+            var data = this.Read(sizeof(System.Double));
+            return BitConverter.ToDouble(data, 0);
+        }
+
+        #endregion
+
         #region Unshift
 
         /// <summary>
-        /// Unshifts this data to the front of the buffer.
+        /// Unshifts this data onto the Buffer.
         /// </summary>
-        /// <param name="buffer">The buffer to unshift.</param>
+        /// <param name="data"></param>
+        /// <param name="offset"></param>
+        /// <param name="count"></param>
         public void Unshift(byte[] data, int offset, int count) {
-            lock (this.sync) {
-                //-----------------------------
-                // ignore 0 counts.
-                //-----------------------------
-                if (count == 0) return;
+            lock (this.stream) {
+                var length = (this.tail - this.head);
+                if ((this.head - count) < 0) {
+                    // read all data from the stream.
+                    var buf = new byte[length];
+                    this.stream.Seek(this.head, SeekOrigin.Begin);
+                    var read = this.stream.Read(buf, 0, (int)length);
 
-            
-                //-----------------------------------
-                // here, we are being a bit lazy
-                // and realigning the buffer to be
-                // at offset 0. this makes the copy
-                // operations a bit more tangible
-                // later on, but needs to be optimized.
-                //-----------------------------------
-                if (offset > 0) {
-                    var temp = new byte[count];
-                    System.Buffer.BlockCopy(data, offset, temp, 0, count);
-                    data = temp;
-                }
-
-                //-----------------------------------
-                // if the incoming data exceeds the 
-                // maximum space of this buffer, we 
-                // need to resize the buffer. here,
-                // we calculate a new buffer based
-                // on the resize, and copy the old
-                // and new data into it. Indices
-                // are reset and offsets begin at 0.
-                //-----------------------------------        
-                var space = (this.capacity - this.length);
-                if (count > space) {
-                    var overflow    = count - space;
-                    var newsize     = this.capacity + overflow;
-                    var remainder   = newsize % this.resize;
-                    if (remainder > 0) {
-                        newsize = newsize + (this.resize - remainder);
-                    }
-                    //------------------------------------
-                    // copy new buffer
-                    //------------------------------------
-                    var temp = new byte[newsize];
-                    System.Buffer.BlockCopy(data, 0, temp, 0, data.Length);
-                    //------------------------------------
-                    // copy old buffer
-                    //------------------------------------
-                    if (this.head >= this.tail) {
-                        var src_0        = this.head;
-                        var dst_0        = data.Length;
-                        var count_0      = (this.capacity - this.head);
-                        System.Buffer.BlockCopy(this.buffer, src_0, temp, dst_0, count_0);
-                        var src_1        = 0;
-                        var dst_1        = count_0 + dst_0;
-                        var count_1      = this.tail;
-                        System.Buffer.BlockCopy(this.buffer, src_1, temp, dst_1, count_1);
-                    }
-                    else {
-                        System.Buffer.BlockCopy(this.buffer, this.head, temp, data.Length, this.length);
-                    }
-                    this.buffer   = temp;
-                    this.capacity = newsize;
-                    this.length   = this.length + data.Length;
-                    this.head     = 0;
-                    this.tail     = (this.length % this.capacity);
-                    return;
-                }
-                //---------------------------------
-                // copy data
-                //---------------------------------
-                var overrun = (this.head - count);
-                if (overrun < 0) {
-                    overrun = -overrun;
-                    System.Buffer.BlockCopy(data, 0, this.buffer, this.capacity - overrun, overrun);
-                    System.Buffer.BlockCopy(data, overrun, this.buffer, 0, count - overrun);
-                    this.length = (this.length + count);
-                    this.head   = this.capacity - overrun;
+                    // we seek count into the stream and write buf
+                    this.stream.Seek(0, SeekOrigin.Begin);
+                    this.stream.Write(data, offset, count);
+                    this.stream.Write(buf, 0, read);
+                    this.head = 0;
+                    this.tail = count + read;
                 }
                 else {
-                    System.Buffer.BlockCopy(data, 0, this.buffer, this.head - count, count);
-                    this.length = (this.length + count);
-                    this.head   = (this.head   - count);
+                    this.stream.Seek(this.head - count, SeekOrigin.Begin);
+                    this.stream.Write(data, 0, count);
+                    this.head -= count;
                 }
             }
         }
@@ -519,279 +495,34 @@ namespace Reactor {
 
         #endregion
 
-        #region Fill
+        #region Clone
 
         /// <summary>
-        /// Fills the buffer with this value. If the buffer already
-        /// contains data, it will only fill up to the remaining
-        /// space left in the buffer.
-        /// </summary>
-        /// <param name="data">The value to fill with.</param>
-        public void Fill (byte data) {
-            var space = 0;
-            lock (this.sync) {
-                space = (this.capacity - this.length);
-            }
-            var buffer = new byte[space];
-            for (int i = 0; i < buffer.Length; i++) {
-                buffer[i] = data;
-            }
-            this.Write(buffer);
-        }
-
-        #endregion
-
-        #region Slice
-
-        /// <summary>
-        /// Slices a new buffer which references the same memory as the old.
-        /// Warning: modifications on the new buffer will result in changes
-        /// to the original.
-        /// </summary>
-        /// <param name="start">The starting index.</param>
-        /// <param name="end">The end index.</param>
-        /// <returns></returns>
-        public Reactor.Buffer Slice (int start, int end) {
-            lock (this.sync) {
-                var select = end - start;
-                if (select < 0) {
-                    throw new Exception("buffer: the end is less than the start.");
-                }
-                if (start == 0 && end == 0) {
-                    var buffer = Reactor.Buffer.Create(0);
-                    buffer.encoding = this.encoding;
-                    buffer.buffer   = this.buffer;
-                    buffer.capacity = this.capacity;
-                    buffer.length   = 0;
-                    buffer.head     = this.head;
-                    buffer.tail     = this.head;
-                    return buffer;
-                }
-                else {
-                    var buffer = Reactor.Buffer.Create(0);
-                    buffer.encoding = this.encoding;
-                    buffer.buffer   = this.buffer;
-                    buffer.capacity = this.capacity;
-                    buffer.length   = end - start;
-                    start           = start % this.length;
-                    end             = end   % this.length;
-                    buffer.head     = (this.head + start) % this.capacity;
-                    buffer.tail     = (this.tail + end)   % this.capacity;
-                    return buffer;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Slices a new buffer which references the same memory as the old.
-        /// Will slice from this start index to the this buffers length.
-        /// Warning: modifications on the new buffer will result in changes
-        /// to the original. 
-        /// </summary>
-        /// <param name="start">The start index to slice from.</param>
-        /// <returns></returns>
-        public Reactor.Buffer Slice(int start) {
-            return this.Slice(start, this.buffer.Length);
-        }
-
-        #endregion
-
-        #region Read
-
-        /// <summary>
-        /// Reads bytes from this buffer.
-        /// </summary>
-        /// <param name="count">The number of bytes to read.</param>
-        /// <returns></returns>
-        public System.Byte[] Read (int count) {
-            lock(this.sync) {
-                //----------------------------
-                // ignore counts of 0
-                //----------------------------
-                if(count == 0) return new byte[0];
-                //----------------------------
-                // ignore when length is 0
-                //----------------------------
-                if(this.length == 0) return new byte[0];
-                //----------------------------
-                // adjust count to meet the length.
-                //----------------------------
-                if (count > this.length) count = this.length;
-                //----------------------------
-                // copy data.
-                //----------------------------
-                var data = new byte[count];
-                var overrun = (count + this.head) - capacity;
-                if (overrun > 0) {
-                    System.Buffer.BlockCopy(this.buffer, this.head, data, 0, this.capacity - this.head);
-                    System.Buffer.BlockCopy(this.buffer, 0, data, this.capacity - this.head, count - (this.capacity - this.head));
-                    this.length = (this.length - count);
-                    this.head   = (this.head   + count) % this.capacity;
-                }
-                else {
-                    System.Buffer.BlockCopy(this.buffer, this.head, data,  0, count);
-                    this.length = (this.length - count);
-                    this.head   = (this.head   + count) % this.capacity;
-                }
-                return data;
-            }
-        }
-
-        /// <summary>
-        /// Reads all data in this buffer.
-        /// </summary>
-        /// <returns></returns>
-        public System.Byte[] Read() {
-            return this.Read(this.length);
-        }
-
-        /// <summary>
-        /// Reads bytes from this buffer.
-        /// </summary>
-        /// <param name="count">The number of bytes to read.</param>
-        /// <returns></returns>
-        public System.Byte [] ReadBytes (int count) {
-            return this.Read(count);
-        }
-
-        /// <summary>
-        /// Reads a single byte from this buffer.
-        /// </summary>
-        /// <returns></returns>
-        public System.Byte ReadByte () {
-            var data = this.Read(1);
-            return data[0];
-        }
-
-        /// <summary>
-        /// Reads a boolean from this buffer.
-        /// </summary>
-        /// <returns></returns>
-        public System.Boolean ReadBool () {
-            var data = this.Read(sizeof(System.Boolean));
-            return BitConverter.ToBoolean(data, 0);
-        }
-
-        /// <summary>
-        /// Reads a Int16 value from this buffer.
-        /// </summary>
-        /// <returns></returns>
-        public System.Int16 ReadInt16 () {
-            var data = this.Read(sizeof(System.Int16));
-            return BitConverter.ToInt16(data, 0);
-        }
-
-        /// <summary>
-        /// Reads a UInt16 value from this buffer.
-        /// </summary>
-        /// <returns></returns>
-        public System.UInt16 ReadUInt16 () {
-            var data = this.Read(sizeof(System.UInt16));
-            return BitConverter.ToUInt16(data, 0);
-        }
-
-        /// <summary>
-        /// Reads a Int32 value from this buffer.
-        /// </summary>
-        /// <returns></returns>
-        public System.Int32 ReadInt32 () {
-            var data = this.Read(sizeof(System.Int32));
-            return BitConverter.ToInt32(data, 0);
-        }
-
-        /// <summary>
-        /// Reads a UInt32 value from this buffer.
-        /// </summary>
-        /// <returns></returns>
-        public System.UInt32 ReadUInt32 () {
-            var data = this.Read(sizeof(System.UInt32));
-            return BitConverter.ToUInt32(data, 0);
-        }
-
-        /// <summary>
-        /// Reads a Int64 value from this buffer.
-        /// </summary>
-        /// <returns></returns>
-        public System.Int64 ReadInt64 () {
-            var data = this.Read(sizeof(System.Int64));
-            return BitConverter.ToInt64(data, 0);
-        }
-
-        /// <summary>
-        /// Reads a UInt64 value from this buffer.
-        /// </summary>
-        /// <returns></returns>
-        public System.UInt64 ReadUInt64 () {
-            var data = this.Read(sizeof(System.UInt64));
-            return BitConverter.ToUInt64(data, 0);
-        }
-
-        /// <summary>
-        /// Reads a Single precision value from this buffer.
-        /// </summary>
-        /// <returns></returns>
-        public System.Single ReadSingle () {
-            var data = this.Read(sizeof(System.Single));
-            return BitConverter.ToSingle(data, 0);
-        }
-
-        /// <summary>
-        /// Reads a Double precision value from this buffer.
-        /// </summary>
-        /// <returns></returns>
-        public System.Double ReadDouble () {
-            var data = this.Read(sizeof(System.Double));
-            return BitConverter.ToDouble(data, 0);
-        }
-
-        #endregion
-
-        #region Methods
-
-        /// <summary>
-        /// Clears the buffer.
-        /// </summary>
-        public void Clear() {
-            lock (this.sync) {
-                this.length = 0;
-                this.head   = 0;
-                this.tail   = 0;
-            }
-        }
-
-        /// <summary>
-        /// Clones this buffer.
+        /// Clones this Buffer.
         /// </summary>
         /// <returns></returns>
         public Reactor.Buffer Clone() {
-            var buffer = Reactor.Buffer.Create(this.ToArray());
-            buffer.encoding = this.encoding;
-            return buffer;
+            lock (this.stream) {
+                var len = (this.tail - this.head);
+                var buf = new byte[len];
+                this.stream.Seek(this.head, SeekOrigin.Begin);
+                var read = this.stream.Read(buf, 0, (int)len);
+                return Reactor.Buffer.Create(buf);
+            }
         }
 
-        /// <summary>
-        /// Copies this buffer to a byte[].
-        /// </summary>
-        /// <returns></returns>
-        public byte [] ToArray() {
-            lock (this.sync) {
-                if(this.length == 0) return new byte[0];
-                var dst = new byte[this.length];
-                if (this.head >= this.tail) {
-                    var src_0        = this.head;
-                    var dst_0        = 0;
-                    var count_0      = (this.capacity - this.head);
-                    System.Buffer.BlockCopy(this.buffer, src_0, dst, dst_0, count_0);
+        #endregion
 
-                    var src_1        = 0;
-                    var dst_1        = count_0;
-                    var count_1      = this.tail;
-                    System.Buffer.BlockCopy(this.buffer, src_1, dst, dst_1, count_1);
-                }
-                else {
-                    System.Buffer.BlockCopy(this.buffer, this.head, dst, 0, this.length);
-                }
-                return dst;
+        #region Clear
+
+        /// <summary>
+        /// Clears this Buffer.
+        /// </summary>
+        public void Clear() {
+            lock (this.stream) {
+                this.stream.SetLength(0);
+                this.head = 0;
+                this.tail = 0;
             }
         }
 
@@ -835,6 +566,54 @@ namespace Reactor {
 
         #endregion
 
+        #region ToArray
+
+        /// <summary>
+        /// returns the contents of this buffer as a byte array.
+        /// </summary>
+        /// <param name="value"></param>
+        public byte[] ToArray() {
+            lock (this.stream) {
+                var len = (this.tail - this.head);
+                var buf = new byte[len];
+                this.stream.Seek(this.head, SeekOrigin.Begin);
+                var read = this.stream.Read(buf, 0, (int)len);
+                return buf;
+            }
+        }
+
+        #endregion
+
+        #region IDisposable
+
+        private bool disposed = false;
+        private void Dispose(bool disposing) {
+            if (!disposing) {
+                if (!disposed) {
+                    this.stream.Dispose();
+                    this.disposed = true;
+                }
+            }
+            else {
+                lock (this.stream) {
+                    if (!disposed) {
+                        this.stream.Dispose();
+                        this.disposed = true;
+                    }
+                }
+            }
+        }
+
+        public void Dispose() {
+            this.Dispose(true);
+        }
+
+        ~Buffer() {
+            this.Dispose(false);
+        }
+
+        #endregion
+
         #region Statics
 
         /// <summary>
@@ -842,15 +621,7 @@ namespace Reactor {
         /// </summary>
         /// <returns></returns>
         public static Reactor.Buffer Create() {
-            return new Reactor.Buffer();
-        }
-
-        /// <summary>
-        /// Creates a Reactor Buffer with this starting capacity.
-        /// </summary>
-        /// <returns></returns>
-        public static Reactor.Buffer Create(int capacity, int resize) {
-            return new Reactor.Buffer(capacity, resize);
+            return new Reactor.Buffer(Reactor.Settings.DefaultBufferSize);
         }
 
         /// <summary>
@@ -858,7 +629,7 @@ namespace Reactor {
         /// </summary>
         /// <returns></returns>
         public static Reactor.Buffer Create(int capacity) {
-            return new Reactor.Buffer(capacity, Reactor.Settings.DefaultBufferSize);
+            return new Reactor.Buffer(capacity);
         }
 
         /// <summary>
@@ -866,7 +637,7 @@ namespace Reactor {
         /// </summary>
         /// <returns>A Buffer</returns>
         public static Reactor.Buffer Create(byte[] data, int index, int count) {
-            var buffer = new Reactor.Buffer(count, Reactor.Settings.DefaultBufferSize);
+            var buffer = new Reactor.Buffer(count);
             buffer.Write(data, index, count);
             return buffer;
         }
@@ -876,7 +647,7 @@ namespace Reactor {
         /// </summary>
         /// <returns>A Buffer</returns>
         public static Reactor.Buffer Create(byte[] data) {
-            var buffer = new Reactor.Buffer(data.Length, Reactor.Settings.DefaultBufferSize);
+            var buffer = new Reactor.Buffer(data.Length);
             buffer.Write(data);
             return buffer;
         }
@@ -888,7 +659,7 @@ namespace Reactor {
         /// <returns></returns>
         public static Reactor.Buffer Create(string text) {
             var data   = System.Text.Encoding.UTF8.GetBytes(text);
-            var buffer = new Reactor.Buffer(data.Length, Reactor.Settings.DefaultBufferSize);
+            var buffer = new Reactor.Buffer(data.Length);
             buffer.Write(data);
             return buffer;
         }
