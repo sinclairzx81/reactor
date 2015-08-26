@@ -30,8 +30,13 @@ using System;
 using System.IO;
 using System.Text;
 
-namespace Reactor
-{
+namespace Reactor {
+
+    /// <summary>
+    /// The Reactor Buffer is a general purpose, dynamically resizable buffer used to 
+    /// encapsulate data passed on IO bound data events. Supports both read and write 
+    /// operations and can be used as a general in memory storage object.
+    /// </summary>
     public class Buffer : IDisposable {
 
         private MemoryStream stream;
@@ -41,16 +46,11 @@ namespace Reactor
 
         #region Constructor
 
-        public Buffer(int capacity) {
-            this.stream   = new MemoryStream(capacity);
+        private Buffer() {
+            this.stream   = BufferPool.Acquire();
             this.head     = 0;
             this.tail     = 0;
             this.encoding = Encoding.UTF8;
-        }
-
-        public Buffer(): this(Reactor.Settings.DefaultBufferSize)
-        {
-
         }
 
         #endregion
@@ -105,7 +105,7 @@ namespace Reactor
         /// <param name="count"></param>
         public void Write (byte[] data, int offset, int count) {
             lock (this.stream) {
-                var length = this.stream.Length;
+                var length = (this.tail - this.head);
                 this.stream.Seek(this.tail, SeekOrigin.Begin);
                 this.stream.Write(data, 0, count);
                 this.tail += count;
@@ -231,7 +231,7 @@ namespace Reactor
         /// <returns></returns>
         public System.Byte[] Read (int count) {
             lock (this.stream) {
-                var length = this.stream.Length;
+                var length = this.tail - this.head;
                 if (count > length) 
                     count = (int)length;
 
@@ -588,18 +588,10 @@ namespace Reactor
 
         private bool disposed = false;
         private void Dispose(bool disposing) {
-            if (!disposing) {
+            lock (this.stream) {
                 if (!disposed) {
-                    this.stream.Dispose();
+                    BufferPool.Release(this.stream);
                     this.disposed = true;
-                }
-            }
-            else {
-                lock (this.stream) {
-                    if (!disposed) {
-                        this.stream.Dispose();
-                        this.disposed = true;
-                    }
                 }
             }
         }
@@ -621,15 +613,7 @@ namespace Reactor
         /// </summary>
         /// <returns></returns>
         public static Reactor.Buffer Create() {
-            return new Reactor.Buffer(Reactor.Settings.DefaultBufferSize);
-        }
-
-        /// <summary>
-        /// Creates a Reactor Buffer with this starting capacity.
-        /// </summary>
-        /// <returns></returns>
-        public static Reactor.Buffer Create(int capacity) {
-            return new Reactor.Buffer(capacity);
+            return new Reactor.Buffer();
         }
 
         /// <summary>
@@ -637,7 +621,7 @@ namespace Reactor
         /// </summary>
         /// <returns>A Buffer</returns>
         public static Reactor.Buffer Create(byte[] data, int index, int count) {
-            var buffer = new Reactor.Buffer(count);
+            var buffer = new Reactor.Buffer();
             buffer.Write(data, index, count);
             return buffer;
         }
@@ -647,7 +631,7 @@ namespace Reactor
         /// </summary>
         /// <returns>A Buffer</returns>
         public static Reactor.Buffer Create(byte[] data) {
-            var buffer = new Reactor.Buffer(data.Length);
+            var buffer = new Reactor.Buffer();
             buffer.Write(data);
             return buffer;
         }
@@ -659,7 +643,7 @@ namespace Reactor
         /// <returns></returns>
         public static Reactor.Buffer Create(string text) {
             var data   = System.Text.Encoding.UTF8.GetBytes(text);
-            var buffer = new Reactor.Buffer(data.Length);
+            var buffer = new Reactor.Buffer();
             buffer.Write(data);
             return buffer;
         }
