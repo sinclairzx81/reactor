@@ -32,8 +32,19 @@ namespace Reactor.Async {
     /// Functionality to protect against asynchronous race conditions.
     /// </summary>
     public class Racer {
+        
+        #region Data
 
-        private bool completed;
+        internal class Data {
+            public bool completed;
+            public Data() {
+                this.completed = false;
+            }
+        }
+
+        #endregion
+
+        private Data data;
 
         #region Constructors
 
@@ -41,7 +52,7 @@ namespace Reactor.Async {
         /// Creates a new racer.
         /// </summary>
         public Racer() {
-            this.completed = false;
+            this.data = new Data();
         }
 
         #endregion
@@ -53,9 +64,11 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="callback"></param>
         public void Set(Action callback) {
-            if (!this.completed) {
-                this.completed = true;
-                callback();
+            lock (this.data) {
+                if (!this.data.completed) {
+                    this.data.completed = true;
+                    callback();
+                }
             }
         }
 
