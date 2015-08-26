@@ -40,7 +40,7 @@ namespace Reactor.Async {
 
         #region State
         
-        enum State {
+        internal enum State {
             /// <summary>
             /// A state indicating a pending state.
             /// </summary>
@@ -57,11 +57,26 @@ namespace Reactor.Async {
 
         #endregion
 
-        private Exception                       _error;
-        private T                               _value;
-        private State                           _state;
-        private List<Reactor.Action<Exception>> _errors;
-        private List<Reactor.Action<T>>         _thens;
+        #region Data
+
+        internal class Data<T> {
+            public Exception                       error;
+            public T                               value;
+            public State                           state;
+            public List<Reactor.Action<Exception>> errors;
+            public List<Reactor.Action<T>>         thens;
+            public Data() {
+                this.error  = null;
+                this.value  = default(T);
+                this.state  = State.Pending;
+                this.errors = new List<Reactor.Action<Exception>>();
+                this.thens  = new List<Reactor.Action<T>>();
+            }
+        }
+
+        #endregion
+
+        private Data<T> data;
 
         #region Constructors
 
@@ -69,11 +84,7 @@ namespace Reactor.Async {
         /// Creates a new future.
         /// </summary>
         internal Future() {
-            this._state     = State.Pending;
-            this._error     = null;
-            this._value     = default(T);
-            this._errors    = new List<Reactor.Action<Exception>>();
-            this._thens     = new List<Reactor.Action<T>>();
+            this.data = new Data<T>();
         }
 
         /// <summary>
@@ -81,10 +92,10 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="value"></param>
         public Future(T value) {
-            this._state     = State.Resolved;
-            this._value     = value;
-            this._errors    = new List<Reactor.Action<Exception>>();
-            this._thens     = new List<Reactor.Action<T>>();
+            this.data = new Data<T>();
+            this.data.state = State.Resolved;
+            this.data.value = value;
+            this.data.error = null;
         }
 
         /// <summary>
@@ -92,11 +103,7 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="resolver">The resolve / reject function.</param>
         public Future(Action<Action<T>, Action<Exception>> resolver) {
-            this._state     = State.Pending;
-            this._error     = null;
-            this._value     = default(T);
-            this._errors    = new List<Reactor.Action<Exception>>();
-            this._thens     = new List<Reactor.Action<T>>();
+            this.data = new Data<T>();
             try {
                 resolver(this.Resolve, this.Reject);
             }
@@ -115,27 +122,29 @@ namespace Reactor.Async {
         /// <param name="callback"></param>
         /// <returns></returns>
         public Reactor.Async.Future Then  (Reactor.Action<T> callback) {
-            var future  = new Reactor.Async.Future();
-            var reject  = new Reactor.Action<Exception>(error => {
-                future.Reject(error);
-            });
-            var resolve = new Reactor.Action<T>(value => {
-                callback(value);
-                future.Resolve();
-            });
-            switch (this._state) {
-                case State.Resolved:
-                    resolve(this._value);
-                    break;
-                case State.Rejected:
-                    reject(this._error);
-                    break;
-                case State.Pending:
-                    this._thens.Add(resolve);
-                    this._errors.Add(reject);
-                    break;
+            lock (this.data) {
+                var future  = new Reactor.Async.Future();
+                var reject  = new Reactor.Action<Exception>(error => {
+                    future.Reject(error);
+                });
+                var resolve = new Reactor.Action<T>(value => {
+                    callback(value);
+                    future.Resolve();
+                });
+                switch (this.data.state) {
+                    case State.Resolved:
+                        resolve(this.data.value);
+                        break;
+                    case State.Rejected:
+                        reject(this.data.error);
+                        break;
+                    case State.Pending:
+                        this.data.thens.Add(resolve);
+                        this.data.errors.Add(reject);
+                        break;
+                }
+                return future;
             }
-            return future;
         }
 
         /// <summary>
@@ -144,27 +153,29 @@ namespace Reactor.Async {
         /// <param name="callback"></param>
         /// <returns></returns>
         public Reactor.Async.Future<TResult> Then<TResult>  (Reactor.Func<T, TResult> callback) {
-            var future  = new Reactor.Async.Future<TResult>();
-            var reject  = new Reactor.Action<Exception>(error => {
-                future.Reject(error);
-            });
-            var resolve = new Reactor.Action<T>(value => {
-                var v = callback(value);
-                future.Resolve(v);
-            });
-            switch (this._state) {
-                case State.Resolved:
-                    resolve(this._value);
-                    break;
-                case State.Rejected:
-                    reject(this._error);
-                    break;
-                case State.Pending:
-                    this._thens.Add(resolve);
-                    this._errors.Add(reject);
-                    break;
+            lock (this.data) {
+                var future  = new Reactor.Async.Future<TResult>();
+                var reject  = new Reactor.Action<Exception>(error => {
+                    future.Reject(error);
+                });
+                var resolve = new Reactor.Action<T>(value => {
+                    var v = callback(value);
+                    future.Resolve(v);
+                });
+                switch (this.data.state) {
+                    case State.Resolved:
+                        resolve(this.data.value);
+                        break;
+                    case State.Rejected:
+                        reject(this.data.error);
+                        break;
+                    case State.Pending:
+                        this.data.thens.Add(resolve);
+                        this.data.errors.Add(reject);
+                        break;
+                }
+                return future;
             }
-            return future;
         }
 
         /// <summary>
@@ -173,27 +184,29 @@ namespace Reactor.Async {
         /// <param name="callback"></param>
         /// <returns></returns>
         public Reactor.Async.Future Error (Reactor.Action<Exception> callback) {
-            var future  = new Reactor.Async.Future();
-            var resolve = new Reactor.Action<T>(value => {
-                future.Resolve();
-            });
-            var reject  = new Reactor.Action<Exception>(error => {
-                callback(error);
-                future.Resolve();
-            });
-            switch (this._state) {
-                case State.Resolved:
-                    resolve(this._value);
-                    break;
-                case State.Rejected:
-                    reject(this._error);
-                    break;
-                case State.Pending:
-                    this._thens.Add(resolve);
-                    this._errors.Add(reject);
-                    break;
+            lock (this.data) {
+                var future  = new Reactor.Async.Future();
+                var resolve = new Reactor.Action<T>(value => {
+                    future.Resolve();
+                });
+                var reject  = new Reactor.Action<Exception>(error => {
+                    callback(error);
+                    future.Resolve();
+                });
+                switch (this.data.state) {
+                    case State.Resolved:
+                        resolve(this.data.value);
+                        break;
+                    case State.Rejected:
+                        reject(this.data.error);
+                        break;
+                    case State.Pending:
+                        this.data.thens.Add(resolve);
+                        this.data.errors.Add(reject);
+                        break;
+                }
+                return future;
             }
-            return future;
         }
 
         /// <summary>
@@ -202,28 +215,30 @@ namespace Reactor.Async {
         /// <param name="callback"></param>
         /// <returns></returns>
         public Reactor.Async.Future Finally (Reactor.Action callback) {
-            var future  = new Reactor.Async.Future();
-            var resolve = new Reactor.Action<T>(value => {
-                callback();
-                future.Resolve();
-            });
-            var reject  = new Reactor.Action<Exception>(error => {
-                callback();
-                future.Reject(error);
-            });
-            switch (this._state) {
-                case State.Resolved:
-                    resolve(this._value);
-                    break;
-                case State.Rejected:
-                    reject(this._error);
-                    break;
-                case State.Pending:
-                    this._thens.Add(resolve);
-                    this._errors.Add(reject);
-                    break;
-            }            
-            return future;
+            lock (this.data) {
+                var future  = new Reactor.Async.Future();
+                var resolve = new Reactor.Action<T>(value => {
+                    callback();
+                    future.Resolve();
+                });
+                var reject  = new Reactor.Action<Exception>(error => {
+                    callback();
+                    future.Reject(error);
+                });
+                switch (this.data.state) {
+                    case State.Resolved:
+                        resolve(this.data.value);
+                        break;
+                    case State.Rejected:
+                        reject(this.data.error);
+                        break;
+                    case State.Pending:
+                        this.data.thens.Add(resolve);
+                        this.data.errors.Add(reject);
+                        break;
+                }            
+                return future;
+            }
         }
 
         /// <summary>
@@ -255,16 +270,18 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="error"></param>
         internal void Reject(Exception error) {
-            if (this._state != State.Pending) {
-                return;
+            lock (this.data) {
+                if (this.data.state != State.Pending) {
+                    return;
+                }
+                this.data.error = error;
+                this.data.state = State.Rejected;
+                foreach (var handler in this.data.errors) {
+                    handler(error);
+                }
+                this.data.thens.Clear();
+                this.data.errors.Clear();
             }
-            this._error = error;
-            this._state = State.Rejected;
-            foreach (var handler in this._errors) {
-                handler(error);
-            }
-            this._thens.Clear();
-            this._errors.Clear();
         }
 
         /// <summary>
@@ -272,16 +289,18 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="value"></param>
         internal void Resolve(T value) {
-            if (this._state != State.Pending) {
-                return;
+            lock (this.data) {
+                if (this.data.state != State.Pending) {
+                    return;
+                }
+                this.data.value = value;
+                this.data.state = State.Resolved;
+                foreach (var handler in this.data.thens) {
+                    handler(value);
+                }
+                this.data.thens.Clear();
+                this.data.errors.Clear();
             }
-            this._value = value;
-            this._state = State.Resolved;
-            foreach (var handler in this._thens) {
-                handler(value);
-            }
-            this._thens.Clear();
-            this._errors.Clear();
         }
 
         #endregion
@@ -294,7 +313,7 @@ namespace Reactor.Async {
 
         #region State
 
-        enum State {
+        internal enum State {
             /// <summary>
             /// A state indicating a pending state.
             /// </summary>
@@ -311,10 +330,24 @@ namespace Reactor.Async {
 
         #endregion
 
-        private Exception                       _error;
-        private State                           _state;
-        private List<Reactor.Action<Exception>> _errors;
-        private List<Reactor.Action>            _thens;
+        #region Data
+
+        internal class Data {
+            public Exception                       error;
+            public State                           state;
+            public List<Reactor.Action<Exception>> errors;
+            public List<Reactor.Action>         thens;
+            public Data() {
+                this.error  = null;
+                this.state  = State.Pending;
+                this.errors = new List<Reactor.Action<Exception>>();
+                this.thens  = new List<Reactor.Action>();
+            }
+        }
+
+        #endregion
+
+        private Data data;
 
         #region Constructors
 
@@ -322,10 +355,7 @@ namespace Reactor.Async {
         /// Creates a new future.
         /// </summary>
         internal Future() {
-            this._state    = State.Pending;
-            this._error    = null;
-            this._errors   = new List<Action<Exception>>();
-            this._thens    = new List<Action>();
+            this.data = new Data();
         }
 
         /// <summary>
@@ -333,10 +363,7 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="resolver">The resolve / reject function.</param>
         public  Future(Reactor.Action<Reactor.Action, Reactor.Action<Exception>> resolver) {
-            this._state    = State.Pending;
-            this._error    = null;
-            this._errors   = new List<Action<Exception>>();
-            this._thens    = new List<Action>();
+            this.data = new Data();
             try {
                 resolver(this.Resolve, this.Reject);
             }
@@ -355,27 +382,29 @@ namespace Reactor.Async {
         /// <param name="callback"></param>
         /// <returns></returns>
         public Reactor.Async.Future Then (Reactor.Action callback) {
-            var future  = new Reactor.Async.Future();
-            var reject  = new Reactor.Action<Exception>(error => {
-                future.Reject(error);
-            });
-            var resolve = new Reactor.Action(() => {
-                callback();
-                future.Resolve();
-            });
-            switch (this._state) {
-                case State.Resolved:
-                    resolve();
-                    break;
-                case State.Rejected:
-                    reject(this._error);
-                    break;
-                case State.Pending:
-                    this._thens.Add(resolve);
-                    this._errors.Add(reject);
-                    break;
+            lock (this.data) {
+                var future  = new Reactor.Async.Future();
+                var reject  = new Reactor.Action<Exception>(error => {
+                    future.Reject(error);
+                });
+                var resolve = new Reactor.Action(() => {
+                    callback();
+                    future.Resolve();
+                });
+                switch (this.data.state) {
+                    case State.Resolved:
+                        resolve();
+                        break;
+                    case State.Rejected:
+                        reject(this.data.error);
+                        break;
+                    case State.Pending:
+                        this.data.thens.Add(resolve);
+                        this.data.errors.Add(reject);
+                        break;
+                }
+                return future;
             }
-            return future;
         }
 
         /// <summary>
@@ -384,27 +413,29 @@ namespace Reactor.Async {
         /// <param name="callback"></param>
         /// <returns></returns>
         public Reactor.Async.Future<TResult> Then<TResult> (Reactor.Func<TResult> callback) {
-            var future  = new Reactor.Async.Future<TResult>();
-            var reject  = new Reactor.Action<Exception>(error => {
-                future.Reject(error);
-            });
-            var resolve = new Reactor.Action(() => {
-                var v = callback();
-                future.Resolve(v);
-            });
-            switch (this._state) {
-                case State.Resolved:
-                    resolve();
-                    break;
-                case State.Rejected:
-                    reject(this._error);
-                    break;
-                case State.Pending:
-                    this._thens.Add(resolve);
-                    this._errors.Add(reject);
-                    break;
+            lock (this.data) {
+                var future  = new Reactor.Async.Future<TResult>();
+                var reject  = new Reactor.Action<Exception>(error => {
+                    future.Reject(error);
+                });
+                var resolve = new Reactor.Action(() => {
+                    var v = callback();
+                    future.Resolve(v);
+                });
+                switch (this.data.state) {
+                    case State.Resolved:
+                        resolve();
+                        break;
+                    case State.Rejected:
+                        reject(this.data.error);
+                        break;
+                    case State.Pending:
+                        this.data.thens.Add(resolve);
+                        this.data.errors.Add(reject);
+                        break;
+                }
+                return future;
             }
-            return future;
         }
 
         /// <summary>
@@ -413,27 +444,29 @@ namespace Reactor.Async {
         /// <param name="callback"></param>
         /// <returns></returns>
         public Reactor.Async.Future Error (Reactor.Action<Exception> callback) {
-            var future  = new Reactor.Async.Future();
-            var resolve = new Reactor.Action(() => {
-                future.Resolve();
-            });
-            var reject  = new Reactor.Action<Exception>(error => {
-                callback(error);
-                future.Resolve();
-            });
-            switch (this._state) {
-                case State.Resolved:
-                    resolve();
-                    break;
-                case State.Rejected:
-                    reject(this._error);
-                    break;
-                case State.Pending:
-                    this._thens.Add(resolve);
-                    this._errors.Add(reject);
-                    break;
-            }            
-            return future;
+            lock (this.data) {
+                var future  = new Reactor.Async.Future();
+                var resolve = new Reactor.Action(() => {
+                    future.Resolve();
+                });
+                var reject  = new Reactor.Action<Exception>(error => {
+                    callback(error);
+                    future.Resolve();
+                });
+                switch (this.data.state) {
+                    case State.Resolved:
+                        resolve();
+                        break;
+                    case State.Rejected:
+                        reject(this.data.error);
+                        break;
+                    case State.Pending:
+                        this.data.thens.Add(resolve);
+                        this.data.errors.Add(reject);
+                        break;
+                }            
+                return future;
+            }
         }
 
         /// <summary>
@@ -442,28 +475,30 @@ namespace Reactor.Async {
         /// <param name="callback"></param>
         /// <returns></returns>
         public Reactor.Async.Future Finally (Reactor.Action callback) {
-            var future  = new Reactor.Async.Future();
-            var resolve = new Reactor.Action(() => {
-                callback();
-                future.Resolve();
-            });
-            var reject  = new Reactor.Action<Exception>(error => {
-                callback();
-                future.Reject(error);
-            });
-            switch (this._state) {
-                case State.Resolved:
-                    resolve();
-                    break;
-                case State.Rejected:
-                    reject(this._error);
-                    break;
-                case State.Pending:
-                    this._thens.Add(resolve);
-                    this._errors.Add(reject);
-                    break;
-            }            
-            return future;
+            lock (this.data) {
+                var future  = new Reactor.Async.Future();
+                var resolve = new Reactor.Action(() => {
+                    callback();
+                    future.Resolve();
+                });
+                var reject  = new Reactor.Action<Exception>(error => {
+                    callback();
+                    future.Reject(error);
+                });
+                switch (this.data.state) {
+                    case State.Resolved:
+                        resolve();
+                        break;
+                    case State.Rejected:
+                        reject(this.data.error);
+                        break;
+                    case State.Pending:
+                        this.data.thens.Add(resolve);
+                        this.data.errors.Add(reject);
+                        break;
+                }            
+                return future;
+            }
         }
 
         /// <summary>
@@ -491,28 +526,32 @@ namespace Reactor.Async {
         #region Internals
 
         internal void Reject(Exception error) {
-            if (this._state != State.Pending) {
-                return;
+            lock (this.data) {
+                if (this.data.state != State.Pending) {
+                    return;
+                }
+                this.data.error = error;
+                this.data.state = State.Rejected;
+                foreach (var handler in this.data.errors) {
+                    handler(error);
+                }
+                this.data.thens.Clear();
+                this.data.errors.Clear();
             }
-            this._error = error;
-            this._state = State.Rejected;
-            foreach (var handler in this._errors) {
-                handler(error);
-            }
-            this._thens.Clear();
-            this._errors.Clear();
         }
 
         internal void Resolve() {
-            if (this._state != State.Pending) {
-                return;
+            lock (this.data) {
+                if (this.data.state != State.Pending) {
+                    return;
+                }
+                this.data.state = State.Resolved;
+                foreach (var handler in this.data.thens) {
+                    handler();
+                }
+                this.data.thens.Clear();
+                this.data.errors.Clear();
             }
-            this._state = State.Resolved;
-            foreach (var handler in this._thens) {
-                handler();
-            }
-            this._thens.Clear();
-            this._errors.Clear();
         }
 
         #endregion
