@@ -230,7 +230,7 @@ namespace Reactor.Async {
         /// Cancels this future. If this future has not already
         /// resolved, a cancelled future will reject with a exception
         /// containing the supplied message.
-        /// </summary>
+        /// </summary>*
         /// <param name="reason"></param>
         public void Cancel(string reason) {
             this.Reject(new Exception(reason));

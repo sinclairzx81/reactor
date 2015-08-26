@@ -540,9 +540,9 @@ namespace Reactor.Process
             if (this.state == State.Pending) {
                 this.state = State.Reading;
                 if (this.buffer.Length > 0) {
-                    var data = this.buffer.ToArray();
+                    var clone = this.buffer.Clone();
                     this.buffer.Clear();
-                    this._Data(data);
+                    this._Data(clone);
                 }
                 else {
                     this.reader.Read();
@@ -554,10 +554,12 @@ namespace Reactor.Process
         /// Handles incoming data from the stream.
         /// </summary>
         /// <param name="buffer"></param>
-        private void _Data (byte [] data) {
+        private void _Data (Reactor.Buffer buffer) {
             if (this.state == State.Reading) {
                 this.state = State.Pending;
-                this.buffer.Write(data);
+                
+                this.buffer.Write(buffer);
+                buffer.Dispose();
                 switch (this.mode) {
                     case Mode.Flowing:
                         var clone = this.buffer.Clone();

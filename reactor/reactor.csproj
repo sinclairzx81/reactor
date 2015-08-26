@@ -47,6 +47,7 @@
     <Compile Include="async\Future.cs" />
     <Compile Include="async\Queue.cs" />
     <Compile Include="async\Racer.cs" />
+    <Compile Include="buffer\BufferPool.cs" />
     <Compile Include="buffer\Buffer.cs" />
     <Compile Include="collections\ConcurrentStack.cs" />
     <Compile Include="delegates\DynamicAction.cs" />
@@ -74,8 +75,6 @@
     <Compile Include="stream\Reader.cs" />
     <Compile Include="stream\Writer.cs" />
     <Compile Include="tcp\Socket.cs" />
-    <Compile Include="tcp\Option.cs" />
-    <Compile Include="tls\Option.cs" />
     <Compile Include="udp\Message.cs" />
     <Compile Include="udp\Socket.cs" />
     <Compile Include="domains\Domain.cs" />

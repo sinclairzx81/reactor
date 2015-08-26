@@ -147,37 +147,14 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="local">The local endpoint to bind to.</param>
         /// <param name="options">Socket options.</param>
-        public Server Listen(IPEndPoint local, IEnumerable<Option> options) {
+        public Server Listen(IPEndPoint local) {
             if (!this.listening) {
                 try {
                     this.listening = true;
                     this.socket = new System.Net.Sockets.Socket(local.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                    foreach (var option in options) {
-                        switch (option.ValueType) {
-                            case OptionValueType.Object: 
-                                this.socket.SetSocketOption(option.SocketOptionLevel, 
-                                                            option.SocketOptionName, 
-                                                            (System.Object)option.Value);
-                                break;
-                            case OptionValueType.Boolean: 
-                                this.socket.SetSocketOption(option.SocketOptionLevel, 
-                                                            option.SocketOptionName, 
-                                                            (System.Boolean)option.Value);
-                                break;
-                            case OptionValueType.ByteArray: 
-                                this.socket.SetSocketOption(option.SocketOptionLevel, 
-                                                       option.SocketOptionName, 
-                                                       (System.Byte[])option.Value);
-                                break;
-                            case OptionValueType.Int32: 
-                                this.socket.SetSocketOption(option.SocketOptionLevel, 
-                                                            option.SocketOptionName, 
-                                                           (System.Int32)option.Value);
-                                break;
-                        }
-                    }
+                    this.socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
                     this.socket.Bind(local);
-                    this.socket.Listen(1);
+                    this.socket.Listen(System.Int32.MaxValue);
                     this._Read();
                 }
                 catch (Exception error) {
@@ -188,28 +165,11 @@ namespace Reactor.Tls {
         }
 
         /// <summary>
-        /// Starts this server listening on this port.
-        /// </summary>
-        /// <param name="port">The local endpoint to bind to.</param>
-        public Server Listen(IPEndPoint local) {
-            return this.Listen(local, new Option[] {});
-        }
-
-        /// <summary>
-        /// Starts this server on localhost bound to this port.
-        /// </summary>
-        /// <param name="port">The port to bind to.</param>
-        /// <param name="options">Socket options.</param>
-        public Server Listen(int port, IEnumerable<Option> options) {
-            return this.Listen(new IPEndPoint(IPAddress.Loopback, port), new Option[] {});
-        }
-
-        /// <summary>
         /// Starts this server on localhost bound to this port.
         /// </summary>
         /// <param name="port">The port to listen on.</param>
         public Server Listen(int port) {
-            return this.Listen(new IPEndPoint(IPAddress.Loopback, port), new Option[] {});
+            return this.Listen(new IPEndPoint(IPAddress.Loopback, port));
         }
 
         #endregion

@@ -561,9 +561,9 @@ namespace Reactor.File {
             if (this.state == State.Pending) {
                 this.state = State.Reading;
                 if (this.buffer.Length > 0) {
-                    var data = this.buffer.ToArray();
+                    var clone = this.buffer.Clone();
                     this.buffer.Clear();
-                    this._Data(data);
+                    this._Data(clone);
                 }
                 else {
                     this.reader.Read();
@@ -575,7 +575,7 @@ namespace Reactor.File {
         /// Handles incoming data from the stream.
         /// </summary>
         /// <param name="buffer"></param>
-        private void _Data (byte [] data) {
+        private void _Data (Reactor.Buffer buffer) {
             if (this.state == State.Reading) {
                 this.state = State.Pending;
                 /* in the case of file readers, we
@@ -587,19 +587,22 @@ namespace Reactor.File {
                  * the buffer prior to emitting
                  * back to the caller.
                  */ 
-                var length    = data.Length;
+                var length    = buffer.Length;
                 var ended     = false;
                 this.received = this.received + length;
                 if (this.received >= this.count) {
                     var overflow = this.received - this.count;
                     length = length - (int)overflow;
-                    var truncate = new byte[length];
-                    System.Buffer.BlockCopy(data, 0, truncate, 0, truncate.Length);
-                    data   = truncate;
+                    var truncated = Reactor.Buffer.Create();
+                    truncated.Write(buffer.ToArray(), 0, length);
+                    buffer.Dispose();
+                    buffer = truncated;
                     ended  = true;
                 }
 
-                this.buffer.Write(data);
+                this.buffer.Write(buffer);
+                buffer.Dispose();
+
                 switch (this.mode) {
                     case Mode.Flowing:
                         var clone = this.buffer.Clone();
