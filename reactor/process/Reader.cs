@@ -419,7 +419,7 @@ namespace Reactor.Process
         /// </summary>
         /// <param name="buffer"></param>
         public void Unshift (byte[] buffer) {
-            this.Unshift(Reactor.Buffer.Create(buffer));
+            this.Unshift(buffer, 0, buffer.Length);
         }
 
         /// <summary>
@@ -592,6 +592,7 @@ namespace Reactor.Process
             if (this.state != State.Ended) {
                 this.state = State.Ended;
                 this.reader.Dispose();
+                this.buffer.Dispose();
                 this.onend.Emit();
             }
         }
@@ -605,6 +606,10 @@ namespace Reactor.Process
         /// </summary>
         public void Dispose() {
             this._End();
+        }
+
+        ~Reader() {
+            Loop.Post(() => { this._End(); });
         }
 
         #endregion

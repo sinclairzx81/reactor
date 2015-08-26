@@ -294,19 +294,28 @@ namespace Reactor.Http {
             }
             return Reactor.Async.Future.Create((resolve, reject) => {
                 this.headers["Host"] = this.uri.DnsSafeHost + this.uri.Port.ToString();
-                var buffer = Reactor.Buffer.Create(128);
+                var buffer = Reactor.Buffer.Create();
                 buffer.Write("{0} {1} HTTP/1.1\r\n", this.method, this.uri.PathAndQuery);
                 buffer.Write(this.headers.ToString());
                 this.socket.Write(buffer)
                            .Then(() => {
-                                 this.headers_sent = true;
-                           //      Reactor.Http.Protocol.HeaderReader.ReadResponse(socket)
-                           //                                        .Then(header => {
-                           //          var response = new Reactor.Http.Response(socket);
-                           //          this.onresponse(response);
-                           //      }).Error(error => {
-                           //    reject(error);
-                           //});
+                                this.headers_sent = true;
+                                Reactor.Http.Protocol.ResponseHeader
+                                .Read(socket)
+                                .Then(header => {
+                                    var response = new Reactor.Http.Response(socket, 
+                                                                             header.Headers, 
+                                                                             header.Version,
+                                                                             header.StatusCode,
+                                                                             header.ContentLength,
+                                                                             header.StatusDescription,
+                                                                             header.TransferEncoding,
+                                                                             header.ContentEncoding,
+                                                                             socket.LocalEndPoint,
+                                                                             socket.RemoteEndPoint);
+                                    this.onresponse(response);
+                                    response.Resume();
+                                }).Error(reject);
                            })
                            .Error(error => {
                                reject(error);
@@ -336,6 +345,5 @@ namespace Reactor.Http {
         }
 
         #endregion
-
     }
 }

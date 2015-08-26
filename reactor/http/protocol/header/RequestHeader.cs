@@ -75,8 +75,10 @@ namespace Reactor.Http.Protocol {
             /// <param name="buffer">The buffer to read.</param>
             /// <returns></returns>
             public static Reactor.Async.Future<Result> Read(Reactor.Buffer buffer) {
-                var data = buffer.ToArray();
                 return Reactor.Fibers.Fiber.Create<Result>(() => {
+                    var data = buffer.ToArray();
+                    buffer.Dispose();
+
                     var lines   = new List<string>();
                     var builder = new StringBuilder();
                     var index   = 0;
@@ -121,6 +123,7 @@ namespace Reactor.Http.Protocol {
                         }
                         index++;
                     }
+
                     /* any unconsumed data not read from the
                      * input buffer needs to be unshifted back
                      * on the stream buffer so it can be 
@@ -130,7 +133,7 @@ namespace Reactor.Http.Protocol {
                     var unconsumed = Reactor.Buffer.Create(data, index, data.Length - index);
 
                     /* complete. */
-                    return new Result{
+                    return new Result {
                         Lines      = lines,
                         Unconsumed = unconsumed
                     };
@@ -368,7 +371,7 @@ namespace Reactor.Http.Protocol {
                  * make a assumption that we will
                  * receive the entire header in this
                  * first read */
-                readable.OnceRead(data => {
+                readable.OnceRead(buffer => {
                     /* next, we pause the readable. We do
                      * this prevent additional data being
                      * read from the underlying stream, and
@@ -383,7 +386,7 @@ namespace Reactor.Http.Protocol {
                      * it can and return a result containing
                      * any lines it read from the buffer, as well
                      * as any 'unconsumed' data not read. */
-                    LineReader.Read(data).Then(result => {
+                    LineReader.Read(buffer).Then(result => {
 
                         /* we immediately unshift any unread
                          * data. This allows the caller

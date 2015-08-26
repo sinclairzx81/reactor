@@ -76,6 +76,7 @@ namespace Reactor.Http.Protocol {
             /// <returns></returns>
             public static Reactor.Async.Future<Result> Read(Reactor.Buffer buffer) {
                 var data = buffer.ToArray();
+                buffer.Dispose();
                 return Reactor.Fibers.Fiber.Create<Result>(() => {
                     var lines   = new List<string>();
                     var builder = new StringBuilder();
@@ -297,7 +298,7 @@ namespace Reactor.Http.Protocol {
                  * make a assumption that we will
                  * receive the entire header in this
                  * first read */
-                readable.OnceRead(data => {
+                readable.OnceRead(buffer => {
                     /* next, we pause the readable. We do
                      * this prevent additional data being
                      * read from the underlying stream, and
@@ -312,7 +313,7 @@ namespace Reactor.Http.Protocol {
                      * it can and return a result containing
                      * any lines it read from the buffer, as well
                      * as any 'unconsumed' data not read. */
-                    LineReader.Read(data).Then(result => {
+                    LineReader.Read(buffer).Then(result => {
 
                         /* we immediately unshift any unread
                          * data. This allows the caller
@@ -325,7 +326,6 @@ namespace Reactor.Http.Protocol {
                         ReadHeader(result.Lines, local_endpoint)
                             .Then(resolve)
                             .Error(reject);
-
                     }).Error(reject);
                 });
             });

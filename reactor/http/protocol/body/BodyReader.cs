@@ -105,7 +105,7 @@ namespace Reactor.Http.Protocol {
         /// <param name="socket"></param>
         internal BodyReader(Reactor.IReadable readable, 
                             System.Int64      contentLength) {
-            this.readable          = readable;
+            this.readable        = readable;
             this.onreadable      = Reactor.Async.Event.Create();
             this.onread          = Reactor.Async.Event.Create<Reactor.Buffer>();
             this.onerror         = Reactor.Async.Event.Create<Exception>();
@@ -391,11 +391,20 @@ namespace Reactor.Http.Protocol {
                 if (this.received >= this.contentLength) {
                     var overflow = this.received - this.contentLength;
                     length = length - (int)overflow;
-                    buffer = buffer.Slice(0, length);
+                    //-----------------------------------
+                    // questionable. the original
+                    // implementation called for a
+                    // buffer = buffer.Slice(0, length);
+                    //-----------------------------------
+                    var truncated = Reactor.Buffer.Create();
+                    truncated.Write(buffer.ToArray(), 0, length);
+                    buffer.Dispose();
+                    buffer = truncated;
                     ended  = true;
                 }
 
                 this.buffer.Write(buffer);
+                buffer.Dispose();
                 switch (this.mode) {
                     case Mode.Flowing:
                         var clone = this.buffer.Clone();

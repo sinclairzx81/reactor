@@ -38,18 +38,18 @@ namespace Reactor.Http {
         /// <param name="callback">A callback to receive the http context.</param>
         public static void Bind (Reactor.Tcp.Socket socket, Reactor.Action<Reactor.Http.Context> callback) {
             Reactor.Http.Protocol.RequestHeader.Read(socket).Then(header => {
-                var request  = new Reactor.Http.ServerRequest (socket,
-                                                               header.Headers,
-                                                               header.Query,
-                                                               header.Version,
-                                                               header.Method,
-                                                               header.RawUrl,
-                                                               header.Url,
-                                                               header.ContentLength,
-                                                               header.TransferEncoding,
-                                                               header.ContentEncoding,
-                                                               socket.LocalEndPoint,
-                                                               socket.RemoteEndPoint);
+                var request = new Reactor.Http.ServerRequest (socket,
+                                                              header.Headers,
+                                                              header.Query,
+                                                              header.Version,
+                                                              header.Method,
+                                                              header.RawUrl,
+                                                              header.Url,
+                                                              header.ContentLength,
+                                                              header.TransferEncoding,
+                                                              header.ContentEncoding,
+                                                              socket.LocalEndPoint,
+                                                              socket.RemoteEndPoint);
                 var response = new Reactor.Http.ServerResponse(socket);
                 callback(new Reactor.Http.Context(request, response));
             }).Error(error => {

@@ -402,15 +402,15 @@ namespace Reactor.Tcp {
         /// <param name="count">The number of bytes to read.</param>
         /// <returns></returns>
         public Reactor.Buffer Read (int count) {
-            var result = Reactor.Buffer.Create(this.buffer.Read(count));
-            if (result.Length > 0) {
-                this.onread.Emit(result);
+            var buffer = Reactor.Buffer.Create(this.buffer.Read(count));
+            if (buffer.Length > 0) {
+                this.onread.Emit(buffer);
             }
             if (this.buffer.Length == 0) {
                 this.mode = Mode.NonFlowing;
                 this._Read();
             }
-            return result;
+            return buffer;
         }
 
         /// <summary>
@@ -437,10 +437,9 @@ namespace Reactor.Tcp {
         /// <param name="buffer">The buffer to write.</param>
         /// <param name="callback">A callback to signal when this buffer has been written.</param>
         public Reactor.Async.Future Write (Reactor.Buffer buffer) {
-            var clone = buffer.Clone();
             return new Reactor.Async.Future((resolve, reject) => {
                 this.queue.Run(next => {
-                    this.writer.Write(clone)
+                    this.writer.Write(buffer)
                                .Then(resolve)
                                .Error(reject)
                                .Finally(next);
@@ -527,9 +526,9 @@ namespace Reactor.Tcp {
         /// <param name="writable"></param>
         /// <returns></returns>
         public Reactor.IReadable Pipe (Reactor.IWritable writable) {
-            this.OnRead(data => {
+            this.OnRead(buffer => {
                 this.Pause();
-                writable.Write(data)
+                writable.Write(buffer)
                         .Then(this.Resume)
                         .Error(this._Error);
             });
@@ -620,7 +619,9 @@ namespace Reactor.Tcp {
         /// Gets the local endpoint.
         /// </summary>
         public EndPoint LocalEndPoint {
-            get { return this.socket.LocalEndPoint; }
+            get { 
+                return this.socket.LocalEndPoint; 
+            }
         }
 
         /// <summary>
@@ -784,7 +785,7 @@ namespace Reactor.Tcp {
         /// <param name="buffer"></param>
         /// <returns>A future resolved when this write has completed.</returns>
         public Reactor.Async.Future Write (byte[] buffer) {
-            return this.Write(Reactor.Buffer.Create(buffer));
+            return this.Write(buffer, 0, buffer.Length);
         }
 
         /// <summary>
@@ -993,7 +994,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="buffer"></param>
         public void Unshift (byte[] buffer) {
-            this.Unshift(Reactor.Buffer.Create(buffer));
+            this.Unshift(buffer, 0, buffer.Length);
         }
 
         /// <summary>
@@ -1288,7 +1289,11 @@ namespace Reactor.Tcp {
         /// Disposes of this stream.
         /// </summary>
         public void Dispose() {
-            this._End();
+            this._End(); 
+        }
+
+        ~Socket() {
+            Loop.Post(() => { this._End(); });
         }
 
         #endregion

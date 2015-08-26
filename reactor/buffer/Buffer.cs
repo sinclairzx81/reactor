@@ -39,18 +39,24 @@ namespace Reactor {
     /// </summary>
     public class Buffer : IDisposable {
 
-        private MemoryStream stream;
-        private Encoding     encoding;
-        private int          head;
-        private int          tail;
+        internal class Fields {
+            public bool         disposed;
+            public MemoryStream stream;
+            public Encoding     encoding;
+            public int          head;
+            public int          tail;
+            public Fields() {
+                this.stream   = new MemoryStream();
+                this.head     = 0;
+                this.tail     = 0;
+                this.encoding = Encoding.UTF8;
+            }
+        } private Fields data;
 
         #region Constructor
 
         private Buffer() {
-            this.stream   = BufferPool.Acquire();
-            this.head     = 0;
-            this.tail     = 0;
-            this.encoding = Encoding.UTF8;
+            this.data = new Fields();
         }
 
         #endregion
@@ -61,36 +67,36 @@ namespace Reactor {
         /// Gets or sets this buffers default text encoding. Default is UTF8.
         /// </summary>
         public Encoding Encoding {
-            get { lock (this.stream) return this.encoding; }
-            set { lock(this.stream) this.encoding = value; }
+            get { lock (this.data) return this.data.encoding; }
+            set { lock (this.data) this.data.encoding = value; }
         }
 
         /// <summary>
         /// The capacity for this buffer.
         /// </summary>
         public int Capacity {
-            get  { lock (this.stream) return this.stream.Capacity; }
+            get  { lock (this.data) return this.data.stream.Capacity; }
         }
 
         /// <summary>
         /// The length of this buffer.
         /// </summary>
         public int  Length {
-            get { lock (this.stream) return this.tail - this.head; }
+            get { lock (this.data) return this.data.tail - this.data.head; }
         }
 
         /// <summary>
         /// Gets the 'head' index of this buffer.
         /// </summary>
         public int Head {
-            get { lock (this.stream) return this.head; }
+            get { lock (this.data) return this.data.head; }
         }
 
         /// <summary>
         /// Gets the 'tail' index of this buffer.
         /// </summary>
         public int Tail { 
-            get { lock (this.stream) return this.tail; }
+            get { lock (this.data) return this.data.tail; }
         }
 
         #endregion
@@ -104,11 +110,12 @@ namespace Reactor {
         /// <param name="offset"></param>
         /// <param name="count"></param>
         public void Write (byte[] data, int offset, int count) {
-            lock (this.stream) {
-                var length = (this.tail - this.head);
-                this.stream.Seek(this.tail, SeekOrigin.Begin);
-                this.stream.Write(data, 0, count);
-                this.tail += count;
+            this.CheckDisposed();
+            lock (this.data) {
+                var length = (this.data.tail - this.data.head);
+                this.data.stream.Seek(this.data.tail, SeekOrigin.Begin);
+                this.data.stream.Write(data, offset, count);
+                this.data.tail += count;
             }
         }
 
@@ -117,7 +124,9 @@ namespace Reactor {
         /// </summary>
         /// <param name="buffer"></param>
         public void Write (Reactor.Buffer buffer) {
-            this.Write(buffer.ToArray());
+            var array = buffer.ToArray();
+            this.Write(array, 0, array.Length);
+            buffer.Dispose();
         }
 
         /// <summary>
@@ -125,7 +134,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="data">The string to write.</param>
         public void Write  (string data) {
-            var buffer = this.encoding.GetBytes(data);
+            var buffer = this.data.encoding.GetBytes(data);
             this.Write(buffer, 0, buffer.Length);
         }
 
@@ -136,7 +145,7 @@ namespace Reactor {
         /// <param name="args">The object array to write into the formatted string.</param>
         public void Write (string format, params object[] args) {
             format = string.Format(format, args);
-            var buffer = this.encoding.GetBytes(format);
+            var buffer = this.data.encoding.GetBytes(format);
             this.Write(buffer, 0, buffer.Length);
         }
 
@@ -230,15 +239,16 @@ namespace Reactor {
         /// <param name="count">The number of bytes to read.</param>
         /// <returns></returns>
         public System.Byte[] Read (int count) {
-            lock (this.stream) {
-                var length = this.tail - this.head;
+            this.CheckDisposed();
+            lock (this.data) {
+                var length = this.data.tail - this.data.head;
                 if (count > length) 
                     count = (int)length;
 
                 var data = new byte[count];
-                this.stream.Seek(this.head, SeekOrigin.Begin);
-                var read = this.stream.Read(data, 0, count);
-                this.head += read;
+                this.data.stream.Seek(this.data.head, SeekOrigin.Begin);
+                var read = this.data.stream.Read(data, 0, count);
+                this.data.head += read;
                 return data;
             }
         }
@@ -353,25 +363,26 @@ namespace Reactor {
         /// <param name="offset"></param>
         /// <param name="count"></param>
         public void Unshift(byte[] data, int offset, int count) {
-            lock (this.stream) {
-                var length = (this.tail - this.head);
-                if ((this.head - count) < 0) {
+            this.CheckDisposed();
+            lock (this.data) {
+                var length = (this.data.tail - this.data.head);
+                if ((this.data.head - count) < 0) {
                     // read all data from the stream.
                     var buf = new byte[length];
-                    this.stream.Seek(this.head, SeekOrigin.Begin);
-                    var read = this.stream.Read(buf, 0, (int)length);
+                    this.data.stream.Seek(this.data.head, SeekOrigin.Begin);
+                    var read = this.data.stream.Read(buf, 0, (int)length);
 
                     // we seek count into the stream and write buf
-                    this.stream.Seek(0, SeekOrigin.Begin);
-                    this.stream.Write(data, offset, count);
-                    this.stream.Write(buf, 0, read);
-                    this.head = 0;
-                    this.tail = count + read;
+                    this.data.stream.Seek(0, SeekOrigin.Begin);
+                    this.data.stream.Write(data, offset, count);
+                    this.data.stream.Write(buf, 0, read);
+                    this.data.head = 0;
+                    this.data.tail = count + read;
                 }
                 else {
-                    this.stream.Seek(this.head - count, SeekOrigin.Begin);
-                    this.stream.Write(data, 0, count);
-                    this.head -= count;
+                    this.data.stream.Seek(this.data.head - count, SeekOrigin.Begin);
+                    this.data.stream.Write(data, 0, count);
+                    this.data.head -= count;
                 }
             }
         }
@@ -381,8 +392,9 @@ namespace Reactor {
         /// </summary>
         /// <param name="buffer">The buffer to unshift.</param>
         public void Unshift (Reactor.Buffer buffer) {
-            var data = buffer.ToArray();
-            this.Unshift(data, 0, data.Length);
+            var array = buffer.ToArray();
+            this.Unshift(array, 0, array.Length);
+            buffer.Dispose();
         }
 
         /// <summary>
@@ -390,7 +402,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="buffer"></param>
         public void Unshift (byte[] buffer) {
-            this.Unshift(Reactor.Buffer.Create(buffer));
+            this.Unshift(buffer, 0, buffer.Length);
         }
 
         /// <summary>
@@ -398,7 +410,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="data"></param>
         public void Unshift (string data) {
-            var buffer = this.encoding.GetBytes(data);
+            var buffer = this.data.encoding.GetBytes(data);
             this.Unshift(buffer, 0, buffer.Length);
         }
 
@@ -409,7 +421,7 @@ namespace Reactor {
         /// <param name="args"></param>
         public void Unshift (string format, params object[] args) {
             format = string.Format(format, args);
-            var buffer = this.encoding.GetBytes(format);
+            var buffer = this.data.encoding.GetBytes(format);
             this.Unshift(buffer, 0, buffer.Length);
         }
 
@@ -502,11 +514,11 @@ namespace Reactor {
         /// </summary>
         /// <returns></returns>
         public Reactor.Buffer Clone() {
-            lock (this.stream) {
-                var len = (this.tail - this.head);
+            lock (this.data) {
+                var len = (this.data.tail - this.data.head);
                 var buf = new byte[len];
-                this.stream.Seek(this.head, SeekOrigin.Begin);
-                var read = this.stream.Read(buf, 0, (int)len);
+                this.data.stream.Seek(this.data.head, SeekOrigin.Begin);
+                var read = this.data.stream.Read(buf, 0, (int)len);
                 return Reactor.Buffer.Create(buf);
             }
         }
@@ -519,10 +531,10 @@ namespace Reactor {
         /// Clears this Buffer.
         /// </summary>
         public void Clear() {
-            lock (this.stream) {
-                this.stream.SetLength(0);
-                this.head = 0;
-                this.tail = 0;
+            lock (this.data) {
+                this.data.stream.SetLength(0);
+                this.data.head = 0;
+                this.data.tail = 0;
             }
         }
 
@@ -561,7 +573,7 @@ namespace Reactor {
         /// </summary>
         /// <returns></returns>
         public override string ToString () {
-            return this.encoding.GetString(this.ToArray());
+            return this.data.encoding.GetString(this.ToArray());
         }
 
         #endregion
@@ -573,11 +585,11 @@ namespace Reactor {
         /// </summary>
         /// <param name="value"></param>
         public byte[] ToArray() {
-            lock (this.stream) {
-                var len = (this.tail - this.head);
+            lock (this.data) {
+                var len = (this.data.tail - this.data.head);
                 var buf = new byte[len];
-                this.stream.Seek(this.head, SeekOrigin.Begin);
-                var read = this.stream.Read(buf, 0, (int)len);
+                this.data.stream.Seek(this.data.head, SeekOrigin.Begin);
+                var read = this.data.stream.Read(buf, 0, (int)len);
                 return buf;
             }
         }
@@ -586,12 +598,19 @@ namespace Reactor {
 
         #region IDisposable
 
-        private bool disposed = false;
+        private void CheckDisposed() {
+            lock (this.data) {
+                if (this.data.disposed) {
+                    throw new ObjectDisposedException("Reactor.Buffer", "Object has been disposed");
+                }
+            }
+        }
+
         private void Dispose(bool disposing) {
-            lock (this.stream) {
-                if (!disposed) {
-                    BufferPool.Release(this.stream);
-                    this.disposed = true;
+            lock (this.data) {
+                if (!this.data.disposed) {
+                    this.data.stream.Dispose();
+                    this.data.disposed = true;
                 }
             }
         }

@@ -43,7 +43,6 @@ namespace Reactor.Http {
         private System.Version        version;
         private System.Int32          status_code;
         private System.String         status_description;
-
         private bool                  header_sent;
 
         #region Constructors
@@ -99,6 +98,7 @@ namespace Reactor.Http {
                 this.status_code = value;
             }
         }
+        
         /// <summary>
         /// The HTTP Status description.
         /// </summary>
@@ -110,6 +110,7 @@ namespace Reactor.Http {
                 this.status_description = value;
             }
         }
+        
         /// <summary>
         /// The Content-Length for this request. Note: if 
         /// setting a value for the Content-Length, the 
@@ -232,8 +233,7 @@ namespace Reactor.Http {
              this.writable.Uncork();
         }
 
-        public void OnError     (Reactor.Action<Exception> callback)
-        {
+        public void OnError     (Reactor.Action<Exception> callback) {
             this.writable.OnError(callback);
         }
 
@@ -259,7 +259,7 @@ namespace Reactor.Http {
         private Reactor.Async.Future _WriteHeaders() {
             if(this.header_sent) return Reactor.Async.Future.Resolved();
             return new Reactor.Async.Future((resolve, reject) => {
-                var buffer = Reactor.Buffer.Create(128);
+                var buffer = Reactor.Buffer.Create();
                 buffer.Write("HTTP/{0} {1} {2}\r\n", version, status_code, status_description);
                 buffer.Write(this.headers.ToString());
                 this.writable.Write(buffer)
@@ -286,8 +286,10 @@ namespace Reactor.Http {
                                      .Then(resolve)
                                      .Error(reject)
                                      .Finally(next);
-                    }).Error(reject)
-                      .Finally(next);
+                    }).Error(error => {
+                        reject(error);
+                        next();
+                    });
                 });
             });
         }
@@ -304,8 +306,10 @@ namespace Reactor.Http {
                                      .Then(resolve)
                                      .Error(reject)
                                      .Finally(next);
-                    }).Error(reject)
-                      .Finally(next);
+                    }).Error(error => {
+                        reject(error);
+                        next();
+                    });
                 });
             });
         }
@@ -322,8 +326,10 @@ namespace Reactor.Http {
                                      .Then(resolve)
                                      .Error(reject)
                                      .Finally(next);
-                    }).Error(reject)
-                      .Finally(next);
+                    }).Error(error => {
+                        reject(error);
+                        next();
+                    });
                 });
             });
         }
@@ -340,7 +346,9 @@ namespace Reactor.Http {
         /// <param name="count"></param>
         /// <returns>A future resolved when this write has completed.</returns>
         public Reactor.Async.Future Write (byte[] buffer, int index, int count) {
-            return this.Write(Reactor.Buffer.Create(buffer, 0, count));
+            var _buffer = Reactor.Buffer.Create();
+            _buffer.Write(buffer, index, count);
+            return this.Write(_buffer);
         }
 
         /// <summary>
@@ -349,7 +357,7 @@ namespace Reactor.Http {
         /// <param name="buffer"></param>
         /// <returns>A future resolved when this write has completed.</returns>
         public Reactor.Async.Future Write (byte[] buffer) {
-            return this.Write(Reactor.Buffer.Create(buffer));
+            return this.Write(buffer, 0, buffer.Length);
         }
 
         /// <summary>

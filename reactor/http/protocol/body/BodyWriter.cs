@@ -79,8 +79,7 @@ namespace Reactor.Http.Protocol {
         /// Subscribes this action to the 'error' event.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnError     (Reactor.Action<Exception> callback)
-        {
+        public void OnError     (Reactor.Action<Exception> callback) {
             this.writable.OnError(callback);
         }
 

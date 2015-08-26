@@ -23,6 +23,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>0</WarningLevel>
     <DocumentationFile>bin\Debug\Reactor.XML</DocumentationFile>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -47,7 +48,6 @@
     <Compile Include="async\Future.cs" />
     <Compile Include="async\Queue.cs" />
     <Compile Include="async\Racer.cs" />
-    <Compile Include="buffer\BufferPool.cs" />
     <Compile Include="buffer\Buffer.cs" />
     <Compile Include="collections\ConcurrentStack.cs" />
     <Compile Include="delegates\DynamicAction.cs" />

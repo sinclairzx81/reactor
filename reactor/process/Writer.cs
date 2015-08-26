@@ -210,7 +210,7 @@ namespace Reactor.Process {
         /// <param name="buffer"></param>
         /// <returns>A future resolved when this write has completed.</returns>
         public Reactor.Async.Future Write (byte[] buffer) {
-            return this.Write(Reactor.Buffer.Create(buffer));
+            return this.Write(buffer, 0, buffer.Length);
         }
 
         /// <summary>
@@ -367,6 +367,10 @@ namespace Reactor.Process {
         /// </summary>
         public void Dispose() {
             this._End();
+        }
+
+        ~Writer() {
+            Loop.Post(() => { this._End(); });
         }
 
         #endregion

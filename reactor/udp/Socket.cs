@@ -77,7 +77,6 @@ namespace Reactor.Udp {
             this.onend       = Reactor.Async.Event.Create();
             this.read_buffer = new byte[buffersize];
             this.state       = State.Active;
-            
         }
 
         #endregion
@@ -545,6 +544,10 @@ namespace Reactor.Udp {
 
         public void Dispose() {
             this._End();
+        }
+
+        ~Socket() {
+            Loop.Post(() => { this._End(); });
         }
 
         #endregion

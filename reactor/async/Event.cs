@@ -48,20 +48,14 @@ namespace Reactor.Async {
 
         #endregion
 
-        #region Data
-
-        internal class Data {
+        internal class Fields {
             public bool multicast;
             public List<Callback> callbacks;
-            public Data() {
+            public Fields() {
                 this.multicast = true;
                 this.callbacks = new List<Callback>();
             }
-        }
-
-        #endregion
-
-        private Data data;
+        } private Fields fields;
 
         #region Constructors
 
@@ -70,8 +64,8 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="multicast"></param>
         public Event(bool multicast) {
-            this.data = new Data();
-            this.data.multicast = multicast;
+            this.fields = new Fields();
+            this.fields.multicast = multicast;
         }
 
         /// <summary>
@@ -87,7 +81,7 @@ namespace Reactor.Async {
         /// Indicates if this event is multicast.
         /// </summary>
         public bool Multicast {
-            get {  lock(this.data) return this.data.multicast; }
+            get {  lock(this.fields) return this.fields.multicast; }
         }
 
         #endregion
@@ -99,17 +93,17 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="action"></param>
         public void On (Reactor.Action action) {
-            lock (this.data) {
+            lock (this.fields) {
                 var callback = new Callback{action = action, once = false};
-                if (this.data.multicast) {
-                    this.data.callbacks.Add(callback);
+                if (this.fields.multicast) {
+                    this.fields.callbacks.Add(callback);
                 }
                 else {
-                    if (this.data.callbacks.Count == 0) {
-                        this.data.callbacks.Add(callback);
+                    if (this.fields.callbacks.Count == 0) {
+                        this.fields.callbacks.Add(callback);
                     }
                     else { 
-                        this.data.callbacks[0] = callback;
+                        this.fields.callbacks[0] = callback;
                     }
                 }
             }
@@ -120,17 +114,17 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="callback"></param>
         public void Once (Reactor.Action action) {
-            lock (this.data) {
+            lock (this.fields) {
                 var callback = new Callback{action = action, once = true};
-                if (this.data.multicast) {
-                    this.data.callbacks.Add(callback);
+                if (this.fields.multicast) {
+                    this.fields.callbacks.Add(callback);
                 }
                 else {
-                    if (this.data.callbacks.Count == 0) {
-                        this.data.callbacks.Add(callback);
+                    if (this.fields.callbacks.Count == 0) {
+                        this.fields.callbacks.Add(callback);
                     }
                     else { 
-                        this.data.callbacks[0] = callback;
+                        this.fields.callbacks[0] = callback;
                     }
                 }
             }
@@ -141,10 +135,10 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="action"></param>
         public void Remove (Reactor.Action action) {
-            lock (this.data) {
-                for (int i = 0; i < this.data.callbacks.Count; i++) {
-                    if (this.data.callbacks[i].action == action) {
-                        this.data.callbacks.Remove(this.data.callbacks[i]);
+            lock (this.fields) {
+                for (int i = 0; i < this.fields.callbacks.Count; i++) {
+                    if (this.fields.callbacks[i].action == action) {
+                        this.fields.callbacks.Remove(this.fields.callbacks[i]);
                     }
                 }
             }
@@ -155,9 +149,9 @@ namespace Reactor.Async {
         /// </summary>
         /// <returns></returns>
         public IEnumerable<Reactor.Action> Subscribers () {
-            lock (this.data) {
+            lock (this.fields) {
                 var clone = new List<Reactor.Action>();
-                foreach (var callback in this.data.callbacks) {
+                foreach (var callback in this.fields.callbacks) {
                     clone.Add(callback.action);
                 }
                 return clone;
@@ -169,11 +163,11 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="data"></param>
         public void Emit () {
-            lock (this.data) {
-                for (int i = 0; i < this.data.callbacks.Count; i++) {
-                    var callback = this.data.callbacks[i];
+            lock (this.fields) {
+                for (int i = 0; i < this.fields.callbacks.Count; i++) {
+                    var callback = this.fields.callbacks[i];
                     if (callback.once) {
-                        this.data.callbacks.Remove(callback);
+                        this.fields.callbacks.Remove(callback);
                     }
                     callback.action();
                 }
@@ -186,8 +180,8 @@ namespace Reactor.Async {
 
         private bool disposed = false;
         private void Dispose(bool disposing) {
-            lock (this.data) {
-                this.data.callbacks.Clear();
+            lock (this.fields) {
+                this.fields.callbacks.Clear();
                 this.disposed = true;
             }
         }

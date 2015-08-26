@@ -546,6 +546,10 @@ namespace Reactor.IP {
             this._End();
         }
 
+        ~Socket() {
+            Loop.Post(() => { this._End(); });
+        }
+
         #endregion
         
         #region Statics

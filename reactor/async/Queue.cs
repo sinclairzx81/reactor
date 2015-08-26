@@ -48,10 +48,19 @@ namespace Reactor.Async {
     /// ]]>
     /// </example>
     public class Queue : IDisposable {
-        private Reactor.ConcurrentQueue<Reactor.Action<Reactor.Action>> queue;
-        private int                                                     concurrency;
-        private int                                                     running;
-        private bool                                                    paused;
+
+        internal class Fields {
+            public Reactor.ConcurrentQueue<Reactor.Action<Reactor.Action>> queue;
+            public int concurrency;
+            public int running;
+            public bool paused;
+            public Fields() {
+                this.queue       = new Reactor.ConcurrentQueue<Reactor.Action<Reactor.Action>>();
+                this.concurrency = 0;
+                this.running     = 0;
+                this.paused      = false;
+            }
+        } private Fields fields;
 
         #region Constructors
 
@@ -60,10 +69,8 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="concurrency">The level of concurrency allow for processing actions.</param>
         public Queue(int concurrency) {
-            this.queue       = new Reactor.ConcurrentQueue<Reactor.Action<Reactor.Action>>();
-            this.concurrency = concurrency;
-            this.running     = 0;
-            this.paused      = false;
+            this.fields = new Fields();
+            this.fields.concurrency = concurrency;
         }
 
         #endregion
@@ -75,7 +82,7 @@ namespace Reactor.Async {
         /// processed.
         /// </summary>
         public int Pending {
-            get {  return this.queue.Count; }
+            get { lock(this.fields) return this.fields.queue.Count; }
         }
 
         #endregion
@@ -91,9 +98,11 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="operation"></param>
         public void Run(Reactor.Action<Reactor.Action> operation) {
-            this.queue.Enqueue(operation);
-            if (!this.paused) {
-                this.Process();
+            lock (this.fields) {
+                this.fields.queue.Enqueue(operation);
+                if (!this.fields.paused) {
+                    this.Process();
+                }
             }
         }
         
@@ -104,7 +113,9 @@ namespace Reactor.Async {
         /// 'resumes' this queue.
         /// </summary>
         public void Pause() {
-            this.paused = true;
+            lock (this.fields) {
+                this.fields.paused = true;
+            }
         }
 
         /// <summary>
@@ -114,8 +125,10 @@ namespace Reactor.Async {
         /// queue.
         /// </summary>
         public void Resume() {
-            this.paused = false;
-            this.Process();
+            lock (this.fields) {
+                this.fields.paused = false;
+                this.Process();
+            }
         }
 
         #endregion
@@ -132,20 +145,24 @@ namespace Reactor.Async {
         /// in the queue are cleared.
         /// </summary>
         private void Process() {
-            if (this.queue.Count > 0) {
-                if (this.running < this.concurrency) {
-                    Action<Action> action = null;
-                    if (this.queue.TryDequeue(out action)) {
-                        this.running += 1;
-                        action(() => {
-                            this.running -= 1;
-                            if (!this.paused) {
-                                this.Process();
-                            }
-                        });
-                    }
-                    else {
-                        this.Process();
+            lock (this.fields) {
+                if (this.fields.queue.Count > 0) {
+                    if (this.fields.running < this.fields.concurrency) {
+                        Action<Action> action = null;
+                        if (this.fields.queue.TryDequeue(out action)) {
+                            this.fields.running += 1;
+                            action(() => {
+                                lock (this.fields) {
+                                    this.fields.running -= 1;
+                                    if (!this.fields.paused) {
+                                        this.Process();
+                                    }
+                                }
+                            });
+                        }
+                        else {
+                            this.Process();
+                        }
                     }
                 }
             }
@@ -156,11 +173,11 @@ namespace Reactor.Async {
         #region IDisposable
 
         /// <summary>
-        /// Disposes of this spool.
+        /// Disposes of this queue.
         /// </summary>
         public void Dispose() {
             this.Pause();
-            this.queue.Clear();
+            this.fields.queue.Clear();
         }
 
         #endregion

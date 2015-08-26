@@ -409,15 +409,15 @@ namespace Reactor.Tls {
         /// <param name="count">The number of bytes to read.</param>
         /// <returns></returns>
         public Reactor.Buffer Read (int count) {
-            var result = Reactor.Buffer.Create(this.buffer.Read(count));
-            if (result.Length > 0) {
-                this.onread.Emit(result);
+            var buffer = Reactor.Buffer.Create(this.buffer.Read(count));
+            if (buffer.Length > 0) {
+                this.onread.Emit(buffer);
             }
             if (this.buffer.Length == 0) {
                 this.mode = Mode.NonFlowing;
                 this._Read();
             }
-            return result;
+            return buffer;
         }
 
         /// <summary>
@@ -436,6 +436,7 @@ namespace Reactor.Tls {
         /// <param name="buffer">The buffer to unshift.</param>
         public void Unshift (Reactor.Buffer buffer) {
             this.buffer.Unshift(buffer);
+            buffer.Dispose();
         }
 
         /// <summary>
@@ -444,10 +445,9 @@ namespace Reactor.Tls {
         /// <param name="buffer">The buffer to write.</param>
         /// <param name="callback">A callback to signal when this buffer has been written.</param>
         public Reactor.Async.Future Write (Reactor.Buffer buffer) {
-            var clone = buffer.Clone();
             return new Reactor.Async.Future((resolve, reject) => {
                 this.queue.Run(next => {
-                    this.writer.Write(clone)
+                    this.writer.Write(buffer)
                                .Then(resolve)
                                .Error(reject)
                                .Finally(next);
@@ -460,7 +460,7 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="callback">A callback to signal when this buffer has been flushed.</param>
         public Reactor.Async.Future Flush () {
-            return new Reactor.Async.Future((resolve, reject)=>{
+            return new Reactor.Async.Future((resolve, reject) => {
                 this.queue.Run(next => {
                     this.writer.Flush()
                                .Then(resolve)
@@ -534,9 +534,9 @@ namespace Reactor.Tls {
         /// <param name="writable"></param>
         /// <returns></returns>
         public Reactor.IReadable Pipe (Reactor.IWritable writable) {
-            this.OnRead(data => {
+            this.OnRead(buffer => {
                 this.Pause();
-                writable.Write(data)
+                writable.Write(buffer)
                         .Then(this.Resume)
                         .Error(this._Error);
             });
@@ -999,7 +999,7 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="buffer"></param>
         public void Unshift (byte[] buffer) {
-            this.Unshift(Reactor.Buffer.Create(buffer));
+            this.Unshift(buffer, 0, buffer.Length);
         }
 
         /// <summary>
@@ -1250,7 +1250,7 @@ namespace Reactor.Tls {
         /// <summary>
         /// Begins reading from the underlying stream.
         /// </summary>
-        private void _Read () {
+        private void _Read  () {
             if (this.state == State.Pending) {
                 this.state = State.Reading;
                 if (this.buffer.Length > 0) {
@@ -1268,7 +1268,7 @@ namespace Reactor.Tls {
         /// Handles incoming data from the stream.
         /// </summary>
         /// <param name="buffer"></param>
-        private void _Data (Reactor.Buffer buffer) {
+        private void _Data  (Reactor.Buffer buffer) {
             if (this.state == State.Reading) {
                 this.state = State.Pending;
                 this.buffer.Write(buffer);
@@ -1302,7 +1302,7 @@ namespace Reactor.Tls {
         /// <summary>
         /// Terminates the stream.
         /// </summary>
-        public void _End () {
+        private void _End   () {
             if (this.state != State.Ended) {
                 this.state = State.Ended;
                 try { this.socket.Shutdown(SocketShutdown.Send); } catch {}
@@ -1327,6 +1327,11 @@ namespace Reactor.Tls {
         public void Dispose() {
             this._End();
         }
+
+        ~Socket() {
+            Loop.Post(() => { this._End(); });
+        }
+
 
         #endregion
 

@@ -261,15 +261,15 @@ namespace Reactor.File {
         /// <param name="count">The number of bytes to read.</param>
         /// <returns></returns>
         public Reactor.Buffer Read (int count) {
-            var result = Reactor.Buffer.Create(this.buffer.Read(count));
-            if (result.Length > 0) {
-                this.onread.Emit(result);
+            var buffer = Reactor.Buffer.Create(this.buffer.Read(count));
+            if (buffer.Length > 0) {
+                this.onread.Emit(buffer);
             }
             if (this.buffer.Length == 0) {
                 this.mode = Mode.NonFlowing;
                 this._Read();
             }
-            return result;
+            return buffer;
         }
 
         /// <summary>
@@ -288,6 +288,7 @@ namespace Reactor.File {
         /// <param name="buffer">The buffer to unshift.</param>
         public void Unshift (Reactor.Buffer buffer) {
             this.buffer.Unshift(buffer);
+            buffer.Dispose();
         }
 
         /// <summary>
@@ -319,9 +320,9 @@ namespace Reactor.File {
         /// <param name="writable"></param>
         /// <returns></returns>
         public Reactor.IReadable Pipe (Reactor.IWritable writable) {
-            this.OnRead(data => {
+            this.OnRead(buffer => {
                 this.Pause();
-                writable.Write(data)
+                writable.Write(buffer)
                         .Then(this.Resume)
                         .Error(this._Error);
             });
@@ -440,7 +441,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="buffer"></param>
         public void Unshift (byte[] buffer) {
-            this.Unshift(Reactor.Buffer.Create(buffer));
+            this.Unshift(buffer, 0, buffer.Length);
         }
 
         /// <summary>
@@ -640,6 +641,7 @@ namespace Reactor.File {
             if (this.state != State.Ended) {
                 this.state = State.Ended;
                 this.reader.Dispose();
+                this.buffer.Dispose();
                 this.onend.Emit();
             }
         }
@@ -653,6 +655,10 @@ namespace Reactor.File {
         /// </summary>
         public void Dispose() {
             this._End();
+        }
+
+        ~Reader() {
+            Loop.Post(() => { this._End(); });
         }
 
         #endregion

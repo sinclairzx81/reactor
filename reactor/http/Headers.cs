@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Runtime.Serialization;
 using System.Text;
 
 namespace Reactor.Http {

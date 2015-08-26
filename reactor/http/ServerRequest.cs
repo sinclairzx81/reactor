@@ -27,6 +27,7 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
+using System.Net;
 using System.Text;
 
 namespace Reactor.Http {
@@ -61,7 +62,7 @@ namespace Reactor.Http {
                                System.String              transferEncoding,
                                System.Text.Encoding       contentEncoding,
                                System.Net.EndPoint        localEndPoint,
-                               System.Net.EndPoint        remoteEndpoint) {
+                               System.Net.EndPoint        remoteEndPoint) {
             this.readable = (transferEncoding == "chunked") ? 
                 (Reactor.IReadable)new Reactor.Http.Protocol.ChunkedBodyReader(readable) :
                 (Reactor.IReadable)new Reactor.Http.Protocol.BodyReader(readable, contentLength);
@@ -138,19 +139,23 @@ namespace Reactor.Http {
             get {  return this.contentEncoding; }
         }
 
-        ///// <summary>
-        ///// The local endpoint.
-        ///// </summary>
-        //public EndPoint LocalEndPoint   {
-        //    get { return this.readable.LocalEndPoint; }
-        //}
+        /// <summary>
+        /// The local endpoint.
+        /// </summary>
+        public EndPoint LocalEndPoint   {
+            get {
+               return this.localEndPoint;
+            }
+        }
 
-        ///// <summary>
-        ///// The remote endpoint.
-        ///// </summary>
-        //public EndPoint RemoteEndPoint  {
-        //    get { return this.readable.RemoteEndPoint; }
-        //}
+        /// <summary>
+        /// The remote endpoint.
+        /// </summary>
+        public EndPoint RemoteEndPoint  {
+            get {
+                return this.remoteEndPoint;
+            }
+        }
 
         /// <summary>
         /// The Transfer-Encoding header.
@@ -452,7 +457,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="buffer"></param>
         public void Unshift (byte[] buffer) {
-            this.Unshift(Reactor.Buffer.Create(buffer));
+            this.Unshift(buffer, 0, buffer.Length);
         }
 
         /// <summary>
