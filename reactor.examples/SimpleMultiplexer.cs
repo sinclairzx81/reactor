@@ -9,127 +9,133 @@ namespace Reactor.Examples {
     /// </summary>
     public class SimpleMultiplexer {
 
-        /// <summary>
-        /// Run at the remote endpoint.
-        /// </summary>
-        /// <param name="port"></param>
-        /// <param name="endpoint"></param>
         static void Remote (int port, System.Net.IPEndPoint endpoint) {
             var sockets = new Dictionary<Guid, Reactor.Tcp.Socket>();
-            var buffer  = Reactor.Buffer.Create();
-            Reactor.Tcp.Server.Create(proxy => {
-                proxy.OnRead(proxy_buffer => {
-                    var chks = proxy_buffer.ReadByte();
-                    var guid = new Guid(proxy_buffer.ReadBytes(16));
-                    var flag = proxy_buffer.ReadByte();
-                    Reactor.Tcp.Socket socket = null;
-                    if (sockets.ContainsKey(guid)) {
-                        socket = sockets[guid];
-                    }
-                    else {
-                        socket = Reactor.Tcp.Socket.Create(endpoint.Address, endpoint.Port);
-                        sockets[guid] = socket;
-                        socket.OnRead(socket_buffer => {
-                            socket.Pause();
-                            while (socket_buffer.Length > 0) {
-                                buffer.Write(new byte[] { 42 });
-                                buffer.Write(guid.ToByteArray());
-                                buffer.Write(new byte[] { 1 });
-                                buffer.Write(socket_buffer.Read(4096 - 18));
-                                proxy.Write(buffer);
-                                buffer.Clear();
+            Reactor.Tcp.Server.Create(tunnel => {
+                tunnel.OnRead(tunnel_buffer => {
+                    while (tunnel_buffer.Length > 0) {
+                        var chks = tunnel_buffer.ReadByte();
+                        var guid = new Guid(tunnel_buffer.ReadBytes(16));
+                        var flag = tunnel_buffer.ReadByte();
+                        var len  = tunnel_buffer.ReadInt32();
+                        if(tunnel_buffer.Length >= len) {
+                            var data   = tunnel_buffer.Read(len);
+                            Reactor.Tcp.Socket socket = null;
+                            if (sockets.ContainsKey(guid)) {
+                                socket = sockets[guid];
                             }
-                            proxy.OnceDrain(socket.Resume);
-                        });
-                        socket.OnError(error => {
-                            buffer.Write(new byte[] { 42 });
-                            buffer.Write(guid.ToByteArray());
-                            buffer.Write(new byte[] { 0 });
-                            proxy.Write(buffer);
-                            sockets.Remove(guid);
-                            buffer.Clear();
-                        });
-                        socket.OnEnd(() => {
-                            buffer.Write(new byte[] { 42 });
-                            buffer.Write(guid.ToByteArray());
-                            buffer.Write(new byte[] { 0 });
-                            proxy.Write(buffer);
-                            sockets.Remove(guid);
-                            buffer.Clear();
-                        });
+                            else {
+                                socket = Reactor.Tcp.Socket.Create(endpoint);
+                                sockets[guid] = socket;
+                                socket.OnRead(socket_buffer => {
+                                    while (socket_buffer.Length > 0) {
+                                        var segment = socket_buffer.Read(512 - 22);
+                                        var frame   = Reactor.Buffer.Create();
+                                        frame.Write(new byte[] { 42 });
+                                        frame.Write(guid.ToByteArray());
+                                        frame.Write(new byte[] { 1 });
+                                        frame.Write(segment.Length);
+                                        frame.Write(segment);
+                                        tunnel.Write(frame);
+                                   }
+                                });
+                                socket.OnError(error => {
+                                    var frame = Reactor.Buffer.Create();
+                                    frame.Write(new byte[] { 42 });
+                                    frame.Write(guid.ToByteArray());
+                                    frame.Write(new byte[] { 0 });
+                                    frame.Write(0);
+
+                                    tunnel.Write(frame);
+                                    sockets.Remove(guid);
+                                });
+                                socket.OnEnd(() => {
+                                    var frame = Reactor.Buffer.Create();
+                                    frame.Write(new byte[] { 42 });
+                                    frame.Write(guid.ToByteArray());
+                                    frame.Write(new byte[] { 0 });
+                                    frame.Write(0);
+
+                                    tunnel.Write(frame);
+                                    sockets.Remove(guid);
+                                });
+                            }
+                            switch (flag) {
+                                case 0:
+                                    sockets.Remove(guid);
+                                    socket.End();
+                                    break;
+                                case 1:
+                                    socket.Write(data);
+                                    break;
+                            }
+                        } else break;
                     }
-                    switch (flag) {
-                        case 0:
-                            sockets.Remove(guid);
-                            socket.End();
-                            break;
-                        case 1:
-                            socket.Write(proxy_buffer);
-                            break;
-                    }
+
                 });
             }).Listen(port);
         }
 
-        /// <summary>
-        /// Run at the local endpoint. Connects to the remote endpoint.
-        /// </summary>
-        /// <param name="port"></param>
-        /// <param name="endpoint"></param>
-        static void Local  (int port, System.Net.IPEndPoint endpoint) {
+        static void Local (int port, System.Net.IPEndPoint endpoint) {
             var sockets = new Dictionary<Guid, Reactor.Tcp.Socket>();
-            var proxy   = Reactor.Tcp.Socket.Create(endpoint.Address, endpoint.Port);
-            var buffer  = Reactor.Buffer.Create();
-            proxy.OnConnect(() => {
+            var tunnel  = Reactor.Tcp.Socket.Create(endpoint);
+            tunnel.OnConnect(() => {
                 Reactor.Tcp.Server.Create(socket => {
                     var connectionid = Guid.NewGuid();
                     sockets[connectionid] = socket;
                     socket.OnRead(socket_buffer => {
-                        socket.Pause();
                         while (socket_buffer.Length > 0) {
-                            buffer.Write(new byte[] { 42 });
-                            buffer.Write(connectionid.ToByteArray());
-                            buffer.Write(new byte[] { 1 });
-                            buffer.Write(socket_buffer.Read(4096 - 18));
-                            proxy.Write(buffer);
-                            buffer.Clear();
+                            var segment = socket_buffer.Read(512 - 22);
+                            var frame = Reactor.Buffer.Create();
+                            frame.Write(new byte[] { 42 });
+                            frame.Write(connectionid.ToByteArray());
+                            frame.Write(new byte[] { 1 });
+                            frame.Write(segment.Length);
+                            frame.Write(segment);
+                            tunnel.Write(frame);
                         }
-                        proxy.OnceDrain(socket.Resume);
                     });
                     socket.OnError(error => {
-                        buffer.Write(new byte[] { 42 });
-                        buffer.Write(connectionid.ToByteArray());
-                        buffer.Write(new byte[] { 0 });
-                        proxy.Write(buffer);
+                        var frame = Reactor.Buffer.Create();
+                        frame.Write(new byte[] { 42 });
+                        frame.Write(connectionid.ToByteArray());
+                        frame.Write(new byte[] { 0 });
+                        frame.Write((int)0);
+                        tunnel.Write(frame);
                         sockets.Remove(connectionid);
-                        buffer.Clear();
                     });
                     socket.OnEnd(() => {
-                        buffer.Write(new byte[] { 42 });
-                        buffer.Write(connectionid.ToByteArray());
-                        buffer.Write(new byte[] { 0 });
-                        proxy.Write(buffer);
+                        var frame = Reactor.Buffer.Create();
+                        frame.Write(new byte[] { 42 });
+                        frame.Write(connectionid.ToByteArray());
+                        frame.Write(new byte[] { 0 });
+                        frame.Write((int)0);
+                        tunnel.Write(frame);
                         sockets.Remove(connectionid);
-                        buffer.Clear();
                     });
                 }).Listen(port);
 
-                proxy.OnRead(proxy_buffer => {
-                    var chks = proxy_buffer.ReadByte();
-                    var guid = new Guid(proxy_buffer.ReadBytes(16));
-                    var flag = proxy_buffer.ReadByte();
-                    Console.WriteLine(guid);
-                    if (sockets.ContainsKey(guid)) {
-                        var socket = sockets[guid];
-                        switch (flag) {
-                            case 0:
-                                sockets.Remove(guid);
-                                socket.End();
-                                break;
-                            case 1:
-                                socket.Write(proxy_buffer);
-                                break;
-                        }
+                tunnel.OnRead(tunnel_buffer => {
+                    while (tunnel_buffer.Length > 0) {
+                        var chks = tunnel_buffer.ReadByte();
+                        var guid = new Guid(tunnel_buffer.ReadBytes(16));
+                        var flag = tunnel_buffer.ReadByte();
+                        var len  = tunnel_buffer.ReadInt32();
+                        if (tunnel_buffer.Length >= len) {
+                            var data   = tunnel_buffer.Read(len);
+                            if (sockets.ContainsKey(guid)) {
+                                var socket = sockets[guid];
+                                switch (flag) {
+                                    case 0:
+                                        sockets.Remove(guid);
+                                        socket.End();
+                                        break;
+                                    case 1:
+                                        socket.Write(data);
+                                        break;
+                                }
+                            }
+                        } else break;
                     }
                 });
             });
