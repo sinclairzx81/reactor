@@ -145,7 +145,8 @@ namespace Reactor.Streams {
         /// </summary>
         /// <param name="buffer">The buffer to write.</param>
         /// <param name="callback">A action called once the write has completed.</param>
-        public Reactor.Async.Future Write (byte [] data) {
+        public Reactor.Async.Future Write (Reactor.Buffer buffer) {
+            var data = buffer.ToArray();
             return new Reactor.Async.Future((resolve, reject) => {
                 Loop.Post(() => {
                     this.queue.Run(next => {
