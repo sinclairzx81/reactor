@@ -103,7 +103,7 @@ namespace Reactor.Tls {
         private Reactor.Async.Event<Reactor.Buffer>   onread;
         private Reactor.Async.Event<Exception>        onerror;
         private Reactor.Async.Event                   onend;
-        private Reactor.Streams.Reader2               reader;
+        private Reactor.Streams.Reader                reader;
         private Reactor.Streams.Writer                writer;
         private Reactor.Buffer                        buffer;
         private Reactor.Interval                      poll;
@@ -125,11 +125,11 @@ namespace Reactor.Tls {
             this.onread     = Reactor.Async.Event.Create<Reactor.Buffer>();
             this.onerror    = Reactor.Async.Event.Create<Exception>();
             this.onend      = Reactor.Async.Event.Create();
-            this.readstate      = ReadState.Pending;
-            this.readmode       = ReadMode.NonFlowing;
+            this.readstate  = ReadState.Pending;
+            this.readmode   = ReadMode.NonFlowing;
             this.corked     = false;
             this.socket     = socket;
-            this.reader     = Reactor.Streams.Reader2.Create(stream);
+            this.reader     = Reactor.Streams.Reader.Create(stream, Reactor.Settings.DefaultBufferSize);
             this.writer     = Reactor.Streams.Writer.Create(stream);
             this.poll       = Reactor.Interval.Create(this.Poll, 1000);
             this.buffer     = Reactor.Buffer.Create();
@@ -162,7 +162,7 @@ namespace Reactor.Tls {
                 this.socket = socket;
                 var networkstream  = new NetworkStream(socket);
                 this.Authenticate(networkstream).Then(stream => {
-                    this.reader = Reactor.Streams.Reader2.Create(stream);
+                    this.reader = Reactor.Streams.Reader.Create(stream, Reactor.Settings.DefaultBufferSize);
                     this.writer = Reactor.Streams.Writer.Create(stream);
                     this.poll   = Reactor.Interval.Create(this.Poll, 1000);
                     this.buffer = Reactor.Buffer.Create();
@@ -201,7 +201,7 @@ namespace Reactor.Tls {
                     this.socket = socket;
                     var networkstream  = new NetworkStream(socket);
                     this.Authenticate(networkstream).Then(stream => {
-                        this.reader = Reactor.Streams.Reader2.Create(stream);
+                        this.reader = Reactor.Streams.Reader.Create(stream, Reactor.Settings.DefaultBufferSize);
                         this.writer = Reactor.Streams.Writer.Create(stream);
                         this.poll   = Reactor.Interval.Create(this.Poll, 1000);
                         this.buffer = Reactor.Buffer.Create();

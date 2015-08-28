@@ -38,7 +38,7 @@ namespace Reactor.Tcp {
     public class Socket : Reactor.IDuplexable, IDisposable {
 
         #region States
-
+        
         /// <summary>
         /// Readable state.
         /// </summary>
@@ -100,7 +100,7 @@ namespace Reactor.Tcp {
         private Reactor.Async.Event<Reactor.Buffer>   onread;
         private Reactor.Async.Event<Exception>        onerror;
         private Reactor.Async.Event                   onend;
-        private Reactor.Streams.Reader2               reader;
+        private Reactor.Streams.Reader                reader;
         private Reactor.Streams.Writer                writer;
         private Reactor.Buffer                        buffer;
         private Reactor.Interval                      poll;
@@ -127,7 +127,7 @@ namespace Reactor.Tcp {
             this.corked     = false;
             this.socket     = socket;
             var stream      = new NetworkStream(socket);
-            this.reader     = Reactor.Streams.Reader2.Create(stream);
+            this.reader     = Reactor.Streams.Reader.Create(stream, Reactor.Settings.DefaultBufferSize);
             this.writer     = Reactor.Streams.Writer.Create(stream);
             this.poll       = Reactor.Interval.Create(this.Poll, 1000);
             this.buffer     = Reactor.Buffer.Create();
@@ -158,7 +158,7 @@ namespace Reactor.Tcp {
             this.Connect(local, remote).Then(socket => {
                 this.socket = socket;
                 var stream  = new NetworkStream(socket);
-                this.reader = Reactor.Streams.Reader2.Create(stream);
+                this.reader = Reactor.Streams.Reader.Create(stream, Reactor.Settings.DefaultBufferSize);
                 this.writer = Reactor.Streams.Writer.Create(stream);
                 this.poll   = Reactor.Interval.Create(this.Poll, 1000);
                 this.buffer = Reactor.Buffer.Create();
@@ -194,7 +194,7 @@ namespace Reactor.Tcp {
                 this.Connect(local, remote).Then(socket => {
                     this.socket = socket;
                     var stream  = new NetworkStream(socket);
-                    this.reader = Reactor.Streams.Reader2.Create(stream);
+                    this.reader = Reactor.Streams.Reader.Create(stream, Reactor.Settings.DefaultBufferSize);
                     this.writer = Reactor.Streams.Writer.Create(stream);
                     this.poll   = Reactor.Interval.Create(this.Poll, 1000);
                     this.buffer = Reactor.Buffer.Create();

@@ -26,7 +26,6 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using Reactor.Async;
 using System;
 
 namespace Reactor.Process
@@ -95,7 +94,7 @@ namespace Reactor.Process
         private Reactor.Async.Event<Reactor.Buffer>   onread;
         private Reactor.Async.Event<Exception>        onerror;
         private Reactor.Async.Event                   onend;
-        private Reactor.Streams.Reader2               reader;
+        private Reactor.Streams.Reader                reader;
         private Reactor.Buffer                        buffer;
         private ReadState                             readstate;
         private ReadMode                              readmode;
@@ -118,7 +117,7 @@ namespace Reactor.Process
             this.buffer     = Reactor.Buffer.Create();
             this.readstate  = ReadState.Pending;
             this.readmode   = ReadMode.NonFlowing;
-            this.reader     = Reactor.Streams.Reader2.Create(stream, Reactor.Settings.DefaultBufferSize);
+            this.reader     = Reactor.Streams.Reader.Create(stream, Reactor.Settings.DefaultBufferSize);
         }
 
         #endregion

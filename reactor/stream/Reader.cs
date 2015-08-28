@@ -26,7 +26,6 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using Reactor.Async;
 using System;
 
 namespace Reactor.Streams {
@@ -34,7 +33,7 @@ namespace Reactor.Streams {
     /// <summary>
     /// Provides a asynchronous read interface over System.IO.Stream.
     /// </summary>
-    public class Reader2 : IDisposable {
+    public class Reader : IDisposable {
         private System.IO.Stream                      stream;
         private Reactor.Async.Queue                   queue;
         private byte[]                                buffer;
@@ -46,7 +45,7 @@ namespace Reactor.Streams {
         /// </summary>
         /// <param name="stream">The stream to read from.</param>
         /// <param name="buffersize">The read buffer size in bytes.</param>
-        public Reader2 (System.IO.Stream stream, int buffersize) {
+        public Reader (System.IO.Stream stream, int buffersize) {
             this.stream  = stream;
             this.queue   = Reactor.Async.Queue.Create(1);
             this.buffer  = new byte[buffersize];
@@ -125,19 +124,8 @@ namespace Reactor.Streams {
         /// <param name="stream">The stream to read from.</param>
         /// <param name="buffersize">The read buffer size in bytes.</param>
         /// <returns></returns>
-        public static Reader2 Create(System.IO.Stream stream, int buffersize) {
-            return new Reader2(stream, buffersize);
-        }
-
-
-        /// <summary>
-        /// Creates a new Reader.
-        /// </summary>
-        /// <param name="stream">The stream to read from.</param>
-        /// <param name="buffersize">The read buffer size in bytes.</param>
-        /// <returns></returns>
-        public static Reader2 Create(System.IO.Stream stream) {
-            return new Reader2(stream, Reactor.Settings.DefaultBufferSize);
+        public static Reader Create(System.IO.Stream stream, int buffersize) {
+            return new Reader(stream, buffersize);
         }
 
         #endregion

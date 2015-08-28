@@ -95,7 +95,7 @@ namespace Reactor.File {
         private Reactor.Async.Event<Reactor.Buffer>   onread;
         private Reactor.Async.Event<Exception>        onerror;
         private Reactor.Async.Event                   onend;
-        private Reactor.Streams.Reader2               reader;
+        private Reactor.Streams.Reader                reader;
         private Reactor.Buffer                        buffer;
         private ReadState                             readstate;
         private ReadMode                              readmode;
@@ -128,7 +128,7 @@ namespace Reactor.File {
             this.offset     = (offset > (stream.Length)) ? stream.Length : offset;
             this.count      = (count  > (stream.Length - this.offset)) ? (stream.Length - this.offset) : count;
             stream.Seek(this.offset, SeekOrigin.Begin);
-            this.reader     = Reactor.Streams.Reader2.Create(stream, Reactor.Settings.DefaultBufferSize);
+            this.reader     = Reactor.Streams.Reader.Create(stream, Reactor.Settings.DefaultBufferSize);
         }
 
         #endregion

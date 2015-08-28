@@ -26,7 +26,6 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using Reactor.Async;
 using System;
 using System.IO;
 

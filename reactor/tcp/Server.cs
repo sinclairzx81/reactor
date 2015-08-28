@@ -27,7 +27,6 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 
@@ -63,7 +62,7 @@ namespace Reactor.Tcp {
         }
 
         #endregion
-
+        
         private System.Net.Sockets.Socket                 socket;
         private Reactor.Async.Event<Reactor.Tcp.Socket>   onread;
         private Reactor.Async.Event<Exception>            onerror;
