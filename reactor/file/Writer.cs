@@ -159,6 +159,7 @@ namespace Reactor.File {
         /// <param name="buffer">The buffer to write.</param>
         /// <param name="callback">A callback to signal when this data has been written.</param>
         public Reactor.Async.Future Write (Reactor.Buffer buffer) {
+            buffer.Locked = true;
             return this.writer.Write(buffer);
         }
 

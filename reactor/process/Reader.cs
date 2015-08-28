@@ -41,7 +41,7 @@ namespace Reactor.Process
         /// <summary>
         /// Readable state.
         /// </summary>
-        internal enum State {
+        internal enum ReadState {
             /// <summary>
             /// The initial state of this stream. A stream
             /// in a pending state signals that the stream
@@ -74,13 +74,17 @@ namespace Reactor.Process
         /// <summary>
         /// Readable mode.
         /// </summary>
-        internal enum Mode {
+        internal enum ReadMode {
             /// <summary>
-            /// This stream is using flowing semantics.
+            /// Unknown read mode.
+            /// </summary>
+            Unknown,
+            /// <summary>
+            /// This stream is flowing.
             /// </summary>
             Flowing,
             /// <summary>
-            /// This stream is using non-flowing semantics.
+            /// This stream is non-flowing.
             /// </summary>
             NonFlowing
         }
@@ -91,10 +95,10 @@ namespace Reactor.Process
         private Reactor.Async.Event<Reactor.Buffer>   onread;
         private Reactor.Async.Event<Exception>        onerror;
         private Reactor.Async.Event                   onend;
-        private Reactor.Streams.Reader                reader;
+        private Reactor.Streams.Reader2               reader;
         private Reactor.Buffer                        buffer;
-        private State                                 state;
-        private Mode                                  mode;
+        private ReadState                             readstate;
+        private ReadMode                              readmode;
 
         #region Constructors
 
@@ -112,12 +116,9 @@ namespace Reactor.Process
             this.onerror    = Reactor.Async.Event.Create<Exception>();
             this.onend      = Reactor.Async.Event.Create();
             this.buffer     = Reactor.Buffer.Create();
-            this.state      = State.Pending;
-            this.mode       = Mode.NonFlowing;
-            this.reader     = Reactor.Streams.Reader.Create(stream, Reactor.Settings.DefaultBufferSize);
-            this.reader.OnRead  (this._Data);
-            this.reader.OnError (this._Error);
-            this.reader.OnEnd   (this._End);
+            this.readstate  = ReadState.Pending;
+            this.readmode   = ReadMode.NonFlowing;
+            this.reader     = Reactor.Streams.Reader2.Create(stream, Reactor.Settings.DefaultBufferSize);
         }
 
         #endregion
@@ -134,12 +135,15 @@ namespace Reactor.Process
         /// </summary>
         /// <param name="callback"></param>
         public void OnReadable (Reactor.Action callback) {
-            this.onreadable.On(callback);
-            this.mode = Mode.NonFlowing;
-            if (this.state == State.Paused) {
-                this.state = State.Pending;
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.NonFlowing) {
+                this.readmode = ReadMode.NonFlowing;
+                this.onreadable.On(callback);
+                if (this.readstate == ReadState.Pending) {
+                    this.readstate = ReadState.Reading;
+                    this._Read();
+                }
             }
-            this._Read();
         }
 
         /// <summary>
@@ -152,12 +156,15 @@ namespace Reactor.Process
         /// </summary>
         /// <param name="callback"></param>
         public void OnceReadable (Reactor.Action callback) {
-            this.onreadable.Once(callback);
-            this.mode  = Mode.NonFlowing;
-            if (this.state == State.Paused) {
-                this.state = State.Pending;
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.NonFlowing) {
+                this.readmode = ReadMode.NonFlowing;
+                this.onreadable.Once(callback);
+                if (this.readstate == ReadState.Pending) {
+                    this.readstate = ReadState.Reading;
+                    this._Read();
+                }
             }
-            this._Read();
         }
 
         /// <summary>
@@ -165,7 +172,11 @@ namespace Reactor.Process
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveReadable (Reactor.Action callback) {
-            this.onreadable.Remove(callback);
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.NonFlowing) {
+                this.readmode = ReadMode.NonFlowing;
+                this.onreadable.Remove(callback);
+            }
         }
 
         /// <summary>
@@ -176,9 +187,14 @@ namespace Reactor.Process
         /// </summary>
         /// <param name="callback"></param>
         public void OnRead (Reactor.Action<Reactor.Buffer> callback) {
-            this.onread.On(callback);
-            if (this.state == State.Pending) {
-                this.Resume();
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.Flowing) {
+                this.readmode = ReadMode.Flowing;
+                this.onread.On(callback);
+                if (this.readstate == ReadState.Pending) {
+                    this.readstate = ReadState.Reading;
+                    this._Read();
+                }
             }
         }
 
@@ -190,9 +206,14 @@ namespace Reactor.Process
         /// </summary>
         /// <param name="callback"></param>
         public void OnceRead (Reactor.Action<Reactor.Buffer> callback) {
-            this.onread.Once(callback);
-            if (this.state == State.Pending) {
-                this.Resume();
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.Flowing) {
+                this.readmode = ReadMode.Flowing;
+                this.onread.Once(callback);
+                if (this.readstate == ReadState.Pending) {
+                    this.readstate = ReadState.Reading;
+                    this._Read();
+                }
             }
         }
 
@@ -201,7 +222,11 @@ namespace Reactor.Process
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveRead (Reactor.Action<Reactor.Buffer> callback) {
-            this.onread.Remove(callback);
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.Flowing) {
+                this.readmode = ReadMode.Flowing;
+                this.onread.Remove(callback);
+            }
         }
 
         /// <summary>
@@ -251,15 +276,17 @@ namespace Reactor.Process
         /// <param name="count">The number of bytes to read.</param>
         /// <returns></returns>
         public Reactor.Buffer Read (int count) {
-            var result = Reactor.Buffer.Create(this.buffer.Read(count));
-            if (result.Length > 0) {
-                this.onread.Emit(result);
-            }
-            if (this.buffer.Length == 0) {
-                this.mode = Mode.NonFlowing;
-                this._Read();
-            }
-            return result;
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.NonFlowing) {
+                this.readmode = ReadMode.NonFlowing;
+                var data = this.buffer.Read(count);
+                if (this.buffer.Length == 0) {
+                    if (this.readstate == ReadState.Pending) {
+                        this.readstate = ReadState.Reading;
+                        this._Read();
+                    }
+                } return Reactor.Buffer.Create(data);
+            } return null;
         }
 
         /// <summary>
@@ -277,7 +304,9 @@ namespace Reactor.Process
         /// </summary>
         /// <param name="buffer">The buffer to unshift.</param>
         public void Unshift (Reactor.Buffer buffer) {
+            buffer.Locked = true;
             this.buffer.Unshift(buffer);
+            buffer.Dispose();
         }
 
         /// <summary>
@@ -287,8 +316,11 @@ namespace Reactor.Process
         /// available will remain in the internal buffer.
         /// </summary>
         public void Pause() {
-            this.mode  = Mode.NonFlowing;
-            this.state = State.Paused;
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.Flowing) {
+                this.readmode  = ReadMode.Flowing;
+                this.readstate = ReadState.Paused;
+            }
         }
 
         /// <summary>
@@ -298,9 +330,15 @@ namespace Reactor.Process
         /// you can call readable.resume() to open the flow of data.
         /// </summary>
         public void Resume() {
-            this.mode = Mode.Flowing;
-            this.state = State.Pending;
-            this._Read();
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.Flowing) {
+                this.readmode = ReadMode.Flowing;
+                if(this.readstate  == ReadState.Paused ||
+                    this.readstate == ReadState.Pending) {
+                    this.readstate = ReadState.Reading;
+                    this._Read();
+                }
+            }
         }
 
         /// <summary>
@@ -309,13 +347,12 @@ namespace Reactor.Process
         /// <param name="writable"></param>
         /// <returns></returns>
         public Reactor.IReadable Pipe (Reactor.IWritable writable) {
-            this.OnRead(data => {
+            this.OnRead(buffer => {
                 this.Pause();
-                writable.Write(data)
+                writable.Write(buffer)
                         .Then(this.Resume)
                         .Error(this._Error);
-            });
-            this.OnEnd (() => writable.End());
+            }); this.OnEnd (() => writable.End());
             return this;
         }
 
@@ -537,41 +574,27 @@ namespace Reactor.Process
         /// in a resume state.
         /// </summary>
         private void _Read () {
-            if (this.state == State.Pending) {
-                this.state = State.Reading;
-                if (this.buffer.Length > 0) {
-                    var clone = this.buffer.Clone();
-                    this.buffer.Clear();
-                    this._Data(clone);
+            reader.Read().Then(buffer => {
+                if (buffer == null) {
+                    this._End();
+                    return;
                 }
-                else {
-                    this.reader.Read();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Handles incoming data from the stream.
-        /// </summary>
-        /// <param name="buffer"></param>
-        private void _Data (Reactor.Buffer buffer) {
-            if (this.state == State.Reading) {
-                this.state = State.Pending;
-                
                 this.buffer.Write(buffer);
                 buffer.Dispose();
-                switch (this.mode) {
-                    case Mode.Flowing:
+                switch (this.readmode) {
+                    case ReadMode.Flowing:
                         var clone = this.buffer.Clone();
                         this.buffer.Clear();
                         this.onread.Emit(clone);
-                        this._Read();
+                        if (this.readstate == ReadState.Reading)
+                            this._Read();
                         break;
-                    case Mode.NonFlowing:
+                    case ReadMode.NonFlowing:
+                        this.readstate = ReadState.Pending;
                         this.onreadable.Emit();
                         break;
-                } 
-            }
+                }
+            }).Error(this._Error);
         }
 
         /// <summary>
@@ -579,7 +602,7 @@ namespace Reactor.Process
         /// </summary>
         /// <param name="error"></param>
         private void _Error (Exception error) {
-            if (this.state != State.Ended) {
+            if (this.readstate != ReadState.Ended) {
                 this.onerror.Emit(error);
                 this._End();
             }
@@ -589,8 +612,8 @@ namespace Reactor.Process
         /// Terminates the stream.
         /// </summary>
         private void _End () {
-            if (this.state != State.Ended) {
-                this.state = State.Ended;
+            if (this.readstate != ReadState.Ended) {
+                this.readstate = ReadState.Ended;
                 this.reader.Dispose();
                 this.buffer.Dispose();
                 this.onend.Emit();

@@ -39,26 +39,16 @@ namespace Reactor.Examples {
                                         tunnel.Write(frame);
                                    }
                                 });
-                                socket.OnError(error => {
-                                    var frame = Reactor.Buffer.Create();
-                                    frame.Write(new byte[] { 42 });
-                                    frame.Write(guid.ToByteArray());
-                                    frame.Write(new byte[] { 0 });
-                                    frame.Write(0);
-
-                                    tunnel.Write(frame);
-                                    sockets.Remove(guid);
-                                });
                                 socket.OnEnd(() => {
                                     var frame = Reactor.Buffer.Create();
                                     frame.Write(new byte[] { 42 });
                                     frame.Write(guid.ToByteArray());
                                     frame.Write(new byte[] { 0 });
                                     frame.Write(0);
-
                                     tunnel.Write(frame);
                                     sockets.Remove(guid);
                                 });
+                                socket.OnError(error => Console.WriteLine(error));
                             }
                             switch (flag) {
                                 case 0:
@@ -71,9 +61,9 @@ namespace Reactor.Examples {
                             }
                         } else break;
                     }
-
+                    tunnel_buffer.Dispose();
                 });
-            }).Listen(port);
+            }).Listen(port).OnError(error => Console.WriteLine(error));
         }
 
         static void Local (int port, System.Net.IPEndPoint endpoint) {
@@ -95,15 +85,6 @@ namespace Reactor.Examples {
                             tunnel.Write(frame);
                         }
                     });
-                    socket.OnError(error => {
-                        var frame = Reactor.Buffer.Create();
-                        frame.Write(new byte[] { 42 });
-                        frame.Write(connectionid.ToByteArray());
-                        frame.Write(new byte[] { 0 });
-                        frame.Write((int)0);
-                        tunnel.Write(frame);
-                        sockets.Remove(connectionid);
-                    });
                     socket.OnEnd(() => {
                         var frame = Reactor.Buffer.Create();
                         frame.Write(new byte[] { 42 });
@@ -113,8 +94,8 @@ namespace Reactor.Examples {
                         tunnel.Write(frame);
                         sockets.Remove(connectionid);
                     });
-                }).Listen(port);
-
+                    socket.OnError(error => Console.WriteLine(error));
+                }).Listen(port).OnError(error => Console.WriteLine(error));
                 tunnel.OnRead(tunnel_buffer => {
                     while (tunnel_buffer.Length > 0) {
                         var chks = tunnel_buffer.ReadByte();
@@ -137,10 +118,10 @@ namespace Reactor.Examples {
                             }
                         } else break;
                     }
+                    tunnel_buffer.Dispose();
                 });
             });
         }
-
         public static void Run()
         {
             Reactor.Domain.Create(() => {

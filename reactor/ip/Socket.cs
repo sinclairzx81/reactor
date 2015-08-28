@@ -175,6 +175,7 @@ namespace Reactor.IP {
         /// </summary>
         /// <param name="message"></param>
         public Reactor.Async.Future<int> Send (Reactor.IP.Message message) {
+            message.Buffer.Locked = true;
             return new Reactor.Async.Future<int>((resolve, reject) => {
                 this.SendTo(message)
                     .Then(resolve)

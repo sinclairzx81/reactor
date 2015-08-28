@@ -27,7 +27,6 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -45,7 +44,7 @@ namespace Reactor.Tls {
         /// <summary>
         /// Readable state.
         /// </summary>
-        internal enum State {
+        internal enum ReadState {
             /// <summary>
             /// The initial state of this stream. A stream
             /// in a pending state signals that the stream
@@ -78,13 +77,17 @@ namespace Reactor.Tls {
         /// <summary>
         /// Readable mode.
         /// </summary>
-        internal enum Mode {
+        internal enum ReadMode {
             /// <summary>
-            /// This stream is using flowing semantics.
+            /// Unknown read mode.
+            /// </summary>
+            Unknown,
+            /// <summary>
+            /// This stream is flowing.
             /// </summary>
             Flowing,
             /// <summary>
-            /// This stream is using non-flowing semantics.
+            /// This stream is non-flowing.
             /// </summary>
             NonFlowing
         }
@@ -100,12 +103,12 @@ namespace Reactor.Tls {
         private Reactor.Async.Event<Reactor.Buffer>   onread;
         private Reactor.Async.Event<Exception>        onerror;
         private Reactor.Async.Event                   onend;
-        private Reactor.Streams.Reader                reader;
+        private Reactor.Streams.Reader2               reader;
         private Reactor.Streams.Writer                writer;
         private Reactor.Buffer                        buffer;
         private Reactor.Interval                      poll;
-        private State                                 state;
-        private Mode                                  mode;
+        private ReadState                             readstate;
+        private ReadMode                              readmode;
         private bool                                  corked;
         
         #region Constructors
@@ -122,17 +125,14 @@ namespace Reactor.Tls {
             this.onread     = Reactor.Async.Event.Create<Reactor.Buffer>();
             this.onerror    = Reactor.Async.Event.Create<Exception>();
             this.onend      = Reactor.Async.Event.Create();
-            this.state      = State.Pending;
-            this.mode       = Mode.NonFlowing;
+            this.readstate      = ReadState.Pending;
+            this.readmode       = ReadMode.NonFlowing;
             this.corked     = false;
             this.socket     = socket;
-            this.reader     = Reactor.Streams.Reader.Create(stream);
+            this.reader     = Reactor.Streams.Reader2.Create(stream);
             this.writer     = Reactor.Streams.Writer.Create(stream);
             this.poll       = Reactor.Interval.Create(this.Poll, 1000);
             this.buffer     = Reactor.Buffer.Create();
-            this.reader.OnRead  (this._Data);
-            this.reader.OnError (this._Error);
-            this.reader.OnEnd   (this._End);
             this.writer.OnDrain (this._Drain);
             this.writer.OnError (this._Error);
             this.writer.OnEnd   (this._End);
@@ -154,21 +154,18 @@ namespace Reactor.Tls {
             this.onread     = Reactor.Async.Event.Create<Reactor.Buffer>();
             this.onerror    = Reactor.Async.Event.Create<Exception>();
             this.onend      = Reactor.Async.Event.Create();
-            this.state      = State.Pending;
-            this.mode       = Mode.NonFlowing;
+            this.readstate  = ReadState.Pending;
+            this.readmode   = ReadMode.NonFlowing;
             this.corked     = false;
             this.queue.Pause();
             this.Connect(local, remote).Then(socket => {
                 this.socket = socket;
                 var networkstream  = new NetworkStream(socket);
                 this.Authenticate(networkstream).Then(stream => {
-                    this.reader = Reactor.Streams.Reader.Create(stream);
+                    this.reader = Reactor.Streams.Reader2.Create(stream);
                     this.writer = Reactor.Streams.Writer.Create(stream);
                     this.poll   = Reactor.Interval.Create(this.Poll, 1000);
                     this.buffer = Reactor.Buffer.Create();
-                    this.reader.OnRead  (this._Data);
-                    this.reader.OnError (this._Error);
-                    this.reader.OnEnd   (this._End);
                     this.writer.OnDrain (this._Drain);
                     this.writer.OnError (this._Error);
                     this.writer.OnEnd   (this._End);
@@ -193,8 +190,8 @@ namespace Reactor.Tls {
             this.onread     = Reactor.Async.Event.Create<Reactor.Buffer>();
             this.onerror    = Reactor.Async.Event.Create<Exception>();
             this.onend      = Reactor.Async.Event.Create();
-            this.state      = State.Pending;
-            this.mode       = Mode.NonFlowing;
+            this.readstate  = ReadState.Pending;
+            this.readmode   = ReadMode.NonFlowing;
             this.corked     = false;
             this.queue.Pause();
             this.ResolveHost(hostname).Then(ipaddress => {
@@ -204,13 +201,10 @@ namespace Reactor.Tls {
                     this.socket = socket;
                     var networkstream  = new NetworkStream(socket);
                     this.Authenticate(networkstream).Then(stream => {
-                        this.reader = Reactor.Streams.Reader.Create(stream);
+                        this.reader = Reactor.Streams.Reader2.Create(stream);
                         this.writer = Reactor.Streams.Writer.Create(stream);
                         this.poll   = Reactor.Interval.Create(this.Poll, 1000);
                         this.buffer = Reactor.Buffer.Create();
-                        this.reader.OnRead  (this._Data);
-                        this.reader.OnError (this._Error);
-                        this.reader.OnEnd   (this._End);
                         this.writer.OnDrain (this._Drain);
                         this.writer.OnError (this._Error);
                         this.writer.OnEnd   (this._End);
@@ -248,7 +242,7 @@ namespace Reactor.Tls {
         /// more data.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnDrain(Reactor.Action callback) {
+        public void OnDrain (Reactor.Action callback) {
             this.ondrain.On(callback);
         }
 
@@ -258,7 +252,7 @@ namespace Reactor.Tls {
         /// more data.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnceDrain(Reactor.Action callback) {
+        public void OnceDrain (Reactor.Action callback) {
             this.ondrain.Once(callback);
         }
 
@@ -266,7 +260,7 @@ namespace Reactor.Tls {
         /// Unsubscribes from the OnDrain event.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveDrain(Reactor.Action callback) {
+        public void RemoveDrain (Reactor.Action callback) {
             this.ondrain.Remove(callback);
         }
 
@@ -280,14 +274,16 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="callback"></param>
         public void OnReadable (Reactor.Action callback) {
-            this.onreadable.On(callback);
             this.queue.Run(next => {
-                this.mode = Mode.NonFlowing;
-                if (this.state == State.Paused) {
-                    this.state = State.Pending;
-                }
-                this._Read();
-                next();
+                if(this.readmode == ReadMode.Unknown ||
+                   this.readmode == ReadMode.NonFlowing) {
+                    this.readmode = ReadMode.NonFlowing;
+                    this.onreadable.On(callback);
+                    if (this.readstate == ReadState.Pending) {
+                        this.readstate = ReadState.Reading;
+                        this._Read();
+                    }
+                } next();
             });
         }
 
@@ -301,14 +297,16 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="callback"></param>
         public void OnceReadable(Reactor.Action callback) {
-            this.onreadable.Once(callback);
             this.queue.Run(next => {
-                this.mode = Mode.NonFlowing;
-                if (this.state == State.Paused) {
-                    this.state = State.Pending;
-                }
-                this._Read();
-                next();
+                if(this.readmode == ReadMode.Unknown ||
+                   this.readmode == ReadMode.NonFlowing) {
+                    this.readmode = ReadMode.NonFlowing;
+                    this.onreadable.Once(callback);
+                    if (this.readstate == ReadState.Pending) {
+                        this.readstate = ReadState.Reading;
+                        this._Read();
+                    }
+                } next();
             });
         }
 
@@ -317,7 +315,13 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveReadable(Reactor.Action callback) {
-			this.onreadable.Remove(callback);
+            this.queue.Run(next => {
+                if(this.readmode == ReadMode.Unknown ||
+                   this.readmode == ReadMode.NonFlowing) {
+                    this.readmode = ReadMode.NonFlowing;
+                    this.onreadable.Remove(callback);
+                } next();
+            });
         }
 
         /// <summary>
@@ -328,12 +332,16 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="callback"></param>
         public void OnRead (Reactor.Action<Reactor.Buffer> callback) {
-            this.onread.On(callback);
             this.queue.Run(next => {
-                if (this.state == State.Pending) {
-                    this.Resume();
-                }
-                next();
+                if(this.readmode == ReadMode.Unknown ||
+                   this.readmode == ReadMode.Flowing) {
+                    this.readmode = ReadMode.Flowing;
+                    this.onread.On(callback);
+                    if (this.readstate == ReadState.Pending) {
+                        this.readstate = ReadState.Reading;
+                        this._Read();
+                    }
+                } next();
             });
         }
 
@@ -345,12 +353,16 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="callback"></param>
         public void OnceRead(Reactor.Action<Reactor.Buffer> callback) {
-            this.onread.Once(callback);
             this.queue.Run(next => {
-                if (this.state == State.Pending) {
-                    this.Resume();
-                }
-                next();
+                if(this.readmode == ReadMode.Unknown ||
+                   this.readmode == ReadMode.Flowing) {
+                    this.readmode = ReadMode.Flowing;
+                    this.onread.Once(callback);
+                    if (this.readstate == ReadState.Pending) {
+                        this.readstate = ReadState.Reading;
+                        this._Read();
+                    }
+                } next();
             });
         }
 
@@ -359,7 +371,13 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveRead (Reactor.Action<Reactor.Buffer> callback) {
-            this.onread.Remove(callback);
+            this.queue.Run(next => {
+                if(this.readmode == ReadMode.Unknown ||
+                   this.readmode == ReadMode.Flowing) {
+                    this.readmode = ReadMode.Flowing;
+                    this.onread.Remove(callback);
+                } next();
+            });
         }
 
         /// <summary>
@@ -367,7 +385,10 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="callback"></param>
         public void OnError (Reactor.Action<Exception> callback) {
-            this.onerror.On(callback);
+            this.queue.Run(next => {
+                this.onerror.On(callback);
+                next();
+            });
         }
 
         /// <summary>
@@ -375,7 +396,10 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveError (Reactor.Action<Exception> callback) {
-            this.onerror.Remove(callback);
+            this.queue.Run(next => {
+                this.onerror.Remove(callback);
+                next();
+            });
         }
 
         /// <summary>
@@ -383,7 +407,10 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="callback"></param>
         public void OnEnd (Reactor.Action callback) {
-            this.onend.On(callback);
+            this.queue.Run(next => {
+                this.onend.On(callback);
+                next();
+            });
         }
 
         /// <summary>
@@ -391,7 +418,10 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveEnd (Reactor.Action callback) {
-            this.onend.Remove(callback);
+            this.queue.Run(next => {
+                this.onend.Remove(callback);
+                next();
+            });
         }
 
         #endregion
@@ -409,15 +439,17 @@ namespace Reactor.Tls {
         /// <param name="count">The number of bytes to read.</param>
         /// <returns></returns>
         public Reactor.Buffer Read (int count) {
-            var buffer = Reactor.Buffer.Create(this.buffer.Read(count));
-            if (buffer.Length > 0) {
-                this.onread.Emit(buffer);
-            }
-            if (this.buffer.Length == 0) {
-                this.mode = Mode.NonFlowing;
-                this._Read();
-            }
-            return buffer;
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.NonFlowing) {
+                this.readmode = ReadMode.NonFlowing;
+                var data = this.buffer.Read(count);
+                if (this.buffer.Length == 0) {
+                    if (this.readstate == ReadState.Pending) {
+                        this.readstate = ReadState.Reading;
+                        this._Read();
+                    }
+                } return Reactor.Buffer.Create(data);
+            } return null;
         }
 
         /// <summary>
@@ -435,6 +467,7 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="buffer">The buffer to unshift.</param>
         public void Unshift (Reactor.Buffer buffer) {
+            buffer.Locked = true;
             this.buffer.Unshift(buffer);
             buffer.Dispose();
         }
@@ -445,6 +478,7 @@ namespace Reactor.Tls {
         /// <param name="buffer">The buffer to write.</param>
         /// <param name="callback">A callback to signal when this buffer has been written.</param>
         public Reactor.Async.Future Write (Reactor.Buffer buffer) {
+            buffer.Locked = true;
             return new Reactor.Async.Future((resolve, reject) => {
                 this.queue.Run(next => {
                     this.writer.Write(buffer)
@@ -488,18 +522,24 @@ namespace Reactor.Tls {
         /// flushed either at .Uncork() or at .End() call.
         /// </summary>
         public void Cork() {
-            this.corked = true;
-            if(this.writer != null)
-                this.writer.Cork();
+            this.queue.Run(next => {
+                this.corked = true;
+                if(this.writer != null)
+                    this.writer.Cork();
+                next();
+            });
         }
 
         /// <summary>
         /// Flush all data, buffered since .Cork() call.
         /// </summary>
         public void Uncork() {
-            this.corked = false;
-            if(this.writer != null)
-                this.writer.Uncork();
+            this.queue.Run(next => {
+                this.corked = false;
+                if(this.writer != null)
+                    this.writer.Uncork();
+                next();
+            });
         }
 
         /// <summary>
@@ -509,8 +549,11 @@ namespace Reactor.Tls {
         /// available will remain in the internal buffer.
         /// </summary>
         public void Pause() {
-            this.mode  = Mode.NonFlowing;
-            this.state = State.Paused;
+            if(this.readmode == ReadMode.Unknown ||
+                this.readmode == ReadMode.Flowing) {
+                this.readmode  = ReadMode.Flowing;
+                this.readstate = ReadState.Paused;
+            }           
         }
 
         /// <summary>
@@ -520,11 +563,16 @@ namespace Reactor.Tls {
         /// you can call readable.resume() to open the flow of data.
         /// </summary>
         public void Resume() {
-            this.mode  = Mode.Flowing;
-            this.state = State.Pending;
             this.queue.Run(next => {
-                this._Read();
-                next();
+                if(this.readmode == ReadMode.Unknown ||
+                   this.readmode == ReadMode.Flowing) {
+                    this.readmode = ReadMode.Flowing;
+                    if(this.readstate  == ReadState.Paused ||
+                        this.readstate == ReadState.Pending) {
+                        this.readstate = ReadState.Reading;
+                        this._Read();
+                    }
+                } next();
             });
         }
 
@@ -539,8 +587,7 @@ namespace Reactor.Tls {
                 writable.Write(buffer)
                         .Then(this.Resume)
                         .Error(this._Error);
-            });
-            this.OnEnd (() => writable.End());
+            }); this.OnEnd (() => writable.End());
             return this;
         }
 
@@ -1251,41 +1298,27 @@ namespace Reactor.Tls {
         /// Begins reading from the underlying stream.
         /// </summary>
         private void _Read  () {
-            if (this.state == State.Pending) {
-                this.state = State.Reading;
-                if (this.buffer.Length > 0) {
-                    var clone = this.buffer.Clone();
-                    this.buffer.Clear();
-                    this._Data(clone);
+            reader.Read().Then(buffer => {
+                if (buffer == null) {
+                    this._End();
+                    return;
                 }
-                else {
-                    this.reader.Read();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Handles incoming data from the stream.
-        /// </summary>
-        /// <param name="buffer"></param>
-        private void _Data  (Reactor.Buffer buffer) {
-            if (this.state == State.Reading) {
-                this.state = State.Pending;
                 this.buffer.Write(buffer);
                 buffer.Dispose();
-
-                switch (this.mode) {
-                    case Mode.Flowing:
+                switch (this.readmode) {
+                    case ReadMode.Flowing:
                         var clone = this.buffer.Clone();
                         this.buffer.Clear();
                         this.onread.Emit(clone);
-                        this._Read();
+                        if (this.readstate == ReadState.Reading)
+                            this._Read();
                         break;
-                    case Mode.NonFlowing:
+                    case ReadMode.NonFlowing:
+                        this.readstate = ReadState.Pending;
                         this.onreadable.Emit();
                         break;
-                } 
-            }
+                }
+            }).Error(this._Error);
         }
 
         /// <summary>
@@ -1293,7 +1326,7 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="error"></param>
         private void _Error (Exception error) {
-            if (this.state != State.Ended) { 
+            if (this.readstate != ReadState.Ended) { 
                 this.onerror.Emit(error);
                 this._End();
             }
@@ -1303,8 +1336,8 @@ namespace Reactor.Tls {
         /// Terminates the stream.
         /// </summary>
         private void _End   () {
-            if (this.state != State.Ended) {
-                this.state = State.Ended;
+            if (this.readstate != ReadState.Ended) {
+                this.readstate = ReadState.Ended;
                 try { this.socket.Shutdown(SocketShutdown.Send); } catch {}
                 this.Disconnect().Finally(() => {
                     if (this.poll   != null) this.poll.Clear();
@@ -1328,10 +1361,12 @@ namespace Reactor.Tls {
             this._End();
         }
 
+        /// <summary>
+        /// Stream finalizer.
+        /// </summary>
         ~Socket() {
             Loop.Post(() => { this._End(); });
         }
-
 
         #endregion
 

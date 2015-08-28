@@ -34,13 +34,10 @@ namespace Reactor.Streams {
     /// <summary>
     /// Provides a asynchronous read interface over System.IO.Stream.
     /// </summary>
-    internal class Reader : IDisposable {
+    public class Reader2 : IDisposable {
         private System.IO.Stream                      stream;
-        private Reactor.Async.Event<Reactor.Buffer>   onread;
-        private Reactor.Async.Event<Exception>        onerror;
-        private Reactor.Async.Event                   onend;
         private Reactor.Async.Queue                   queue;
-        private byte[]                                read_buffer;
+        private byte[]                                buffer;
 
         #region Constructors
 
@@ -49,65 +46,10 @@ namespace Reactor.Streams {
         /// </summary>
         /// <param name="stream">The stream to read from.</param>
         /// <param name="buffersize">The read buffer size in bytes.</param>
-        public Reader (System.IO.Stream stream, int buffersize) {
-            this.stream       = stream;
-            this.queue        = Reactor.Async.Queue.Create(1);
-            this.onread       = Reactor.Async.Event.Create<Reactor.Buffer>();
-            this.onerror      = Reactor.Async.Event.Create<Exception>();
-            this.onend        = Reactor.Async.Event.Create();
-            this.read_buffer  = new byte[buffersize];
-        }
-
-        #endregion
-
-        #region Events
-
-        /// <summary>
-        /// Subscribes this action to OnRead events.
-        /// </summary>
-        /// <param name="callback"></param>
-        public void OnRead(Reactor.Action<Reactor.Buffer> callback) {
-            this.onread.On(callback);
-        }
-
-        /// <summary>
-        /// Unsubscribes this action from OnRead events.
-        /// </summary>
-        /// <param name="callback"></param>
-        public void RemoveRead(Reactor.Action<Reactor.Buffer> callback) {
-            this.onread.Remove(callback);
-        }
-
-        /// <summary>
-        /// Subscribes this action to OnError events.
-        /// </summary>
-        /// <param name="callback"></param>
-        public void OnError(Reactor.Action<Exception> callback) {
-            this.onerror.On(callback);
-        }
-
-        /// <summary>
-        /// Unsubscribes this action from OnError events.
-        /// </summary>
-        /// <param name="callback"></param>
-        public void RemoveError(Reactor.Action<Exception> callback) {
-            this.onerror.Remove(callback);
-        }
-
-        /// <summary>
-        /// Subscribes this action to OnEnd events.
-        /// </summary>
-        /// <param name="callback"></param>
-        public void OnEnd(Reactor.Action callback) {
-            this.onend.On(callback);
-        }
-
-        /// <summary>
-        /// Unsubscribes this action from OnEnd events.
-        /// </summary>
-        /// <param name="callback"></param>
-        public void RemoveEnd(Reactor.Action callback) {
-            this.onend.Remove(callback);
+        public Reader2 (System.IO.Stream stream, int buffersize) {
+            this.stream  = stream;
+            this.queue   = Reactor.Async.Queue.Create(1);
+            this.buffer  = new byte[buffersize];
         }
 
         #endregion
@@ -115,40 +57,49 @@ namespace Reactor.Streams {
         #region Methods
 
         /// <summary>
-        /// Reads from this stream. Data will be submitted to OnRead handlers.
+        /// Reads up to this many bytes from this stream. A null buffer signals end of stream.
         /// </summary>
-        public void Read() {
-            this.queue.Run(next => {
-                try {
-                    this.stream.BeginRead(this.read_buffer, 0, this.read_buffer.Length, result => {
-                        Loop.Post(() => {
-                            try {
-                                int read = this.stream.EndRead(result);
-                                if (read == 0) {
-                                    this.onend.Emit();
+        public Reactor.Async.Future<Reactor.Buffer> Read(int count) {
+            count = (count > this.buffer.Length) 
+                ? this.buffer.Length : count;
+            return new Reactor.Async.Future<Reactor.Buffer>((resolve, reject) => {
+                this.queue.Run(next => {
+                    try {
+                        this.stream.BeginRead(this.buffer, 0, count, result => {
+                            Loop.Post(() => {
+                                try {
+                                    int read = this.stream.EndRead(result);
+                                    if (read == 0) {
+                                        resolve(null);
+                                        this.Dispose();
+                                        next();
+                                        return;
+                                    }
+                                    resolve(Reactor.Buffer.Create(this.buffer, 0, read));
+                                    next();
+                                }
+                                catch (Exception error) {
+                                    reject(error);
                                     this.Dispose();
                                     next();
-                                    return;
                                 }
-                                this.onread.Emit(Reactor.Buffer.Create(this.read_buffer, 0, read));
-                                next();
-                            }
-                            catch (Exception error) {
-                                this.onerror.Emit(error);
-                                this.onend.Emit();
-                                this.Dispose();
-                                next();
-                            }
-                        });
-                    }, null);
-                }
-                catch(Exception error) {
-                    this.onerror.Emit(error);
-                    this.onend.Emit();
-                    this.Dispose();
-                    next();
-                }
+                            });
+                        }, null);
+                    }
+                    catch(Exception error) {
+                        reject(error);
+                        this.Dispose();
+                        next();
+                    }
+                });
             });
+        }
+
+        /// <summary>
+        /// Reads from this stream. A null buffer signals end of stream.
+        /// </summary>
+        public Reactor.Async.Future<Reactor.Buffer> Read() {
+            return this.Read(this.buffer.Length);
         }
 
         #endregion
@@ -161,7 +112,7 @@ namespace Reactor.Streams {
         public void Dispose() {
             this.queue.Dispose();
             this.stream.Dispose();
-            this.read_buffer = null;
+            this.buffer = null;
         }
 
         #endregion
@@ -174,17 +125,19 @@ namespace Reactor.Streams {
         /// <param name="stream">The stream to read from.</param>
         /// <param name="buffersize">The read buffer size in bytes.</param>
         /// <returns></returns>
-        public static Reader Create(System.IO.Stream stream, int buffersize) {
-            return new Reader(stream, buffersize);
+        public static Reader2 Create(System.IO.Stream stream, int buffersize) {
+            return new Reader2(stream, buffersize);
         }
+
 
         /// <summary>
         /// Creates a new Reader.
         /// </summary>
         /// <param name="stream">The stream to read from.</param>
+        /// <param name="buffersize">The read buffer size in bytes.</param>
         /// <returns></returns>
-        public static Reader Create(System.IO.Stream stream) {
-            return new Reader(stream, Reactor.Settings.DefaultBufferSize);
+        public static Reader2 Create(System.IO.Stream stream) {
+            return new Reader2(stream, Reactor.Settings.DefaultBufferSize);
         }
 
         #endregion

@@ -206,9 +206,14 @@ namespace Reactor.Tcp {
         /// </summary>
         private void _Read() {
             this.Accept().Then(socket => {
-                this.onread.Emit(new Reactor.Tcp.Socket(socket));
-                if (this.listening) this._Read();
-                else this._End();
+                try {
+                    this.onread.Emit(new Reactor.Tcp.Socket(socket));
+                    if (this.listening) this._Read();
+                    else this._End();
+                }
+                catch (Exception error) {
+                    this._Error(error);
+                }
             }).Error(this._Error);
         }
 

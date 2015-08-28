@@ -53,6 +53,7 @@
     <Compile Include="delegates\DynamicAction.cs" />
     <Compile Include="dns\Dns.cs" />
     <Compile Include="enumerable\Enumerable.cs" />
+    <Compile Include="file\Reader.cs" />
     <Compile Include="http\Context.cs" />
     <Compile Include="http\Cookies.cs" />
     <Compile Include="http\Headers.cs" />
@@ -78,7 +79,6 @@
     <Compile Include="udp\Message.cs" />
     <Compile Include="udp\Socket.cs" />
     <Compile Include="domains\Domain.cs" />
-    <Compile Include="file\Reader.cs" />
     <Compile Include="file\Writer.cs" />
     <Compile Include="interfaces\IDuplexable.cs" />
     <Compile Include="interfaces\IReadable.cs" />

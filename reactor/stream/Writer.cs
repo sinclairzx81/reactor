@@ -33,7 +33,7 @@ namespace Reactor.Streams {
     /// <summary>
     /// Provides a asynchronous write interface over System.IO.Stream.
     /// </summary>
-    internal class Writer : IDisposable {
+    public class Writer : IDisposable {
 
         #region State
 
@@ -147,6 +147,7 @@ namespace Reactor.Streams {
         /// <param name="buffer">The buffer to write.</param>
         /// <param name="callback">A action called once the write has completed.</param>
         public Reactor.Async.Future Write (Reactor.Buffer buffer) {
+            buffer.Locked = true;
             return new Reactor.Async.Future((resolve, reject) => {
                 Loop.Post(() => {
                     this.queue.Run(next => {
