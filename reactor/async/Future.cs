@@ -577,7 +577,7 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="value">The resolved value.</param>
         /// <returns></returns>
-        public static Reactor.Async.Future<T> Resolve<T>(T value) {
+        public static Reactor.Async.Future<T> Resolved<T>(T value) {
             return new Reactor.Async.Future<T>((resolve, reject) => resolve(value));
         }
 

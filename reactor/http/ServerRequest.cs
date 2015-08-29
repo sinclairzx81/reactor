@@ -27,172 +27,93 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
+using System.Collections.Specialized;
+using System.IO;
 using System.Net;
 using System.Text;
 
 namespace Reactor.Http {
 
-    /// <summary>
-    /// Reactor HTTP Server Request.
-    /// </summary>
-    public class ServerRequest : Reactor.IReadable {
-        private Reactor.IReadable        readable;
-        private Reactor.Http.Headers     headers;
-        private Reactor.Http.QueryString query;
-        private System.Version           version;
-        private System.String            method;
-        private System.String            raw_url;
-        private System.Uri               url;
-        private System.Int64             contentLength;
-        private System.String            transferEncoding;
-        private System.Text.Encoding     contentEncoding;
-        private System.Net.EndPoint      localEndPoint;
-        private System.Net.EndPoint      remoteEndPoint;
+    public class ServerRequest : IReadable {
 
-        #region Constructors
+        #region States
 
-        internal ServerRequest(Reactor.IReadable          readable,
-                               Reactor.Http.Headers       headers, 
-                               Reactor.Http.QueryString   query,
-                               System.Version             version,
-                               System.String              method,
-                               System.String              raw_url,
-                               System.Uri                 url,
-                               System.Int64               contentLength,
-                               System.String              transferEncoding,
-                               System.Text.Encoding       contentEncoding,
-                               System.Net.EndPoint        localEndPoint,
-                               System.Net.EndPoint        remoteEndPoint) {
-            this.readable = (transferEncoding == "chunked") ? 
-                (Reactor.IReadable)new Reactor.Http.Protocol.ChunkedBodyReader(readable) :
-                (Reactor.IReadable)new Reactor.Http.Protocol.BodyReader(readable, contentLength);
-            this.headers          = headers;
-            this.query            = query;
-            this.version          = version;
-            this.method           = method;
-            this.raw_url          = raw_url;
-            this.url              = url;
-            this.contentLength    = contentLength;
-            this.transferEncoding = transferEncoding;
-            this.contentEncoding  = contentEncoding;
-            this.localEndPoint    = localEndPoint;
-            this.remoteEndPoint   = remoteEndPoint;
+        /// <summary>
+        /// Readable state.
+        /// </summary>
+        internal enum ReadState {
+            /// <summary>
+            /// The initial state of this stream. A stream
+            /// in a pending state signals that the stream
+            /// is waiting on the caller to issue a read request
+            /// the the underlying resource, by attaching a
+            /// OnRead, OnReadable, or calling Read().
+            /// </summary>
+            Pending,
+            /// <summary>
+            /// A stream in a reading state signals that the
+            /// stream is currently requesting data from the
+            /// underlying resource and is waiting on a 
+            /// response.
+            /// </summary>
+            Reading,
+            /// <summary>
+            /// A stream in a paused state will bypass attempts
+            /// to read on the underlying resource. A paused
+            /// stream must be resumed by the caller.
+            /// </summary>
+            Paused,
+            /// <summary>
+            /// Indicates this stream has ended. Streams can end
+            /// by way of reaching the end of the stream, or through
+            /// error.
+            /// </summary>
+            Ended
+        }
+
+        /// <summary>
+        /// Readable mode.
+        /// </summary>
+        internal enum ReadMode {
+            /// <summary>
+            /// Unknown read mode.
+            /// </summary>
+            Unknown,
+            /// <summary>
+            /// This stream is flowing.
+            /// </summary>
+            Flowing,
+            /// <summary>
+            /// This stream is non-flowing.
+            /// </summary>
+            NonFlowing
         }
 
         #endregion
 
-        #region Properties
+        private Reactor.Net.HttpListenerRequest       request;
+        private Reactor.Async.Event                   onreadable;
+        private Reactor.Async.Event<Reactor.Buffer>   onread;
+        private Reactor.Async.Event<Exception>        onerror;
+        private Reactor.Async.Event                   onend;
+        private Reactor.Streams.Reader                reader;
+        private Reactor.Buffer                        buffer;
+        private ReadState                             readstate;
+        private ReadMode                              readmode;
 
-        /// <summary>
-        /// HTTP Headers.
-        /// </summary>
-        public Headers Headers {
-            get {  return this.headers; }
+        internal ServerRequest(Reactor.Net.HttpListenerRequest request) {
+            this.request    = request;
+            this.onreadable = Reactor.Async.Event.Create();
+            this.onread     = Reactor.Async.Event.Create<Reactor.Buffer>();
+            this.onerror    = Reactor.Async.Event.Create<Exception>();
+            this.onend      = Reactor.Async.Event.Create();
+            this.buffer     = Reactor.Buffer.Create();
+            this.readstate  = ReadState.Pending;
+            this.readmode   = ReadMode.Unknown;
+            this.reader     = Reactor.Streams.Reader.Create(request.InputStream, Reactor.Settings.DefaultBufferSize);          
         }
 
-        /// <summary>
-        /// QueryString parameters.
-        /// </summary>
-        public QueryString Query {
-            get { return this.query; }
-        }
 
-        /// <summary>
-        /// The HTTP Protocol version.
-        /// </summary>
-        public Version Version {
-            get {  return this.version; }
-        }
-
-        /// <summary>
-        /// The HTTP Verb.
-        /// </summary>
-        public string Method {
-            get { return this.method; }
-        }
-
-        /// <summary>
-        /// The raw url read from the request line.
-        /// </summary>
-        public string RawUrl {
-            get {  return this.raw_url; }
-        }
-
-        /// <summary>
-        /// The parsed url.
-        /// </summary>
-        public Uri Url {
-            get { return this.url; }
-        }
-
-        /// <summary>
-        /// The Content-Length header.
-        /// </summary>
-        public long ContentLength {
-            get { return this.contentLength; }
-        }
-
-        /// <summary>
-        /// The Content-Encoding header.
-        /// </summary>
-        public Encoding ContentEncoding {
-            get {  return this.contentEncoding; }
-        }
-
-        /// <summary>
-        /// The local endpoint.
-        /// </summary>
-        public EndPoint LocalEndPoint   {
-            get {
-               return this.localEndPoint;
-            }
-        }
-
-        /// <summary>
-        /// The remote endpoint.
-        /// </summary>
-        public EndPoint RemoteEndPoint  {
-            get {
-                return this.remoteEndPoint;
-            }
-        }
-
-        /// <summary>
-        /// The Transfer-Encoding header.
-        /// </summary>
-        public string TransferEncoding {
-            get { return this.headers["transfer-encoding"] ?? string.Empty; }
-        }
-
-        /// <summary>
-        /// The HTTP referer header.
-        /// </summary>
-        public string Referer {
-            get { return this.headers["referer"] ?? string.Empty; }
-        }
-
-        /// <summary>
-        /// The Content-Type header.
-        /// </summary>
-        public string ContentType {
-            get { return this.headers["content-type"] ?? string.Empty; }
-        }
-        
-        /// <summary>
-        /// The Host header.
-        /// </summary>
-        public string UserHostName {
-            get { return this.headers["host"] ?? string.Empty; }
-        }
-
-        /// <summary>
-        /// The User-Agent header.
-        /// </summary>
-        public string UserAgent {
-            get { return headers["user-agent"] ?? string.Empty; }
-        }
-
-        #endregion
 
         #region Events
 
@@ -206,7 +127,15 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void OnReadable (Reactor.Action callback) {
-            this.readable.OnReadable(callback);
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.NonFlowing) {
+                this.readmode = ReadMode.NonFlowing;
+                this.onreadable.On(callback);
+                if (this.readstate == ReadState.Pending) {
+                    this.readstate = ReadState.Reading;
+                    this._Read();
+                }
+            }
         }
 
         /// <summary>
@@ -218,16 +147,28 @@ namespace Reactor.Http {
         /// transition into a pending state prior to reading from the resource.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnceReadable(Reactor.Action callback) {
-            this.readable.OnceReadable(callback);
+        public void OnceReadable (Reactor.Action callback) {
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.NonFlowing) {
+                this.readmode = ReadMode.NonFlowing;
+                this.onreadable.Once(callback);
+                if (this.readstate == ReadState.Pending) {
+                    this.readstate = ReadState.Reading;
+                    this._Read();
+                }
+            }
         }
 
         /// <summary>
         /// Unsubscribes this action from the 'readable' event.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveReadable(Reactor.Action callback) {
-			this.readable.RemoveReadable(callback);
+        public void RemoveReadable (Reactor.Action callback) {
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.NonFlowing) {
+                this.readmode = ReadMode.NonFlowing;
+                this.onreadable.Remove(callback);
+            }
         }
 
         /// <summary>
@@ -238,7 +179,15 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void OnRead (Reactor.Action<Reactor.Buffer> callback) {
-            this.readable.OnRead(callback);
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.Flowing) {
+                this.readmode = ReadMode.Flowing;
+                this.onread.On(callback);
+                if (this.readstate == ReadState.Pending) {
+                    this.readstate = ReadState.Reading;
+                    this._Read();
+                }
+            }
         }
 
         /// <summary>
@@ -248,8 +197,16 @@ namespace Reactor.Http {
         /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnceRead(Reactor.Action<Reactor.Buffer> callback) {
-            this.readable.OnceRead(callback);
+        public void OnceRead (Reactor.Action<Reactor.Buffer> callback) {
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.Flowing) {
+                this.readmode = ReadMode.Flowing;
+                this.onread.Once(callback);
+                if (this.readstate == ReadState.Pending) {
+                    this.readstate = ReadState.Reading;
+                    this._Read();
+                }
+            }
         }
 
         /// <summary>
@@ -257,7 +214,11 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveRead (Reactor.Action<Reactor.Buffer> callback) {
-            this.readable.RemoveRead(callback);
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.Flowing) {
+                this.readmode = ReadMode.Flowing;
+                this.onread.Remove(callback);
+            }
         }
 
         /// <summary>
@@ -265,7 +226,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void OnError (Reactor.Action<Exception> callback) {
-            this.readable.OnError(callback);
+            this.onerror.On(callback);
         }
 
         /// <summary>
@@ -273,7 +234,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveError (Reactor.Action<Exception> callback) {
-            this.readable.RemoveError(callback);
+            this.onerror.Remove(callback);
         }
 
         /// <summary>
@@ -281,7 +242,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void OnEnd (Reactor.Action callback) {
-            this.readable.OnEnd(callback);
+            this.onend.On(callback);
         }
 
         /// <summary>
@@ -289,7 +250,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveEnd (Reactor.Action callback) {
-            this.readable.RemoveEnd(callback);
+            this.onend.Remove(callback);
         }
 
         #endregion
@@ -307,7 +268,17 @@ namespace Reactor.Http {
         /// <param name="count">The number of bytes to read.</param>
         /// <returns></returns>
         public Reactor.Buffer Read (int count) {
-            return this.readable.Read(count);
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.NonFlowing) {
+                this.readmode = ReadMode.NonFlowing;
+                var data = this.buffer.Read(count);
+                if (this.buffer.Length == 0) {
+                    if (this.readstate == ReadState.Pending) {
+                        this.readstate = ReadState.Reading;
+                        this._Read();
+                    }
+                } return Reactor.Buffer.Create(data);
+            } return null;
         }
 
         /// <summary>
@@ -317,7 +288,7 @@ namespace Reactor.Http {
         /// data read with a length > 0 will also be emitted as a 'read' event.
         /// </summary>
         public Reactor.Buffer Read () {
-            return this.readable.Read();
+            return this.Read(this.buffer.Length);
         }
 
         /// <summary>
@@ -325,7 +296,9 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="buffer">The buffer to unshift.</param>
         public void Unshift (Reactor.Buffer buffer) {
-            this.readable.Unshift(buffer);
+            buffer.Locked = true;
+            this.buffer.Unshift(buffer);
+            buffer.Dispose();
         }
 
         /// <summary>
@@ -335,7 +308,11 @@ namespace Reactor.Http {
         /// available will remain in the internal buffer.
         /// </summary>
         public void Pause() {
-            this.readable.Pause();
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.Flowing) {
+                this.readmode  = ReadMode.Flowing;
+                this.readstate = ReadState.Paused;
+            }
         }
 
         /// <summary>
@@ -345,7 +322,15 @@ namespace Reactor.Http {
         /// you can call readable.resume() to open the flow of data.
         /// </summary>
         public void Resume() {
-            this.readable.Resume();
+            if(this.readmode == ReadMode.Unknown ||
+               this.readmode == ReadMode.Flowing) {
+                this.readmode = ReadMode.Flowing;
+                if(this.readstate  == ReadState.Paused ||
+                    this.readstate == ReadState.Pending) {
+                    this.readstate = ReadState.Reading;
+                    this._Read();
+                }
+            }
         }
 
         /// <summary>
@@ -354,7 +339,118 @@ namespace Reactor.Http {
         /// <param name="writable"></param>
         /// <returns></returns>
         public Reactor.IReadable Pipe (Reactor.IWritable writable) {
-            return this.readable.Pipe(writable);
+            this.OnRead(buffer => {
+                this.Pause();
+                writable.Write(buffer)
+                        .Then(this.Resume)
+                        .Error(this._Error);
+            }); this.OnEnd (() => writable.End());
+            return this;
+        }
+
+        #endregion
+
+        #region HttpListenerRequest
+
+        public string[] AcceptTypes {
+            get { return this.request.AcceptTypes; }
+        }
+
+        public int ClientCertificateError
+        {
+            get { return this.request.ClientCertificateError; }
+        }
+
+        public Encoding ContentEncoding {
+            get { return this.request.ContentEncoding; }
+        }
+
+        public long ContentLength {
+            get { return this.request.ContentLength64; }
+        }
+
+        public string ContentType {
+            get { return this.request.ContentType; }
+        }
+
+        public Reactor.Net.CookieCollection Cookies {
+            get { return this.request.Cookies; }
+        }
+
+        public bool HasEntityBody {
+            get { return this.request.HasEntityBody; }
+        }
+
+        public NameValueCollection Headers {
+            get { return this.request.Headers; }
+        }
+
+        public string Method {
+            get { return this.request.HttpMethod; }
+        }
+
+        public bool IsAuthenticated {
+            get { return this.request.IsAuthenticated; }
+        }
+
+        public bool IsLocal {
+            get { return this.request.IsLocal; }
+        }
+
+        public bool IsSecureConnection {
+            get { return this.request.IsSecureConnection; }
+        }
+
+        public bool KeepAlive {
+            get { return this.request.KeepAlive; }
+        }
+
+        public IPEndPoint LocalEndPoint {
+            get { return this.request.LocalEndPoint; }
+        }
+
+        public Version ProtocolVersion {
+            get { return this.request.ProtocolVersion; }
+        }
+
+        public NameValueCollection QueryString {
+            get { return this.request.QueryString; }
+        }
+
+        public string RawUrl {
+            get { return this.request.RawUrl; }
+        }
+
+        public IPEndPoint RemoteEndPoint {
+            get { return this.request.RemoteEndPoint; }
+        }
+
+        public Guid RequestTraceIdentifier {
+            get { return this.request.RequestTraceIdentifier; }
+        }
+
+        public Uri Url {
+            get { return this.request.Url; }
+        }
+
+        public Uri UrlReferrer {
+            get { return this.request.UrlReferrer; }
+        }
+
+        public string UserAgent {
+            get { return this.request.UserAgent; }
+        }
+
+        public string UserHostAddress {
+            get { return this.request.UserHostAddress; }
+        }
+
+        public string UserHostName {
+            get { return this.request.UserHostName; }
+        }
+
+        public string[] UserLanguages {
+            get { return this.request.UserLanguages; }
         }
 
         #endregion
@@ -564,6 +660,61 @@ namespace Reactor.Http {
         /// <param name="value"></param>
         public void Unshift (double value) {
             this.Unshift(BitConverter.GetBytes(value));
+        }
+
+        #endregion
+
+        #region Machine
+
+        /// <summary>
+        /// Reads from the internal stream if we are
+        /// in a resume state.
+        /// </summary>
+        private void _Read () {
+            reader.Read().Then(buffer => {
+                if (buffer == null) {
+                    this._End();
+                    return;
+                }
+                this.buffer.Write(buffer);
+                buffer.Dispose();
+                switch (this.readmode) {
+                    case ReadMode.Flowing:
+                        var clone = this.buffer.Clone();
+                        this.buffer.Clear();
+                        this.onread.Emit(clone);
+                        if (this.readstate == ReadState.Reading)
+                            this._Read();
+                        break;
+                    case ReadMode.NonFlowing:
+                        this.readstate = ReadState.Pending;
+                        this.onreadable.Emit();
+                        break;
+                }
+            }).Error(this._Error);
+        }
+
+        /// <summary>
+        /// Handles stream errors.
+        /// </summary>
+        /// <param name="error"></param>
+        private void _Error (Exception error) {
+            if (this.readstate != ReadState.Ended) {
+                this.onerror.Emit(error);
+                this._End();
+            }
+        }
+
+        /// <summary>
+        /// Terminates the stream.
+        /// </summary>
+        private void _End () {
+            if (this.readstate != ReadState.Ended) {
+                this.readstate = ReadState.Ended;
+                this.reader.Dispose();
+                this.buffer.Dispose();
+                this.onend.Emit();
+            }
         }
 
         #endregion

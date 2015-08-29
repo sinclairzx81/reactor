@@ -116,7 +116,7 @@ namespace Reactor.Process
             this.onend      = Reactor.Async.Event.Create();
             this.buffer     = Reactor.Buffer.Create();
             this.readstate  = ReadState.Pending;
-            this.readmode   = ReadMode.NonFlowing;
+            this.readmode   = ReadMode.Unknown;
             this.reader     = Reactor.Streams.Reader.Create(stream, Reactor.Settings.DefaultBufferSize);
         }
 

@@ -27,39 +27,53 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
+using System.Net;
 
 namespace Reactor.Http {
 
     /// <summary>
-    /// Reactor HTTP Server.
+    /// Reactor HTTP Server
     /// </summary>
     public class Server {
 
-        #region Events
+        private Reactor.Net.HttpListener                   listener;
+        private Reactor.Async.Event<Reactor.Http.Context>  onread;
+        private Reactor.Async.Event<Exception>             onerror;
+        private Reactor.Async.Event                        onend;
+        private bool                                       listening;
 
-        public class Events {
-            public Reactor.Async.Event<Reactor.Http.Context> Read  {  get; set; }
-            public Reactor.Async.Event<System.Exception>     Error {  get; set; }
-            public Reactor.Async.Event                       End   {  get; set; }
-        }
+        #region Constructor
 
-        #endregion
-
-        private Reactor.Tcp.Server                        server;
-        private Reactor.Async.Event<Reactor.Http.Context> onread;
-        private Reactor.Async.Event<System.Exception>     onerror;
-        private Reactor.Async.Event                       onend;
-
-        #region Constructors
-
-        /// <summary>
-        /// Creates a new http server.
-        /// </summary>
         public Server() {
-            this.server    = Reactor.Tcp.Server.Create(this.Accept);
             this.onread    = Reactor.Async.Event.Create<Reactor.Http.Context>();
-            this.onerror   = Reactor.Async.Event.Create<System.Exception>();
+            this.onerror   = Reactor.Async.Event.Create<Exception>();
             this.onend     = Reactor.Async.Event.Create();
+            this.listening = false;            
+        }
+
+        #endregion
+
+        #region Methods
+
+        public Server Listen(int port) {
+            try {
+                this.listener = new Reactor.Net.HttpListener();
+                this.listener.Prefixes.Add(string.Format("http://*:{0}/", port));
+                this.listener.Start();
+                this.listening = true;
+                this._Read();
+            }
+            catch(Exception error) {
+               Loop.Post(() => this._Error(error));
+            }
+            return this;
+        }
+
+        public Server Stop() {
+            this.listening = false;
+            this.listener.Stop();
+            this.listener.Close();
+            return this;
         }
 
         #endregion
@@ -67,19 +81,7 @@ namespace Reactor.Http {
         #region Events
 
         /// <summary>
-        /// Gets the internal events for this server.
-        /// </summary>
-        /// <returns></returns>
-        public Events GetEvents() {
-            return new Events {
-                Read  = this.onread,
-                Error = this.onerror,
-                End   = this.onend
-            };
-        }
-
-        /// <summary>
-        /// Subscribes this action to the 'read' event.
+        /// Subscribes this action to the OnSocket event.
         /// </summary>
         /// <param name="callback"></param>
         public void OnRead (Reactor.Action<Reactor.Http.Context> callback) {
@@ -87,7 +89,7 @@ namespace Reactor.Http {
         }
 
         /// <summary>
-        /// Unsubscribes this action from the 'read' event.
+        /// Unsubscribes this action from the OnSocket event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveRead (Reactor.Action<Reactor.Http.Context> callback) {
@@ -95,55 +97,35 @@ namespace Reactor.Http {
         }
 
         /// <summary>
-        /// Subscribes this action to the 'error' event.
+        /// Subscribes this action to the OnError event.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnError (Reactor.Action<Exception> callback) {
+        public void OnError (Reactor.Action<System.Exception> callback) {
             this.onerror.On(callback);
         }
 
-
         /// <summary>
-        /// Unsubscribes this action from the 'error' event.
+        /// Unsubscribes this action from the OnError event.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveError (Reactor.Action<Exception> callback) {
+        public void RemoveError(Reactor.Action<System.Exception> callback) {
             this.onerror.Remove(callback);
         }
 
         /// <summary>
-        /// Subscribes this action to the 'end' event.
+        /// Subscribes this action to the OnEnd event.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnEnd(Reactor.Action callback) {
+        public void OnEnd (Reactor.Action callback) {
             this.onend.On(callback);
         }
 
         /// <summary>
-        /// Unsubscribes this action from the 'end' event.
+        /// Unsubscribes this action from the OnEnd event.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveEnd(Reactor.Action callback) {
+        public void RemoveEnd  (Reactor.Action callback) {
             this.onend.Remove(callback);
-        }
-
-        #endregion
-
-        #region Methods
-
-        /// <summary>
-        /// Starts this server listening on the specified port.
-        /// </summary>
-        /// <param name="port"></param>
-        public void Listen (int port) {
-            this.server.Listen(port);
-        }
-
-        /// <summary>
-        /// Stops this server.
-        /// </summary>
-        public void Stop() {
-            this.server.Dispose();
         }
 
         #endregion
@@ -151,33 +133,78 @@ namespace Reactor.Http {
         #region Internals
 
         /// <summary>
-        /// Accepts incoming tcp requests and processes
-        /// them as http requests.
+        /// Accepts a http listener context.
         /// </summary>
-        /// <param name="socket"></param>
-        private void Accept (Reactor.Tcp.Socket socket) {
-            Reactor.Http.Binder.Bind(socket, context =>{
-                this.onread.Emit(context);
+        /// <returns></returns>
+        private Reactor.Async.Future<Reactor.Net.HttpListenerContext> Accept () {
+            return new Reactor.Async.Future<Reactor.Net.HttpListenerContext>((resolve, reject) => {
+                try {
+                    this.listener.BeginGetContext(result => {
+                        Loop.Post(() => {
+                            try {
+                                var context = this.listener.EndGetContext(result);
+                                resolve(context);
+                            }
+                            catch(Exception error) {
+                                reject(error);
+                            }
+                        });
+                    }, null);
+                }
+                catch(Exception error) {
+                    reject(error);
+                }
             });
         }
+        #endregion
 
+        #region Machine
+
+        /// <summary>
+        /// Reads incoming sockets.
+        /// </summary>
+        private void _Read() {
+            this.Accept().Then(context => {
+                try {
+                    this.onread.Emit(new Reactor.Http.Context(context));
+                    if (this.listening) this._Read();
+                    else this._End();
+                }
+                catch (Exception error) {
+                    this._Error(error);
+                }
+            }).Error(this._Error);
+        }
+
+        /// <summary>
+        /// Handles errors.
+        /// </summary>
+        /// <param name="error"></param>
+        private void _Error(Exception error) {
+            this.onerror.Emit(error);
+            this._End();
+        }
+
+        /// <summary>
+        /// Ends the listener.
+        /// </summary>
+        private void _End() {
+            try {
+                this.listener.Stop();
+                this.listener.Close();
+                this.listening = false;
+            }
+            catch { }
+            this.onend.Emit();
+        }
         #endregion
 
         #region Statics
 
-        /// <summary>
-        /// Returns a new http server.
-        /// </summary>
-        /// <returns></returns>
         public static Server Create() {
-            return new Reactor.Http.Server();
+            return new Server();
         }
 
-        /// <summary>
-        /// Returns a new http server.
-        /// </summary>
-        /// <param name="callback">A callback to handle incoming http requests.</param>
-        /// <returns></returns>
         public static Server Create(Reactor.Action<Reactor.Http.Context> callback) {
             var server = new Reactor.Http.Server();
             server.OnRead(callback);

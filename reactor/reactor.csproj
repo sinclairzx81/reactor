@@ -55,23 +55,37 @@
     <Compile Include="enumerable\Enumerable.cs" />
     <Compile Include="file\Reader.cs" />
     <Compile Include="http\Context.cs" />
-    <Compile Include="http\Cookies.cs" />
-    <Compile Include="http\Headers.cs" />
-    <Compile Include="http\Binder.cs" />
-    <Compile Include="http\protocol\body\BodyReader.cs" />
-    <Compile Include="http\protocol\body\BodyWriter.cs" />
-    <Compile Include="http\protocol\body\ChunkedBodyReader.cs" />
-    <Compile Include="http\protocol\body\ChunkedBodyWriter.cs" />
-    <Compile Include="http\protocol\header\ResponseHeader.cs" />
-    <Compile Include="http\protocol\header\RequestHeader.cs" />
-    <Compile Include="http\QueryString.cs" />
-    <Compile Include="http\Request.cs" />
-    <Compile Include="http\Response.cs" />
     <Compile Include="http\Server.cs" />
     <Compile Include="http\ServerRequest.cs" />
     <Compile Include="http\ServerResponse.cs" />
-    <Compile Include="http\utility\Utility.cs" />
     <Compile Include="ip\Message.cs" />
+    <Compile Include="net\AuthenticationSchemes.cs" />
+    <Compile Include="net\AuthenticationSchemeSelector.cs" />
+    <Compile Include="net\ChunkedInputStream.cs" />
+    <Compile Include="net\ChunkStream.cs" />
+    <Compile Include="net\Cookie.cs" />
+    <Compile Include="net\CookieCollection.cs" />
+    <Compile Include="net\CookieException.cs" />
+    <Compile Include="net\EndPointListener.cs" />
+    <Compile Include="net\EndPointManager.cs" />
+    <Compile Include="net\HttpBasicIdentity.cs" />
+    <Compile Include="net\HttpConnection.cs" />
+    <Compile Include="net\HttpListener.cs" />
+    <Compile Include="net\HttpListenerContext.cs" />
+    <Compile Include="net\HttpListenerException.cs" />
+    <Compile Include="net\HttpListenerPrefixCollection.cs" />
+    <Compile Include="net\HttpListenerRequest.cs" />
+    <Compile Include="net\HttpListenerResponse.cs" />
+    <Compile Include="net\HttpStatusCode.cs" />
+    <Compile Include="net\HttpStreamAsyncResult.cs" />
+    <Compile Include="net\HttpUtility.cs" />
+    <Compile Include="net\HttpVersion.cs" />
+    <Compile Include="net\ListenerAsyncResult.cs" />
+    <Compile Include="net\ListenerPrefix.cs" />
+    <Compile Include="net\NetworkCredential.cs" />
+    <Compile Include="net\RequestStream.cs" />
+    <Compile Include="net\ResponseStream.cs" />
+    <Compile Include="net\WebHeaderCollection.cs" />
     <Compile Include="process\Current.cs" />
     <Compile Include="stream\Reader.cs" />
     <Compile Include="stream\Writer.cs" />
@@ -111,6 +125,7 @@
   <ItemGroup>
     <Content Include="reactor.png" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

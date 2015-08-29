@@ -31,40 +31,29 @@ using System;
 
 namespace Reactor.Web
 {
-    public class Server
-    {
+    public class Server {
         private Reactor.Http.Server                             http;
-
         private Reactor.Web.Router                              router;
-
         private Reactor.Async.Event<System.Exception>           onerror;
-
-        private Reactor.Async.Event<Reactor.Http.Context> oncontext;
+        private Reactor.Async.Event<Reactor.Http.Context>       oncontext;
 
         public Server(Reactor.Http.Server http) {
-            
             this.oncontext            = new Async.Event<Reactor.Http.Context>();
-
             this.onerror              = new Async.Event<Exception>();
-            
             this.router               = new Router();
-            
             this.http                 = http;
-            
-            this.http.OnError   (this.onerror.Emit);
+            this.http.OnError (this.onerror.Emit);
 
             //-------------------------------------
             // reassign events
             //-------------------------------------
 
-            var events = this.http.GetEvents();
+            //var events = this.http.GetEvents();
             
-            foreach (var listener in events.Read.Subscribers()) {
-                
-                events.Read.Remove(listener);
-                
-                this.oncontext.On(listener);
-            };
+            //foreach (var listener in events.Read.Subscribers()) {
+            //    events.Read.Remove(listener);
+            //    this.oncontext.On(listener);
+            //};
 
             this.http.OnRead (this._Context);
         }
@@ -109,72 +98,58 @@ namespace Reactor.Web
 
         #region Methods
 
-        public Router Use(Reactor.Web.Middleware middleware)
-        {
+        public Router Use(Reactor.Web.Middleware middleware) {
             return this.router.Use(middleware);
         }
 
-        public Router Get(string pattern, Reactor.Action<Reactor.Web.Context> handler)
-        {
+        public Router Get(string pattern, Reactor.Action<Reactor.Web.Context> handler) {
             return this.router.Get(pattern, handler);
         }
 
-        public Router Post(string pattern, Reactor.Action<Reactor.Web.Context> handler)
-        {
+        public Router Post(string pattern, Reactor.Action<Reactor.Web.Context> handler) {
             return this.router.Post(pattern, handler);
         }
 
-        public Router Put(string pattern, Reactor.Action<Reactor.Web.Context> handler)
-        {
+        public Router Put(string pattern, Reactor.Action<Reactor.Web.Context> handler) {
             return this.router.Put(pattern, handler);
         }
 
-        public Router Delete(string pattern, Reactor.Action<Reactor.Web.Context> handler)
-        {
+        public Router Delete(string pattern, Reactor.Action<Reactor.Web.Context> handler) {
             return this.router.Delete(pattern, handler);
         }
 
-        public Router Options(string pattern, Reactor.Action<Reactor.Web.Context> handler)
-        {
+        public Router Options(string pattern, Reactor.Action<Reactor.Web.Context> handler) {
             return this.router.Options(pattern, handler);
         }
 
-        public Router Get(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Reactor.Web.Context> handler)
-        {
+        public Router Get(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Reactor.Web.Context> handler) {
             return this.router.Get(pattern, middleware, handler);
         }
 
-        public Router Post(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Reactor.Web.Context> handler)
-        {
+        public Router Post(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Reactor.Web.Context> handler) {
             return this.router.Post(pattern, middleware, handler);
         }
 
-        public Router Put(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Reactor.Web.Context> handler)
-        {
+        public Router Put(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Reactor.Web.Context> handler) {
             return this.router.Put(pattern, middleware, handler);
         }
 
-        public Router Delete(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Reactor.Web.Context> handler)
-        {
+        public Router Delete(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Reactor.Web.Context> handler) {
             return this.router.Delete(pattern, middleware, handler);
         }
 
-        public Router Options(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Reactor.Web.Context> handler)
-        {
+        public Router Options(string pattern, Reactor.Web.Middleware[] middleware, Reactor.Action<Reactor.Web.Context> handler) {
             return this.router.Options(pattern, middleware, handler);
         }
 
         #endregion
 
         public Server Listen(int port) {
-
             this.http.Listen(port);
-
             return this;
         }
 
         public Server Stop() {
-
             this.http.Stop();
 
             return this;

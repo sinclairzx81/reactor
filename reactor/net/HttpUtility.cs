@@ -1,4 +1,4 @@
-﻿// 
+// 
 // Copied from System.Web.HttpUtility and marked internal
 //
 // Authors:
@@ -39,35 +39,38 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
-namespace Reactor.Http {
-
-    /// <summary>
-    /// Reactor HTTP Utility methods.
-    /// </summary>
-    public static class Utility {
-
-        sealed class HttpQSCollection : NameValueCollection {
-
-            public override string ToString() {
+namespace Reactor.Net
+{
+    public static class HttpUtility
+    {
+        sealed class HttpQSCollection : NameValueCollection
+        {
+            public override string ToString()
+            {
                 int count = Count;
-                if (count == 0) {
+
+                if (count == 0)
+                {
                     return "";
                 }
 
                 StringBuilder sb = new StringBuilder();
+
                 string[] keys = AllKeys;
-                for (int i = 0; i < count; i++) {
+
+                for (int i = 0; i < count; i++)
+                {
                     sb.AppendFormat("{0}={1}&", keys[i], this[keys[i]]);
                 }
-                if (sb.Length > 0) {
+                if (sb.Length > 0)
+                {
                     sb.Length--;
                 }
                 return sb.ToString();
             }
         }
 
-        #region Static State
-
+        // Must be sorted
         static readonly long[] entities = new long[] {
 			(long)'A' << 56 | (long)'E' << 48 | (long)'l' << 40 | (long)'i' << 32 | (long)'g' << 24, 
 			(long)'A' << 56 | (long)'a' << 48 | (long)'c' << 40 | (long)'u' << 32 | (long)'t' << 24 | (long)'e' << 16, 
@@ -599,16 +602,14 @@ namespace Reactor.Http {
 			'F'
 		};
 
-        #endregion
-
         #region Methods
 
-        public static void    HtmlAttributeEncode          (string s, TextWriter output)
+        public static void HtmlAttributeEncode(string s, TextWriter output)
         {
             output.Write(HtmlAttributeEncode(s));
         }
 
-        public static string  HtmlAttributeEncode          (string s)
+        public static string HtmlAttributeEncode(string s)
         {
             if (null == s)
             {
@@ -669,17 +670,17 @@ namespace Reactor.Http {
             return output.ToString();
         }
 
-        public static string  UrlDecode                    (string str)
+        public static string UrlDecode(string str)
         {
             return UrlDecode(str, Encoding.UTF8);
         }
 
-        static char[]         GetChars                     (MemoryStream b, Encoding e)
+        static char[] GetChars(MemoryStream b, Encoding e)
         {
             return e.GetChars(b.GetBuffer(), 0, (int)b.Length);
         }
 
-        static void           WriteCharBytes               (IList buf, char ch, Encoding e)
+        static void WriteCharBytes(IList buf, char ch, Encoding e)
         {
             if (ch > 255)
             {
@@ -694,7 +695,7 @@ namespace Reactor.Http {
             }
         }
 
-        public static string  UrlDecode                    (string s, Encoding e)
+        public static string UrlDecode(string s, Encoding e)
         {
             if (null == s)
             {
@@ -772,7 +773,7 @@ namespace Reactor.Http {
 
         }
 
-        public static string  UrlDecode                    (byte[] bytes, Encoding e)
+        public static string UrlDecode(byte[] bytes, Encoding e)
         {
             if (bytes == null)
             {
@@ -782,7 +783,7 @@ namespace Reactor.Http {
             return UrlDecode(bytes, 0, bytes.Length, e);
         }
 
-        static int            GetInt                       (byte b)
+        static int GetInt(byte b)
         {
             char c = (char)b;
 
@@ -804,7 +805,7 @@ namespace Reactor.Http {
             return -1;
         }
 
-        static int            GetChar                      (byte[] bytes, int offset, int length)
+        static int GetChar(byte[] bytes, int offset, int length)
         {
             int value = 0;
 
@@ -824,7 +825,7 @@ namespace Reactor.Http {
             return value;
         }
 
-        static int            GetChar                      (string str, int offset, int length)
+        static int GetChar(string str, int offset, int length)
         {
             int val = 0;
 
@@ -852,7 +853,7 @@ namespace Reactor.Http {
             return val;
         }
 
-        public static string UrlDecode                     (byte[] bytes, int offset, int count, Encoding e)
+        public static string UrlDecode(byte[] bytes, int offset, int count, Encoding e)
         {
             if (bytes == null)
             {
@@ -947,7 +948,7 @@ namespace Reactor.Http {
             return output.ToString();
         }
 
-        public static byte[] UrlDecodeToBytes              (byte[] bytes)
+        public static byte[] UrlDecodeToBytes(byte[] bytes)
         {
             if (bytes == null)
             {
@@ -957,12 +958,12 @@ namespace Reactor.Http {
             return UrlDecodeToBytes(bytes, 0, bytes.Length);
         }
 
-        public static byte[] UrlDecodeToBytes              (string str)
+        public static byte[] UrlDecodeToBytes(string str)
         {
             return UrlDecodeToBytes(str, Encoding.UTF8);
         }
 
-        public static byte[] UrlDecodeToBytes              (string str, Encoding e)
+        public static byte[] UrlDecodeToBytes(string str, Encoding e)
         {
             if (str == null)
             {
@@ -977,7 +978,7 @@ namespace Reactor.Http {
             return UrlDecodeToBytes(e.GetBytes(str));
         }
 
-        public static byte[] UrlDecodeToBytes              (byte[] bytes, int offset, int count)
+        public static byte[] UrlDecodeToBytes(byte[] bytes, int offset, int count)
         {
             if (bytes == null)
             {
@@ -1029,12 +1030,12 @@ namespace Reactor.Http {
             return result.ToArray();
         }
 
-        public static string UrlEncode                     (string str)
+        public static string UrlEncode(string str)
         {
             return UrlEncode(str, Encoding.UTF8);
         }
 
-        public static string UrlEncode                     (string s, Encoding Enc)
+        public static string UrlEncode(string s, Encoding Enc)
         {
             if (string.IsNullOrEmpty(s))
             {
@@ -1075,7 +1076,7 @@ namespace Reactor.Http {
             return Encoding.ASCII.GetString(UrlEncodeToBytes(bytes, 0, realLen));
         }
 
-        public static string UrlEncode                     (byte[] bytes)
+        public static string UrlEncode(byte[] bytes)
         {
             if (bytes == null)
             {
@@ -1090,7 +1091,7 @@ namespace Reactor.Http {
             return Encoding.ASCII.GetString(UrlEncodeToBytes(bytes, 0, bytes.Length));
         }
 
-        public static string UrlEncode                     (byte[] bytes, int offset, int count)
+        public static string UrlEncode(byte[] bytes, int offset, int count)
         {
             if (bytes == null)
             {
@@ -1105,12 +1106,12 @@ namespace Reactor.Http {
             return Encoding.ASCII.GetString(UrlEncodeToBytes(bytes, offset, count));
         }
 
-        public static byte[] UrlEncodeToBytes              (string str)
+        public static byte[] UrlEncodeToBytes(string str)
         {
             return UrlEncodeToBytes(str, Encoding.UTF8);
         }
 
-        public static byte[] UrlEncodeToBytes              (string str, Encoding e)
+        public static byte[] UrlEncodeToBytes(string str, Encoding e)
         {
             if (str == null)
             {
@@ -1127,7 +1128,7 @@ namespace Reactor.Http {
             return UrlEncodeToBytes(bytes, 0, bytes.Length);
         }
 
-        public static byte[] UrlEncodeToBytes              (byte[] bytes)
+        public static byte[] UrlEncodeToBytes(byte[] bytes)
         {
             if (bytes == null)
             {
@@ -1142,12 +1143,12 @@ namespace Reactor.Http {
             return UrlEncodeToBytes(bytes, 0, bytes.Length);
         }
 
-        static bool          NotEncoded                    (char c)
+        static bool NotEncoded(char c)
         {
             return (c == '!' || c == '(' || c == ')' || c == '*' || c == '-' || c == '.' || c == '_');
         }
 
-        static void          UrlEncodeChar                 (char c, System.IO.Stream result, bool isUnicode)
+        static void UrlEncodeChar(char c, Stream result, bool isUnicode)
         {
             if (c > 255)
             {
@@ -1226,7 +1227,7 @@ namespace Reactor.Http {
             }
         }
 
-        public static byte[] UrlEncodeToBytes              (byte[] bytes, int offset, int count)
+        public static byte[] UrlEncodeToBytes(byte[] bytes, int offset, int count)
         {
             if (bytes == null)
             {
@@ -1262,7 +1263,7 @@ namespace Reactor.Http {
             return result.ToArray();
         }
 
-        public static string UrlEncodeUnicode              (string str)
+        public static string UrlEncodeUnicode(string str)
         {
             if (str == null)
             {
@@ -1272,7 +1273,7 @@ namespace Reactor.Http {
             return Encoding.ASCII.GetString(UrlEncodeUnicodeToBytes(str));
         }
 
-        public static byte[] UrlEncodeUnicodeToBytes       (string str)
+        public static byte[] UrlEncodeUnicodeToBytes(string str)
         {
             if (str == null)
             {
@@ -1293,7 +1294,7 @@ namespace Reactor.Http {
             return result.ToArray();
         }
 
-        static bool          TryConvertKeyToEntity         (string key, out char value)
+        static bool TryConvertKeyToEntity(string key, out char value)
         {
             var token = CalculateKeyValue(key);
 
@@ -1318,7 +1319,7 @@ namespace Reactor.Http {
             return true;
         }
 
-        static long          CalculateKeyValue             (string s)
+        static long CalculateKeyValue(string s)
         {
             if (s.Length > 8)
             {
@@ -1347,7 +1348,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="s">The HTML string to decode. </param>
         /// <returns>The decoded text.</returns>
-        public static string HtmlDecode                    (string s)
+        public static string HtmlDecode(string s)
         {
             if (s == null)
             {
@@ -1566,7 +1567,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="s">The HTML string to decode</param>
         /// <param name="output">The TextWriter output stream containing the decoded string. </param>
-        public static void   HtmlDecode                    (string s, TextWriter output)
+        public static void HtmlDecode(string s, TextWriter output)
         {
             if (s != null)
             {
@@ -1579,7 +1580,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="s">The text string to encode. </param>
         /// <returns>The HTML-encoded text.</returns>
-        public static string HtmlEncode                    (string s)
+        public static string HtmlEncode(string s)
         {
             if (s == null)
             {
@@ -1680,7 +1681,7 @@ namespace Reactor.Http {
         /// </summary>
         /// <param name="s">The string to encode. </param>
         /// <param name="output">The TextWriter output stream containing the encoded string. </param>
-        public static void   HtmlEncode                    (string s, TextWriter output)
+        public static void HtmlEncode(string s, TextWriter output)
         {
             if (s != null)
             {
@@ -1688,7 +1689,7 @@ namespace Reactor.Http {
             }
         }
 
-        public static string UrlPathEncode                 (string s)
+        public static string UrlPathEncode(string s)
         {
             if (s == null || s.Length == 0)
             {
@@ -1706,7 +1707,7 @@ namespace Reactor.Http {
             return Encoding.ASCII.GetString(result.ToArray());
         }
 
-        static void UrlPathEncodeChar                      (char c, Stream result)
+        static void UrlPathEncodeChar(char c, Stream result)
         {
             if (c < 33 || c > 126)
             {
@@ -1739,12 +1740,12 @@ namespace Reactor.Http {
             }
         }
 
-        public static NameValueCollection ParseQueryString (string query)
+        public static NameValueCollection ParseQueryString(string query)
         {
             return ParseQueryString(query, Encoding.UTF8);
         }
 
-        public static NameValueCollection ParseQueryString (string query, Encoding encoding)
+        public static NameValueCollection ParseQueryString(string query, Encoding encoding)
         {
             if (query == null)
             {
@@ -1770,7 +1771,7 @@ namespace Reactor.Http {
             return result;
         }
 
-        internal static void              ParseQueryString (string query, Encoding encoding, NameValueCollection result)
+        internal static void ParseQueryString(string query, Encoding encoding, NameValueCollection result)
         {
             if (query.Length == 0)
             {
@@ -1845,7 +1846,6 @@ namespace Reactor.Http {
                 }
             }
         }
-        
         #endregion // Methods
     }
 }

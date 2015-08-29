@@ -26,49 +26,21 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
+using System.Security.Principal;
+
 namespace Reactor.Http {
 
     /// <summary>
-    /// Encapsulates HTTP request response.
+    /// Reactor HTTP Context
     /// </summary>
     public class Context {
-
-        /// <summary>
-        /// The incoming http request.
-        /// </summary>
-        public Reactor.Http.ServerRequest      Request  { get; private set; }
-
-        /// <summary>
-        /// The outgoing http response.
-        /// </summary>
-        public Reactor.Http.ServerResponse     Response { get; private set; }
-
-        #region Constructors
-
-        /// <summary>
-        /// Creates a new HTTP context.
-        /// </summary>
-        /// <param name="request"></param>
-        /// <param name="response"></param>
-        internal Context(Reactor.Http.ServerRequest request, Reactor.Http.ServerResponse response) {
-            this.Request  = request;
-            this.Response = response;
+        public IPrincipal                   User                     { get; set; }
+        public ServerRequest                Request                  { get; set; }
+        public ServerResponse               Response                 { get; set; }
+        internal Context(Reactor.Net.HttpListenerContext context) {
+            this.User                   = context.User;
+            this.Request                = new ServerRequest  (context.Request);
+            this.Response               = new ServerResponse (context.Response);
         }
-
-        #endregion
-
-        #region Statics
-
-        /// <summary>
-        /// Returns a new Context.
-        /// </summary>
-        /// <param name="request"></param>
-        /// <param name="response"></param>
-        /// <returns></returns>
-        internal static Context Create(Reactor.Http.ServerRequest request, Reactor.Http.ServerResponse response) {
-            return new Context(request, response);
-        }
-
-        #endregion
     }
 }

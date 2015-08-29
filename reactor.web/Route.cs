@@ -86,7 +86,7 @@ namespace Reactor.Web
 
             if (string.Equals(request.Method, this.Method, StringComparison.InvariantCultureIgnoreCase)) {
 
-                var path = Reactor.Http.Utility.UrlDecode(request.Url.AbsolutePath);
+                var path = Reactor.Net.HttpUtility.UrlDecode(request.Url.AbsolutePath);
 
                 var match = this.regex.IsMatch(path);
 
@@ -104,7 +104,7 @@ namespace Reactor.Web
 
             var dict = new Dictionary<string, string>();
 
-            var path = Reactor.Http.Utility.UrlDecode(request.Url.AbsolutePath);
+            var path = Reactor.Net.HttpUtility.UrlDecode(request.Url.AbsolutePath);
 
             var match = this.regex.Match(path);
 
