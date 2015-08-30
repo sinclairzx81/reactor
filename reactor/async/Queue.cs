@@ -49,6 +49,8 @@ namespace Reactor.Async {
     /// </example>
     public class Queue : IDisposable {
 
+        #region Fields
+
         internal class Fields {
             public Reactor.ConcurrentQueue<Reactor.Action<Reactor.Action>> queue;
             public int concurrency;
@@ -61,6 +63,8 @@ namespace Reactor.Async {
                 this.paused      = false;
             }
         } private Fields fields;
+
+        #endregion
 
         #region Constructors
 

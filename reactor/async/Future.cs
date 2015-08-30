@@ -57,6 +57,8 @@ namespace Reactor.Async {
 
         #endregion
 
+        #region Fields
+
         internal class Fields<T> {
             public Exception                       error;
             public T                               value;
@@ -71,6 +73,8 @@ namespace Reactor.Async {
                 this.thens  = new List<Reactor.Action<T>>();
             }
         } private Fields<T> fields;
+
+        #endregion
 
         #region Constructors
 
@@ -324,6 +328,8 @@ namespace Reactor.Async {
 
         #endregion
 
+        #region Fields
+
         internal class Fields {
             public Exception                       error;
             public State                           state;
@@ -336,6 +342,8 @@ namespace Reactor.Async {
                 this.thens  = new List<Reactor.Action>();
             }
         } private Fields fields;
+
+        #endregion
 
         #region Constructors
 

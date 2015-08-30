@@ -33,14 +33,16 @@ namespace Reactor.Async {
     /// </summary>
     public class Racer {
 
+        #region Fields
+
         internal class Fields {
             public bool completed;
             public Fields() {
                 this.completed = false;
             }
-        }
+        } private Fields fields;
 
-        private Fields fields;
+        #endregion
 
         #region Constructors
 

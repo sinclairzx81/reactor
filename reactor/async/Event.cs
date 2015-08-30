@@ -48,6 +48,8 @@ namespace Reactor.Async {
 
         #endregion
 
+        #region Fields
+
         internal class Fields {
             public bool multicast;
             public List<Callback> callbacks;
@@ -56,6 +58,8 @@ namespace Reactor.Async {
                 this.callbacks = new List<Callback>();
             }
         } private Fields fields;
+
+        #endregion
 
         #region Constructors
 

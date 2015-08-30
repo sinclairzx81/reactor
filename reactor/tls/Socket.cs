@@ -172,8 +172,8 @@ namespace Reactor.Tls {
                     if(this.corked) this.Cork();
                     this.onconnect.Emit();
                     this.queue.Resume();
-                }).Error(this._Error);
-            }).Error(this._Error);
+                }).Error(error => { this.queue.Resume(); this._Error(error); });
+            }).Error(error => { this.queue.Resume(); this._Error(error); });
         }
 
         /// <summary>
@@ -211,9 +211,9 @@ namespace Reactor.Tls {
                         if(this.corked) this.Cork();
                         this.onconnect.Emit();
                         this.queue.Resume();
-                    }).Error(this._Error);
-                }).Error(this._Error);
-            }).Error(this._Error);
+                    }).Error(error => { this.queue.Resume(); this._Error(error); });
+                }).Error(error => { this.queue.Resume(); this._Error(error); });
+            }).Error(error => { this.queue.Resume(); this._Error(error); });
         }
 
         #endregion
@@ -1340,11 +1340,13 @@ namespace Reactor.Tls {
                 this.readstate = ReadState.Ended;
                 try { this.socket.Shutdown(SocketShutdown.Send); } catch {}
                 this.Disconnect().Finally(() => {
-                    if (this.poll   != null) this.poll.Clear();
-                    if (this.writer != null) this.writer.Dispose();
-                    if (this.reader != null) this.reader.Dispose();
-                    this.queue.Dispose();
-                    this.buffer.Dispose();
+                    try {
+                        if (this.poll   != null) this.poll.Clear();
+                        if (this.writer != null) this.writer.Dispose();
+                        if (this.reader != null) this.reader.Dispose();
+                        this.queue.Dispose();
+                        this.buffer.Dispose();
+                    } catch { }
                     this.onend.Emit();
                 });
             }

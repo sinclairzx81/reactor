@@ -87,6 +87,22 @@ namespace Reactor.Tls {
 
         #endregion
 
+        #region Properties
+
+        /// <summary>
+        /// Gets the local endpoint.
+        /// </summary>
+        public EndPoint LocalEndPoint {
+            get {
+                if (this.socket != null) {
+                    return this.socket.LocalEndPoint;
+                }
+                return null;
+            }
+        }
+
+        #endregion
+
         #region Events
 
         /// <summary>
@@ -168,7 +184,7 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="port">The port to listen on.</param>
         public Server Listen(int port) {
-            return this.Listen(new IPEndPoint(IPAddress.Loopback, port));
+            return this.Listen(new IPEndPoint(IPAddress.Any, port));
         }
 
         #endregion
@@ -243,7 +259,10 @@ namespace Reactor.Tls {
                     if (this.listening) this._Read();
                     else this._End();
                 }).Error(this._Error);
-            }).Error(this._Error);
+            }).Error(error => {
+                if(this.listening)
+                    this._Error(error);
+            });
         }
 
         /// <summary>

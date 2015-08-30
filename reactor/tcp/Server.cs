@@ -83,6 +83,22 @@ namespace Reactor.Tcp {
 
         #endregion
 
+        #region Properties
+
+        /// <summary>
+        /// Gets the local endpoint.
+        /// </summary>
+        public EndPoint LocalEndPoint {
+            get {
+                if (this.socket != null) {
+                    return this.socket.LocalEndPoint;
+                }
+                return null;
+            }
+        }
+
+        #endregion
+
         #region Events
 
         /// <summary>
@@ -113,7 +129,7 @@ namespace Reactor.Tcp {
         /// Unsubscribes this action from the OnError event.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveError(Reactor.Action<System.Exception> callback) {
+        public void RemoveError (Reactor.Action<System.Exception> callback) {
             this.onerror.Remove(callback);
         }
 
@@ -129,7 +145,7 @@ namespace Reactor.Tcp {
         /// Unsubscribes this action from the OnEnd event.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveEnd  (Reactor.Action callback) {
+        public void RemoveEnd (Reactor.Action callback) {
             this.onend.Remove(callback);
         }
 
@@ -164,7 +180,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="port">The port to listen on.</param>
         public Server Listen(int port) {
-            return this.Listen(new IPEndPoint(IPAddress.Loopback, port));
+            return this.Listen(new IPEndPoint(IPAddress.Any, port));
         }
 
         #endregion
@@ -213,7 +229,10 @@ namespace Reactor.Tcp {
                 catch (Exception error) {
                     this._Error(error);
                 }
-            }).Error(this._Error);
+            }).Error(error => {
+                if(this.listening) 
+                    this._Error(error);
+            });
         }
 
         /// <summary>
@@ -230,12 +249,14 @@ namespace Reactor.Tcp {
         /// </summary>
         private void _End() {
             try {
-                this.socket.Shutdown(SocketShutdown.Both);
                 this.socket.Close();
+                this.socket = null;
                 this.listening = false;
+                this.onend.Emit();
             }
-            catch { }
-            this.onend.Emit();
+            catch(Exception e) {
+                Console.WriteLine(e);
+            }
         }
 
         #endregion
@@ -248,6 +269,7 @@ namespace Reactor.Tcp {
         public void Dispose() {
             this._End();
         }
+
         #endregion
 
         #region Statics
