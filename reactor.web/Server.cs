@@ -32,14 +32,14 @@ using System;
 namespace Reactor.Web
 {
     public class Server {
-        private Reactor.Http.Server                             http;
-        private Reactor.Web.Router                              router;
-        private Reactor.Async.Event<System.Exception>           onerror;
-        private Reactor.Async.Event<Reactor.Http.Context>       oncontext;
+        private Reactor.Http.Server                       http;
+        private Reactor.Web.Router                        router;
+        private Reactor.Event<System.Exception>           onerror;
+        private Reactor.Event<Reactor.Http.Context>       oncontext;
 
         public Server(Reactor.Http.Server http) {
-            this.oncontext            = new Async.Event<Reactor.Http.Context>();
-            this.onerror              = new Async.Event<Exception>();
+            this.oncontext            = new Reactor.Event<Reactor.Http.Context>();
+            this.onerror              = new Reactor.Event<Exception>();
             this.router               = new Router();
             this.http                 = http;
             this.http.OnError (this.onerror.Emit);

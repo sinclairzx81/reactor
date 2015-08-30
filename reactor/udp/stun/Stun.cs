@@ -103,9 +103,9 @@ namespace Reactor.Udp.Stun {
 
         #region Request
 
-        private static Reactor.Async.Future<Reactor.Udp.Stun.Packet> Request (Reactor.Udp.Socket socket, System.Net.IPEndPoint endpoint, Reactor.Udp.Stun.Packet request) {
-            return new Reactor.Async.Future<Packet>((resolve, reject) => {
-                var racer = new Reactor.Async.Racer();
+        private static Reactor.Future<Reactor.Udp.Stun.Packet> Request (Reactor.Udp.Socket socket, System.Net.IPEndPoint endpoint, Reactor.Udp.Stun.Packet request) {
+            return new Reactor.Future<Packet>((resolve, reject) => {
+                var racer = new Reactor.Racer();
                 /* onread */
                 Action<Reactor.Udp.Message> onread = null; onread = message => {
                     racer.Set(() => {
@@ -139,8 +139,8 @@ namespace Reactor.Udp.Stun {
 
         #region Tests
 
-        private static Reactor.Async.Future<Reactor.Udp.Stun.Hole.Result> Test0 (Reactor.Udp.Socket socket, System.Net.IPEndPoint endpoint) {
-            return new Reactor.Async.Future<Reactor.Udp.Stun.Hole.Result>((resolve, reject) => {
+        private static Reactor.Future<Reactor.Udp.Stun.Hole.Result> Test0 (Reactor.Udp.Socket socket, System.Net.IPEndPoint endpoint) {
+            return new Reactor.Future<Reactor.Udp.Stun.Hole.Result>((resolve, reject) => {
                 Hole.Request(socket, endpoint, new Packet { 
                     Type = PacketType.BindingRequest 
                 })
@@ -159,8 +159,8 @@ namespace Reactor.Udp.Stun {
             });
         }
 
-        private static Reactor.Async.Future<Reactor.Udp.Stun.Hole.Result> Test1 (Reactor.Udp.Socket socket, System.Net.IPEndPoint endpoint, System.Net.IPEndPoint mapped) {
-            return new Reactor.Async.Future<Reactor.Udp.Stun.Hole.Result>((resolve, reject) => {
+        private static Reactor.Future<Reactor.Udp.Stun.Hole.Result> Test1 (Reactor.Udp.Socket socket, System.Net.IPEndPoint endpoint, System.Net.IPEndPoint mapped) {
+            return new Reactor.Future<Reactor.Udp.Stun.Hole.Result>((resolve, reject) => {
                 Hole.Request(socket, endpoint, new Packet { 
                     Type          = PacketType.BindingRequest,
                     ChangeRequest = new ChangeRequest {
@@ -173,8 +173,8 @@ namespace Reactor.Udp.Stun {
             });
         }
 
-        private static Reactor.Async.Future<Reactor.Udp.Stun.Hole.Result> Test2 (Reactor.Udp.Socket socket, System.Net.IPEndPoint endpoint, System.Net.IPEndPoint mapped) {
-            return new Reactor.Async.Future<Reactor.Udp.Stun.Hole.Result>((resolve, reject) => {
+        private static Reactor.Future<Reactor.Udp.Stun.Hole.Result> Test2 (Reactor.Udp.Socket socket, System.Net.IPEndPoint endpoint, System.Net.IPEndPoint mapped) {
+            return new Reactor.Future<Reactor.Udp.Stun.Hole.Result>((resolve, reject) => {
                 Hole.Request(socket, endpoint, new Packet { 
                     Type           = PacketType.BindingRequest,
                     ChangeRequest  = new ChangeRequest {
@@ -187,8 +187,8 @@ namespace Reactor.Udp.Stun {
             });
         }
 
-        private static Reactor.Async.Future<Reactor.Udp.Stun.Hole.Result> Test3    (Reactor.Udp.Socket socket, System.Net.IPEndPoint endpoint, System.Net.IPEndPoint mapped) { 
-            return new Reactor.Async.Future<Reactor.Udp.Stun.Hole.Result>((resolve, reject) => {
+        private static Reactor.Future<Reactor.Udp.Stun.Hole.Result> Test3    (Reactor.Udp.Socket socket, System.Net.IPEndPoint endpoint, System.Net.IPEndPoint mapped) { 
+            return new Reactor.Future<Reactor.Udp.Stun.Hole.Result>((resolve, reject) => {
                 Hole.Request(socket, endpoint, new Packet { 
                     Type           = PacketType.BindingRequest
                 })
@@ -197,8 +197,8 @@ namespace Reactor.Udp.Stun {
             });          
         }
 
-        private static Reactor.Async.Future<Reactor.Udp.Stun.Hole.Result> Test4    (Reactor.Udp.Socket socket, System.Net.IPEndPoint endpoint, System.Net.IPEndPoint mapped) {
-            return new Reactor.Async.Future<Reactor.Udp.Stun.Hole.Result>((resolve, reject) => {
+        private static Reactor.Future<Reactor.Udp.Stun.Hole.Result> Test4    (Reactor.Udp.Socket socket, System.Net.IPEndPoint endpoint, System.Net.IPEndPoint mapped) {
+            return new Reactor.Future<Reactor.Udp.Stun.Hole.Result>((resolve, reject) => {
                 Hole.Request(socket, endpoint, new Packet { 
                     Type           = PacketType.BindingRequest,
                     ChangeRequest  = new ChangeRequest {
@@ -221,7 +221,7 @@ namespace Reactor.Udp.Stun {
         /// <param name="socket">The UDP socket to punch.</param>
         /// <param name="endpoint">The STUN endpoint.</param>
         /// <param name="callback">A callback containing the results of the holepunch</param>
-        public static Reactor.Async.Future<Reactor.Udp.Stun.Hole.Result> Punch     (Reactor.Udp.Socket socket, System.Net.IPEndPoint endpoint) {
+        public static Reactor.Future<Reactor.Udp.Stun.Hole.Result> Punch     (Reactor.Udp.Socket socket, System.Net.IPEndPoint endpoint) {
             return Test0(socket, endpoint);
         }
 
@@ -231,8 +231,8 @@ namespace Reactor.Udp.Stun {
         /// <param name="socket">The UDP socket to punch.</param>
         /// <param name="endpoint">The STUN endpoint.</param>
         /// <param name="callback">A callback containing the results of the holepunch</param>
-        public static Reactor.Async.Future<Reactor.Udp.Stun.Hole.Result> Punch (Reactor.Udp.Socket socket, string endpoint) {
-            return new Reactor.Async.Future<Reactor.Udp.Stun.Hole.Result>((resolve, reject) => {
+        public static Reactor.Future<Reactor.Udp.Stun.Hole.Result> Punch (Reactor.Udp.Socket socket, string endpoint) {
+            return new Reactor.Future<Reactor.Udp.Stun.Hole.Result>((resolve, reject) => {
                 endpoint = endpoint.ToLower().Replace("stun:", string.Empty);
                 var split = endpoint.Split(new char[] {':'});
                 if (split.Length != 2) {

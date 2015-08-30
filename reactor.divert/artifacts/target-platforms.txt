@@ -1,7 +1,0 @@
-﻿Linux: libnetfilter_queue + iptables
-
-MacOS, FreeBSD: divert sockets + ipfw
-
-Windows: WinPkFilter (commercial), WinDivert (LGPL), or write your own NDIS IM or WFP call-out driver.
-
-

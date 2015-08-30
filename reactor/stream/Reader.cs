@@ -35,7 +35,7 @@ namespace Reactor.Streams {
     /// </summary>
     public class Reader : IDisposable {
         private System.IO.Stream                      stream;
-        private Reactor.Async.Queue                   queue;
+        private Reactor.Queue                         queue;
         private byte[]                                buffer;
 
         #region Constructors
@@ -47,7 +47,7 @@ namespace Reactor.Streams {
         /// <param name="buffersize">The read buffer size in bytes.</param>
         public Reader (System.IO.Stream stream, int buffersize) {
             this.stream  = stream;
-            this.queue   = Reactor.Async.Queue.Create(1);
+            this.queue   = Reactor.Queue.Create(1);
             this.buffer  = new byte[buffersize];
         }
 
@@ -58,10 +58,10 @@ namespace Reactor.Streams {
         /// <summary>
         /// Reads up to this many bytes from this stream. A null buffer signals end of stream.
         /// </summary>
-        public Reactor.Async.Future<Reactor.Buffer> Read(int count) {
+        public Reactor.Future<Reactor.Buffer> Read(int count) {
             count = (count > this.buffer.Length) 
                 ? this.buffer.Length : count;
-            return new Reactor.Async.Future<Reactor.Buffer>((resolve, reject) => {
+            return new Reactor.Future<Reactor.Buffer>((resolve, reject) => {
                 this.queue.Run(next => {
                     try {
                         this.stream.BeginRead(this.buffer, 0, count, result => {
@@ -71,17 +71,16 @@ namespace Reactor.Streams {
                                     if (read == 0) {
                                         resolve(null);
                                         this.Dispose();
-                                        next();
-                                        return;
                                     }
-                                    resolve(Reactor.Buffer.Create(this.buffer, 0, read));
-                                    next();
+                                    else {
+                                        resolve(Reactor.Buffer.Create(this.buffer, 0, read));
+                                    }
                                 }
                                 catch (Exception error) {
                                     reject(error);
                                     this.Dispose();
-                                    next();
                                 }
+                                next();
                             });
                         }, null);
                     }
@@ -97,7 +96,7 @@ namespace Reactor.Streams {
         /// <summary>
         /// Reads from this stream. A null buffer signals end of stream.
         /// </summary>
-        public Reactor.Async.Future<Reactor.Buffer> Read() {
+        public Reactor.Future<Reactor.Buffer> Read() {
             return this.Read(this.buffer.Length);
         }
 

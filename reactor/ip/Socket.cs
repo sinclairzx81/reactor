@@ -57,10 +57,10 @@ namespace Reactor.IP {
         #endregion
 
         private System.Net.Sockets.Socket                socket;
-        private Reactor.Async.Queue                      queue;
-        private Reactor.Async.Event<Reactor.IP.Message>  onread;
-        private Reactor.Async.Event<System.Exception>    onerror;
-        private Reactor.Async.Event                      onend;
+        private Reactor.Queue                      queue;
+        private Reactor.Event<Reactor.IP.Message>  onread;
+        private Reactor.Event<System.Exception>    onerror;
+        private Reactor.Event                      onend;
         private State                                    state;
         private byte[]                                   read_buffer;
 
@@ -71,10 +71,10 @@ namespace Reactor.IP {
         /// </summary>
         public Socket(int buffersize) {
             this.socket      = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.IP);
-            this.queue       = Reactor.Async.Queue.Create(1);
-            this.onread      = Reactor.Async.Event.Create<Reactor.IP.Message>();
-            this.onerror     = Reactor.Async.Event.Create<System.Exception>();
-            this.onend       = Reactor.Async.Event.Create();
+            this.queue       = Reactor.Queue.Create(1);
+            this.onread      = Reactor.Event.Create<Reactor.IP.Message>();
+            this.onerror     = Reactor.Event.Create<System.Exception>();
+            this.onend       = Reactor.Event.Create();
             this.read_buffer = new byte[buffersize];
             this.state       = State.Active;
             
@@ -174,9 +174,9 @@ namespace Reactor.IP {
         /// Sends this message to the socket.
         /// </summary>
         /// <param name="message"></param>
-        public Reactor.Async.Future<int> Send (Reactor.IP.Message message) {
+        public Reactor.Future<int> Send (Reactor.IP.Message message) {
             message.Buffer.Locked = true;
-            return new Reactor.Async.Future<int>((resolve, reject) => {
+            return new Reactor.Future<int>((resolve, reject) => {
                 this.SendTo(message)
                     .Then(resolve)
                     .Error(reject)
@@ -424,8 +424,8 @@ namespace Reactor.IP {
         /// Resolves the hostname, and caches the result for future requests.
         /// </summary>
         private Dictionary<string, IPAddress> cached_addresses = new Dictionary<string,IPAddress>();
-        private Reactor.Async.Future<System.Net.IPAddress> ResolveHost (string hostname) {
-            return new Reactor.Async.Future<System.Net.IPAddress>((resolve, reject) => {
+        private Reactor.Future<System.Net.IPAddress> ResolveHost (string hostname) {
+            return new Reactor.Future<System.Net.IPAddress>((resolve, reject) => {
                 if (cached_addresses.ContainsKey(hostname)) {
                     resolve(cached_addresses[hostname]);
                     return;
@@ -446,8 +446,8 @@ namespace Reactor.IP {
         /// </summary>
         /// <param name="message"></param>
         /// <returns></returns>
-        private Reactor.Async.Future<int> SendTo(Reactor.IP.Message message) {
-            return new Reactor.Async.Future<int>((resolve, reject) => {
+        private Reactor.Future<int> SendTo(Reactor.IP.Message message) {
+            return new Reactor.Future<int>((resolve, reject) => {
                 this.queue.Run(next => {
                     try {
                         var data = message.Buffer.ToArray();
@@ -477,8 +477,8 @@ namespace Reactor.IP {
         ///Receives a message from this socket.
         /// </summary>
         /// <returns></returns>
-        private Reactor.Async.Future<Reactor.IP.Message> ReceiveFrom () {
-            return new Reactor.Async.Future<Reactor.IP.Message>((resolve, reject) => {
+        private Reactor.Future<Reactor.IP.Message> ReceiveFrom () {
+            return new Reactor.Future<Reactor.IP.Message>((resolve, reject) => {
                 try {
                     EndPoint remoteEP = new IPEndPoint(IPAddress.Any, 0);
                     this.socket.BeginReceiveFrom(this.read_buffer, 0, this.read_buffer.Length, SocketFlags.None, ref remoteEP, result => {

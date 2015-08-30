@@ -87,21 +87,21 @@ namespace Reactor
         /// </summary>
         /// <param name="buffer"></param>
         /// <returns></returns>
-        Reactor.Async.Future Write (Reactor.Buffer buffer);
+        Reactor.Future Write (Reactor.Buffer buffer);
 
         /// <summary>
         /// Flushes this stream. This method returns a Reactor.Future which
         /// resolves once the stream has been flushed.
         /// </summary>
         /// <returns></returns>
-        Reactor.Async.Future Flush ();
+        Reactor.Future Flush ();
 
         /// <summary>
         /// Ends and disposes of the underlying resource. This method returns
         /// a Reactor.Future which resolves once this stream has been ended.
         /// </summary>
         /// <returns></returns>
-        Reactor.Async.Future End ();
+        Reactor.Future End ();
 
         /// <summary>
         /// Forces buffering of all writes. Buffered data will be 

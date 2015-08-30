@@ -26,7 +26,7 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-namespace Reactor.Async {
+namespace Reactor {
 
     /// <summary>
     /// Functionality to protect against asynchronous race conditions.

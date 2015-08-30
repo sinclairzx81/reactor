@@ -49,8 +49,6 @@
     <Compile Include="async\Queue.cs" />
     <Compile Include="async\Racer.cs" />
     <Compile Include="buffer\Buffer.cs" />
-    <Compile Include="collections\ConcurrentStack.cs" />
-    <Compile Include="delegates\DynamicAction.cs" />
     <Compile Include="dns\Dns.cs" />
     <Compile Include="enumerable\Enumerable.cs" />
     <Compile Include="file\Reader.cs" />

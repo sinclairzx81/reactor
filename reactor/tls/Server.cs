@@ -67,9 +67,9 @@ namespace Reactor.Tls {
 
         private System.Net.Sockets.Socket                 socket;
         private X509Certificate2                          certificate;
-        private Reactor.Async.Event<Reactor.Tls.Socket>   onread;
-        private Reactor.Async.Event<Exception>            onerror;
-        private Reactor.Async.Event                       onend;
+        private Reactor.Event<Reactor.Tls.Socket>   onread;
+        private Reactor.Event<Exception>            onerror;
+        private Reactor.Event                       onend;
         private bool                                      listening;
 
         #region Constructor
@@ -79,9 +79,9 @@ namespace Reactor.Tls {
         /// </summary>
         public Server(X509Certificate2 certificate) {
             this.certificate = certificate;
-            this.onread      = Reactor.Async.Event.Create<Reactor.Tls.Socket>();
-            this.onerror     = Reactor.Async.Event.Create<Exception>();
-            this.onend       = Reactor.Async.Event.Create();
+            this.onread      = Reactor.Event.Create<Reactor.Tls.Socket>();
+            this.onerror     = Reactor.Event.Create<Exception>();
+            this.onend       = Reactor.Event.Create();
             this.listening   = false;
         }
 
@@ -195,8 +195,8 @@ namespace Reactor.Tls {
         /// Accepts a socket from this listener.
         /// </summary>
         /// <returns></returns>
-        private Reactor.Async.Future<System.Net.Sockets.Socket> Accept () {
-            return new Reactor.Async.Future<System.Net.Sockets.Socket>((resolve, reject) => {
+        private Reactor.Future<System.Net.Sockets.Socket> Accept () {
+            return new Reactor.Future<System.Net.Sockets.Socket>((resolve, reject) => {
                 try {
                     this.socket.BeginAccept(result => {
                         Loop.Post(() => {
@@ -222,8 +222,8 @@ namespace Reactor.Tls {
         /// <param name="networkstream">The network stream to authenticate.</param>
         /// <param name="certificate">The X509Certificate to authenticate with.</param>
         /// <returns></returns>
-        private Reactor.Async.Future<SslStream> Authenticate(NetworkStream networkstream, X509Certificate certificate) {
-            return new Reactor.Async.Future<SslStream>((resolve, reject) => {
+        private Reactor.Future<SslStream> Authenticate(NetworkStream networkstream, X509Certificate certificate) {
+            return new Reactor.Future<SslStream>((resolve, reject) => {
                 var stream   = new SslStream(networkstream);
                 try {
                     stream.BeginAuthenticateAsServer(certificate, result => {

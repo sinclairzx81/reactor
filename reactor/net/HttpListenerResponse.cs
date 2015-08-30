@@ -606,13 +606,12 @@ namespace Reactor.Net
             return false;
         }
 
-        internal void SendHeaders(bool closing, MemoryStream ms)
-        {
+        internal void SendHeaders(bool closing, MemoryStream ms) {
+
             Encoding encoding = content_encoding;
 
-            if (encoding == null)
-            {
-                encoding = Encoding.Default;
+            if (encoding == null) {
+                encoding = Encoding.UTF8;
             }
 
             if (content_type != null)
@@ -741,15 +740,22 @@ namespace Reactor.Net
 
             writer.Flush();
 
-            int preamble = (encoding.CodePage == 65001) ? 3 : encoding.GetPreamble().Length;
+            //int preamble = (encoding.CodePage == 65001) ? 3 : encoding.GetPreamble().Length;
 
-            if (output_stream == null)
-            {
+            if (output_stream == null) {
                 output_stream = context.Connection.GetResponseStream();
             }
 
             /* Assumes that the ms was at position 0 */
-            ms.Position = preamble;
+            // update haydn: unsure about this. .net defaults 
+            // to a different code page than mono (utf8), and the
+            // preamable for utf-8 is 3 vs the windows codepage 
+            // preamable (which is 0). The flow on effect of
+            // this is that the mono response is skipping 3
+            // bytes on the http header...instead, have
+            // set encoding to Utf8 and mandated the stream
+            // position be 0.
+            ms.Position = 0; // preamble;
 
             HeadersSent = true;
         }

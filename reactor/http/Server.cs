@@ -36,18 +36,18 @@ namespace Reactor.Http {
     /// </summary>
     public class Server {
 
-        private Reactor.Net.HttpListener                   listener;
-        private Reactor.Async.Event<Reactor.Http.Context>  onread;
-        private Reactor.Async.Event<Exception>             onerror;
-        private Reactor.Async.Event                        onend;
-        private bool                                       listening;
+        private Reactor.Net.HttpListener             listener;
+        private Reactor.Event<Reactor.Http.Context>  onread;
+        private Reactor.Event<Exception>             onerror;
+        private Reactor.Event                        onend;
+        private bool                                 listening;
 
         #region Constructor
 
         public Server() {
-            this.onread    = Reactor.Async.Event.Create<Reactor.Http.Context>();
-            this.onerror   = Reactor.Async.Event.Create<Exception>();
-            this.onend     = Reactor.Async.Event.Create();
+            this.onread    = Reactor.Event.Create<Reactor.Http.Context>();
+            this.onerror   = Reactor.Event.Create<Exception>();
+            this.onend     = Reactor.Event.Create();
             this.listening = false;            
         }
 
@@ -58,6 +58,7 @@ namespace Reactor.Http {
         public Server Listen(int port) {
             try {
                 this.listener = new Reactor.Net.HttpListener();
+                this.listener.IgnoreWriteExceptions = true;
                 this.listener.Prefixes.Add(string.Format("http://*:{0}/", port));
                 this.listener.Start();
                 this.listening = true;
@@ -136,8 +137,8 @@ namespace Reactor.Http {
         /// Accepts a http listener context.
         /// </summary>
         /// <returns></returns>
-        private Reactor.Async.Future<Reactor.Net.HttpListenerContext> Accept () {
-            return new Reactor.Async.Future<Reactor.Net.HttpListenerContext>((resolve, reject) => {
+        private Reactor.Future<Reactor.Net.HttpListenerContext> Accept () {
+            return new Reactor.Future<Reactor.Net.HttpListenerContext>((resolve, reject) => {
                 try {
                     this.listener.BeginGetContext(result => {
                         Loop.Post(() => {
@@ -156,6 +157,7 @@ namespace Reactor.Http {
                 }
             });
         }
+        
         #endregion
 
         #region Machine

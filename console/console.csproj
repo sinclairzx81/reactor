@@ -49,16 +49,11 @@
     <None Include="app.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\reactor.web\reactor.web.csproj">
-      <Project>{3c36767d-9365-4a7e-ad8c-9b893216f2f2}</Project>
-      <Name>reactor.web</Name>
-    </ProjectReference>
     <ProjectReference Include="..\reactor\reactor.csproj">
       <Project>{313a33d5-3743-4610-8e37-225f0376bcc9}</Project>
       <Name>reactor</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -93,13 +93,13 @@ namespace Reactor.Tcp {
         #endregion
 
         private System.Net.Sockets.Socket             socket;
-        private Reactor.Async.Queue                   queue;
-        private Reactor.Async.Event                   onconnect;
-        private Reactor.Async.Event                   ondrain;
-        private Reactor.Async.Event                   onreadable;
-        private Reactor.Async.Event<Reactor.Buffer>   onread;
-        private Reactor.Async.Event<Exception>        onerror;
-        private Reactor.Async.Event                   onend;
+        private Reactor.Queue                   queue;
+        private Reactor.Event                   onconnect;
+        private Reactor.Event                   ondrain;
+        private Reactor.Event                   onreadable;
+        private Reactor.Event<Reactor.Buffer>   onread;
+        private Reactor.Event<Exception>        onerror;
+        private Reactor.Event                   onend;
         private Reactor.Streams.Reader                reader;
         private Reactor.Streams.Writer                writer;
         private Reactor.Buffer                        buffer;
@@ -115,13 +115,13 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="socket">The socket to bind.</param>
         internal Socket (System.Net.Sockets.Socket socket) {
-            this.queue      = Reactor.Async.Queue.Create(1);
-            this.onconnect  = Reactor.Async.Event.Create();
-            this.ondrain    = Reactor.Async.Event.Create();
-            this.onreadable = Reactor.Async.Event.Create();
-            this.onread     = Reactor.Async.Event.Create<Reactor.Buffer>();
-            this.onerror    = Reactor.Async.Event.Create<Exception>();
-            this.onend      = Reactor.Async.Event.Create();
+            this.queue      = Reactor.Queue.Create(1);
+            this.onconnect  = Reactor.Event.Create();
+            this.ondrain    = Reactor.Event.Create();
+            this.onreadable = Reactor.Event.Create();
+            this.onread     = Reactor.Event.Create<Reactor.Buffer>();
+            this.onerror    = Reactor.Event.Create<Exception>();
+            this.onend      = Reactor.Event.Create();
             this.readstate  = ReadState.Pending;
             this.readmode   = ReadMode.Unknown;
             this.corked     = false;
@@ -144,13 +144,13 @@ namespace Reactor.Tcp {
         /// <param name="remote">The endpoint to connect to.</param>
         /// <param name="port">The port to connect to.</param>
         public Socket (System.Net.IPEndPoint local, System.Net.IPEndPoint remote) {
-            this.queue      = Reactor.Async.Queue.Create(1);
-            this.onconnect  = Reactor.Async.Event.Create();
-            this.ondrain    = Reactor.Async.Event.Create();
-            this.onreadable = Reactor.Async.Event.Create();
-            this.onread     = Reactor.Async.Event.Create<Reactor.Buffer>();
-            this.onerror    = Reactor.Async.Event.Create<Exception>();
-            this.onend      = Reactor.Async.Event.Create();
+            this.queue      = Reactor.Queue.Create(1);
+            this.onconnect  = Reactor.Event.Create();
+            this.ondrain    = Reactor.Event.Create();
+            this.onreadable = Reactor.Event.Create();
+            this.onread     = Reactor.Event.Create<Reactor.Buffer>();
+            this.onerror    = Reactor.Event.Create<Exception>();
+            this.onend      = Reactor.Event.Create();
             this.readstate  = ReadState.Pending;
             this.readmode   = ReadMode.Unknown;
             this.corked     = false;
@@ -177,13 +177,13 @@ namespace Reactor.Tcp {
         /// <param name="endpoint">The endpoint to connect to.</param>
         /// <param name="port">The port to connect to.</param>
         public Socket (string hostname, int port) {
-            this.queue      = Reactor.Async.Queue.Create(1);
-            this.onconnect  = Reactor.Async.Event.Create();
-            this.ondrain    = Reactor.Async.Event.Create();
-            this.onreadable = Reactor.Async.Event.Create();
-            this.onread     = Reactor.Async.Event.Create<Reactor.Buffer>();
-            this.onerror    = Reactor.Async.Event.Create<Exception>();
-            this.onend      = Reactor.Async.Event.Create();
+            this.queue      = Reactor.Queue.Create(1);
+            this.onconnect  = Reactor.Event.Create();
+            this.ondrain    = Reactor.Event.Create();
+            this.onreadable = Reactor.Event.Create();
+            this.onread     = Reactor.Event.Create<Reactor.Buffer>();
+            this.onerror    = Reactor.Event.Create<Exception>();
+            this.onend      = Reactor.Event.Create();
             this.readstate  = ReadState.Pending;
             this.readmode   = ReadMode.Unknown;
             this.corked     = false;
@@ -469,9 +469,9 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="buffer">The buffer to write.</param>
         /// <param name="callback">A callback to signal when this buffer has been written.</param>
-        public Reactor.Async.Future Write (Reactor.Buffer buffer) {
+        public Reactor.Future Write (Reactor.Buffer buffer) {
             buffer.Locked = true;
-            return new Reactor.Async.Future((resolve, reject) => {
+            return new Reactor.Future((resolve, reject) => {
                 this.queue.Run(next => {
                     this.writer.Write(buffer)
                                .Then(resolve)
@@ -485,8 +485,8 @@ namespace Reactor.Tcp {
         /// Flushes this stream.
         /// </summary>
         /// <param name="callback">A callback to signal when this buffer has been flushed.</param>
-        public Reactor.Async.Future Flush () {
-            return new Reactor.Async.Future((resolve, reject) => {
+        public Reactor.Future Flush () {
+            return new Reactor.Future((resolve, reject) => {
                 this.queue.Run(next => {
                     this.writer.Flush()
                                .Then(resolve)
@@ -500,8 +500,8 @@ namespace Reactor.Tcp {
         /// Ends this stream.
         /// </summary>
         /// <param name="callback">A callback to signal when this stream has ended.</param>
-        public Reactor.Async.Future End () {
-            return new Reactor.Async.Future((resolve, reject) => {
+        public Reactor.Future End () {
+            return new Reactor.Future((resolve, reject) => {
                 this.queue.Run(next => {
                     this._End();
                     next();          
@@ -822,7 +822,7 @@ namespace Reactor.Tcp {
         /// <param name="index"></param>
         /// <param name="count"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (byte[] buffer, int index, int count) {
+        public Reactor.Future Write (byte[] buffer, int index, int count) {
             return this.Write(Reactor.Buffer.Create(buffer, 0, count));
         }
 
@@ -831,7 +831,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="buffer"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (byte[] buffer) {
+        public Reactor.Future Write (byte[] buffer) {
             return this.Write(buffer, 0, buffer.Length);
         }
 
@@ -840,7 +840,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="data"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (string data) {
+        public Reactor.Future Write (string data) {
             return this.Write(System.Text.Encoding.UTF8.GetBytes(data));
         }
 
@@ -850,7 +850,7 @@ namespace Reactor.Tcp {
         /// <param name="format"></param>
         /// <param name="args"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (string format, params object[] args) {
+        public Reactor.Future Write (string format, params object[] args) {
             format = string.Format(format, args);
             return this.Write(System.Text.Encoding.UTF8.GetBytes(format));
         }
@@ -860,7 +860,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="data"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (byte data) {
+        public Reactor.Future Write (byte data) {
             return this.Write(new byte[1] { data });
         }
 
@@ -869,7 +869,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (bool value) {
+        public Reactor.Future Write (bool value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -878,7 +878,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (short value) {
+        public Reactor.Future Write (short value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -887,7 +887,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (ushort value) {
+        public Reactor.Future Write (ushort value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -896,7 +896,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (int value) {
+        public Reactor.Future Write (int value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -905,7 +905,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (uint value) {
+        public Reactor.Future Write (uint value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -914,7 +914,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (long value) {
+        public Reactor.Future Write (long value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -923,7 +923,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (ulong value) {
+        public Reactor.Future Write (ulong value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -932,7 +932,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (float value) {
+        public Reactor.Future Write (float value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -941,7 +941,7 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (double value) {
+        public Reactor.Future Write (double value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -1159,8 +1159,8 @@ namespace Reactor.Tcp {
         /// </summary>
         /// <param name="hostname">The hostname or ip to resolve.</param>
         /// <returns></returns>
-        private Reactor.Async.Future<System.Net.IPAddress> ResolveHostName (string hostname) {
-            return new Reactor.Async.Future<System.Net.IPAddress>((resolve, reject) => {
+        private Reactor.Future<System.Net.IPAddress> ResolveHostName (string hostname) {
+            return new Reactor.Future<System.Net.IPAddress>((resolve, reject) => {
                 Reactor.Dns.GetHostAddresses(hostname)
                            .Then(addresses => {
                                 if (addresses.Length == 0) 
@@ -1177,8 +1177,8 @@ namespace Reactor.Tcp {
         /// <param name="endpoint">The endpoint.</param>
         /// <param name="port">The port.</param>
         /// <returns></returns>
-        private Reactor.Async.Future<System.Net.Sockets.Socket> Connect (IPEndPoint local, IPEndPoint remote) {
-            return new Reactor.Async.Future<System.Net.Sockets.Socket>((resolve, reject) => {
+        private Reactor.Future<System.Net.Sockets.Socket> Connect (IPEndPoint local, IPEndPoint remote) {
+            return new Reactor.Future<System.Net.Sockets.Socket>((resolve, reject) => {
                 Loop.Post(() => {
                     try {
                         var socket = new System.Net.Sockets.Socket(local.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
@@ -1226,8 +1226,8 @@ namespace Reactor.Tcp {
         /// Disconnects this socket.
         /// </summary>
         /// <returns></returns>
-        private Reactor.Async.Future Disconnect () {
-            return new Reactor.Async.Future((resolve, reject) => {
+        private Reactor.Future Disconnect () {
+            return new Reactor.Future((resolve, reject) => {
                 try {
                     this.socket.BeginDisconnect(false, (result) => {
                         Loop.Post(() => {

@@ -55,10 +55,10 @@ namespace Reactor.Streams {
         #endregion
 
         private System.IO.Stream                 stream;
-        private Reactor.Async.Queue              queue;
-        private Reactor.Async.Event              ondrain;
-        private Reactor.Async.Event<Exception>   onerror;
-        private Reactor.Async.Event              onend;
+        private Reactor.Queue              queue;
+        private Reactor.Event              ondrain;
+        private Reactor.Event<Exception>   onerror;
+        private Reactor.Event              onend;
         private State                            state;
 
         #region Constructors
@@ -69,10 +69,10 @@ namespace Reactor.Streams {
         /// <param name="stream">The stream to write to.</param>
         public Writer(System.IO.Stream stream) {
             this.stream  = stream;
-            this.queue   = Reactor.Async.Queue.Create(1);
-            this.ondrain = Reactor.Async.Event.Create();
-            this.onerror = Reactor.Async.Event.Create<Exception>();
-            this.onend   = Reactor.Async.Event.Create();
+            this.queue   = Reactor.Queue.Create(1);
+            this.ondrain = Reactor.Event.Create();
+            this.onerror = Reactor.Event.Create<Exception>();
+            this.onend   = Reactor.Event.Create();
             this.state   = State.Writing;
         }
 
@@ -146,9 +146,9 @@ namespace Reactor.Streams {
         /// </summary>
         /// <param name="buffer">The buffer to write.</param>
         /// <param name="callback">A action called once the write has completed.</param>
-        public Reactor.Async.Future Write (Reactor.Buffer buffer) {
+        public Reactor.Future Write (Reactor.Buffer buffer) {
             buffer.Locked = true;
-            return new Reactor.Async.Future((resolve, reject) => {
+            return new Reactor.Future((resolve, reject) => {
                 Loop.Post(() => {
                     this.queue.Run(next => {
                         try {
@@ -184,8 +184,8 @@ namespace Reactor.Streams {
         /// Flush data in this stream.
         /// </summary>
         /// <param name="callback">A action called once the stream has been flushed.</param>
-        public Reactor.Async.Future Flush () {
-            return new Reactor.Async.Future((resolve, reject) => {
+        public Reactor.Future Flush () {
+            return new Reactor.Future((resolve, reject) => {
                 Loop.Post(() => {
                     this.queue.Run(next => {
                         try {
@@ -207,8 +207,8 @@ namespace Reactor.Streams {
         /// Ends this stream. Followed by disposing of this stream.
         /// </summary>
         /// <param name="callback">A action called once the stream has been ended.</param>
-        public Reactor.Async.Future End () {
-            return new Reactor.Async.Future((resolve, reject) => { 
+        public Reactor.Future End () {
+            return new Reactor.Future((resolve, reject) => { 
                 Loop.Post(() => {
                     this.queue.Run(next => {
                         this._End();

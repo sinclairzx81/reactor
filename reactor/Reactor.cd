@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <ClassDiagram MajorVersion="1" MinorVersion="1">
-  <Class Name="Reactor.Async.Event" Collapsed="true" BaseTypeListCollapsed="true">
+  <Class Name="Reactor.Event" Collapsed="true" BaseTypeListCollapsed="true">
     <Position X="16.5" Y="3.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AABAAAAAACAAAAAAAIAABBCAAAQAAEAAAAAAAQAAAIA=</HashCode>
@@ -8,7 +8,7 @@
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
-  <Class Name="Reactor.Async.Event&lt;T&gt;" Collapsed="true" BaseTypeListCollapsed="true">
+  <Class Name="Reactor.Event&lt;T&gt;" Collapsed="true" BaseTypeListCollapsed="true">
     <Position X="18.25" Y="3.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AABAAAAAACAAAAAAAIAABBCAAAQAAAAAAAAAAQAAAIA=</HashCode>
@@ -16,14 +16,14 @@
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
-  <Class Name="Reactor.Async.Future&lt;T&gt;" Collapsed="true">
+  <Class Name="Reactor.Future&lt;T&gt;" Collapsed="true">
     <Position X="7.75" Y="4.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>ABAAAAAAQADgAQAAAQAACAAAAAAAIAAAAAAAAEAAAIA=</HashCode>
       <FileName>async\Future.cs</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="Reactor.Async.Future" Collapsed="true">
+  <Class Name="Reactor.Future" Collapsed="true">
     <Position X="9.5" Y="4.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAQATgAQAAAQAACAAAAAAAIEAAAAAAAEAAAIA=</HashCode>
@@ -44,7 +44,7 @@
       <FileName>async\Future.cs</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="Reactor.Async.Queue" Collapsed="true" BaseTypeListCollapsed="true">
+  <Class Name="Reactor.Queue" Collapsed="true" BaseTypeListCollapsed="true">
     <Position X="16.5" Y="5.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAgAAAAACAAAAAAAgBAAAAAAAgAAEAAAAAAIAgAIAI=</HashCode>
@@ -52,7 +52,7 @@
     </TypeIdentifier>
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
-  <Class Name="Reactor.Async.Racer" Collapsed="true">
+  <Class Name="Reactor.Racer" Collapsed="true">
     <Position X="18.25" Y="5.75" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAgAABAAAAAAAAAAAAAAAAEAAAAAAAAAAAAA=</HashCode>

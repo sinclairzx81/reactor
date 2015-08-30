@@ -175,6 +175,8 @@ namespace Reactor.Net
 
         internal void InternalWrite(byte[] buffer, int offset, int count)
         {
+
+
             if (ignore_errors)
             {
                 try
@@ -248,6 +250,8 @@ namespace Reactor.Net
 
         public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback cback, object state)
         {
+
+
             if (disposed)
             {
                 throw new ObjectDisposedException(GetType().ToString());
@@ -256,7 +260,7 @@ namespace Reactor.Net
             byte[] bytes = null;
 
             MemoryStream ms = GetHeaders(false);
-            
+
             bool chunked = response.SendChunked;
             
             if (ms != null)
@@ -274,9 +278,9 @@ namespace Reactor.Net
                 ms.Write(buffer, offset, count);
 
                 buffer = ms.GetBuffer();
-                
+
                 offset = (int)start;
-                
+
                 count = (int)(ms.Position - start);
             }
             else if (chunked)

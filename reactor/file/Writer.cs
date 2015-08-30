@@ -55,9 +55,9 @@ namespace Reactor.File {
 
         #endregion
 
-        private Reactor.Async.Event            ondrain;
-        private Reactor.Async.Event<Exception> onerror;
-        private Reactor.Async.Event            onend;
+        private Reactor.Event            ondrain;
+        private Reactor.Event<Exception> onerror;
+        private Reactor.Event            onend;
         private Reactor.Streams.Writer         writer;
         private State                          state;
         
@@ -71,9 +71,9 @@ namespace Reactor.File {
         /// <param name="mode"></param>
         /// <param name="share"></param>
         public Writer(string filename, long offset, System.IO.FileMode mode, System.IO.FileShare share) {
-            this.ondrain = Reactor.Async.Event.Create();
-            this.onerror = Reactor.Async.Event.Create<Exception>();
-            this.onend   = Reactor.Async.Event.Create();
+            this.ondrain = Reactor.Event.Create();
+            this.onerror = Reactor.Event.Create<Exception>();
+            this.onend   = Reactor.Event.Create();
             this.state   = State.Writing;
             var stream   = System.IO.File.Open(filename, mode, FileAccess.Write, share);
             offset       = (offset > stream.Length) ? stream.Length : offset;
@@ -157,7 +157,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="buffer">The buffer to write.</param>
         /// <param name="callback">A callback to signal when this data has been written.</param>
-        public Reactor.Async.Future Write (Reactor.Buffer buffer) {
+        public Reactor.Future Write (Reactor.Buffer buffer) {
             buffer.Locked = true;
             return this.writer.Write(buffer);
         }
@@ -166,7 +166,7 @@ namespace Reactor.File {
         /// Flushes this stream.
         /// </summary>
         /// <param name="callback"></param>
-        public Reactor.Async.Future Flush () {
+        public Reactor.Future Flush () {
             return this.writer.Flush();
         }
 
@@ -174,7 +174,7 @@ namespace Reactor.File {
         /// Ends the stream.
         /// </summary>
         /// <param name="callback">A callback to signal when this stream has ended.</param>
-        public Reactor.Async.Future End () {
+        public Reactor.Future End () {
             return this.writer.End();
         }
 
@@ -204,7 +204,7 @@ namespace Reactor.File {
         /// <param name="index"></param>
         /// <param name="count"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (byte[] buffer, int index, int count) {
+        public Reactor.Future Write (byte[] buffer, int index, int count) {
             return this.Write(Reactor.Buffer.Create(buffer, 0, count));
         }
 
@@ -213,7 +213,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="buffer"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (byte[] buffer) {
+        public Reactor.Future Write (byte[] buffer) {
             return this.Write(buffer, 0, buffer.Length);
         }
 
@@ -222,7 +222,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="data"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (string data) {
+        public Reactor.Future Write (string data) {
             return this.Write(System.Text.Encoding.UTF8.GetBytes(data));
         }
 
@@ -232,7 +232,7 @@ namespace Reactor.File {
         /// <param name="format"></param>
         /// <param name="args"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (string format, params object[] args) {
+        public Reactor.Future Write (string format, params object[] args) {
             format = string.Format(format, args);
             return this.Write(System.Text.Encoding.UTF8.GetBytes(format));
         }
@@ -242,7 +242,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="data"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (byte data) {
+        public Reactor.Future Write (byte data) {
             return this.Write(new byte[1] { data });
         }
 
@@ -251,7 +251,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (bool value) {
+        public Reactor.Future Write (bool value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -260,7 +260,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (short value) {
+        public Reactor.Future Write (short value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -269,7 +269,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (ushort value) {
+        public Reactor.Future Write (ushort value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -278,7 +278,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (int value) {
+        public Reactor.Future Write (int value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -287,7 +287,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (uint value) {
+        public Reactor.Future Write (uint value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -296,7 +296,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (long value) {
+        public Reactor.Future Write (long value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -305,7 +305,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (ulong value) {
+        public Reactor.Future Write (ulong value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -314,7 +314,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (float value) {
+        public Reactor.Future Write (float value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 
@@ -323,7 +323,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="value"></param>
         /// <returns>A future resolved when this write has completed.</returns>
-        public Reactor.Async.Future Write (double value) {
+        public Reactor.Future Write (double value) {
             return this.Write(BitConverter.GetBytes(value));
         }
 

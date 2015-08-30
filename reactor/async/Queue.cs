@@ -30,16 +30,17 @@ THE SOFTWARE.
 using System;
 using System.Collections.Generic;
 
-namespace Reactor.Async {
+namespace Reactor {
 
     /// <summary>
     /// Async Queue allows callers to queue asynchronous 
     /// operations with a user defined level of concurrency.
     /// Useful when needing to control throughput on a given
-    /// resource.
+    /// resource or suspending execution until a condition is 
+    /// meet.
     /// </summary>
     /// <example><![CDATA[
-    /// var queue = Reactor.Async.Queue(1);
+    /// var queue = Reactor.Queue(1);
     /// queue.Run(next => {
     ///     do_something_async(() => {
     ///         next();

@@ -64,9 +64,9 @@ namespace Reactor.Tcp {
         #endregion
         
         private System.Net.Sockets.Socket                 socket;
-        private Reactor.Async.Event<Reactor.Tcp.Socket>   onread;
-        private Reactor.Async.Event<Exception>            onerror;
-        private Reactor.Async.Event                       onend;
+        private Reactor.Event<Reactor.Tcp.Socket>   onread;
+        private Reactor.Event<Exception>            onerror;
+        private Reactor.Event                       onend;
         private bool                                      listening;
 
         #region Constructor
@@ -75,9 +75,9 @@ namespace Reactor.Tcp {
         /// Creates a new TCP Server.
         /// </summary>
         public Server() {
-            this.onread    = Reactor.Async.Event.Create<Reactor.Tcp.Socket>();
-            this.onerror   = Reactor.Async.Event.Create<Exception>();
-            this.onend     = Reactor.Async.Event.Create();
+            this.onread    = Reactor.Event.Create<Reactor.Tcp.Socket>();
+            this.onerror   = Reactor.Event.Create<Exception>();
+            this.onend     = Reactor.Event.Create();
             this.listening = false;
         }
 
@@ -191,8 +191,8 @@ namespace Reactor.Tcp {
         /// Accepts a socket from this listener.
         /// </summary>
         /// <returns></returns>
-        private Reactor.Async.Future<System.Net.Sockets.Socket> Accept () {
-            return new Reactor.Async.Future<System.Net.Sockets.Socket>((resolve, reject) => {
+        private Reactor.Future<System.Net.Sockets.Socket> Accept () {
+            return new Reactor.Future<System.Net.Sockets.Socket>((resolve, reject) => {
                 try {
                     this.socket.BeginAccept(result => {
                         Loop.Post(() => {

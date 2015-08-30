@@ -42,8 +42,8 @@ namespace Reactor.Fibers {
         /// </summary>
         /// <param name="operation">The operation to in the fiber.</param>
         /// <returns></returns>
-        public static Reactor.Async.Future Create(Reactor.Action operation) {
-            return new Reactor.Async.Future((resolve, reject) => {
+        public static Reactor.Future Create(Reactor.Action operation) {
+            return new Reactor.Future((resolve, reject) => {
                 System.Threading.ThreadPool.QueueUserWorkItem(state => {
                     try {
                         operation();
@@ -61,8 +61,8 @@ namespace Reactor.Fibers {
         /// </summary>
         /// <param name="operation">The operation to in the fiber.</param>
         /// <returns></returns>
-        public static Reactor.Async.Future<T> Create<T>(Reactor.Func<T> operation) {
-            return new Reactor.Async.Future<T>((resolve, reject) => {
+        public static Reactor.Future<T> Create<T>(Reactor.Func<T> operation) {
+            return new Reactor.Future<T>((resolve, reject) => {
                 System.Threading.ThreadPool.QueueUserWorkItem(state => {
                         try {
                             var result = operation();

@@ -39,9 +39,9 @@ namespace Reactor {
         /// Asynchronously returns the internet protocol (IP) address for the specified host.
         /// </summary>
         /// <param name="hostname">The host name or ip address to resolve.</param>
-        public static Reactor.Async.Future<System.Net.IPAddress[]> GetHostAddresses(string hostname) {
+        public static Reactor.Future<System.Net.IPAddress[]> GetHostAddresses(string hostname) {
             if (hostname == "localhost") hostname = "127.0.0.1";
-            return new Async.Future<System.Net.IPAddress[]>((resolve, reject) => {
+            return new Reactor.Future<System.Net.IPAddress[]>((resolve, reject) => {
                 try {
                     System.Net.Dns.BeginGetHostAddresses(hostname, result => {
                         Loop.Post(() => {
@@ -66,8 +66,8 @@ namespace Reactor {
         /// </summary>
         /// <param name="address"></param>
         /// <returns></returns>
-        public static Reactor.Async.Future<System.Net.IPHostEntry> GetHostEntry(System.Net.IPAddress address) {
-            return new Async.Future<System.Net.IPHostEntry>((resolve, reject) => {
+        public static Reactor.Future<System.Net.IPHostEntry> GetHostEntry(System.Net.IPAddress address) {
+            return new Reactor.Future<System.Net.IPHostEntry>((resolve, reject) => {
                 try {
                     System.Net.Dns.BeginGetHostEntry(address, result => {
                         Loop.Post(() => {
@@ -92,8 +92,8 @@ namespace Reactor {
         /// </summary>
         /// <param name="address"></param>
         /// <returns></returns>
-        public static Reactor.Async.Future<System.Net.IPHostEntry> GetHostEntry(string hostNameOrAddress) {
-            return new Async.Future<System.Net.IPHostEntry>((resolve, reject) => {
+        public static Reactor.Future<System.Net.IPHostEntry> GetHostEntry(string hostNameOrAddress) {
+            return new Reactor.Future<System.Net.IPHostEntry>((resolve, reject) => {
                 try {
                     System.Net.Dns.BeginGetHostEntry(hostNameOrAddress, result => {
                         Loop.Post(() => {

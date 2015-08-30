@@ -30,7 +30,7 @@ THE SOFTWARE.
 using System;
 using System.Collections.Generic;
 
-namespace Reactor.Async {
+namespace Reactor {
 
     /// <summary>
     /// Reactor Future.
@@ -119,9 +119,9 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public Reactor.Async.Future Then  (Reactor.Action<T> callback) {
+        public Reactor.Future Then  (Reactor.Action<T> callback) {
             lock (this.fields) {
-                var future  = new Reactor.Async.Future();
+                var future  = new Reactor.Future();
                 var reject  = new Reactor.Action<Exception>(error => {
                     future.Reject(error);
                 });
@@ -150,9 +150,9 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public Reactor.Async.Future<TResult> Then<TResult>  (Reactor.Func<T, TResult> callback) {
+        public Reactor.Future<TResult> Then<TResult>  (Reactor.Func<T, TResult> callback) {
             lock (this.fields) {
-                var future  = new Reactor.Async.Future<TResult>();
+                var future  = new Reactor.Future<TResult>();
                 var reject  = new Reactor.Action<Exception>(error => {
                     future.Reject(error);
                 });
@@ -181,9 +181,9 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public Reactor.Async.Future Error (Reactor.Action<Exception> callback) {
+        public Reactor.Future Error (Reactor.Action<Exception> callback) {
             lock (this.fields) {
-                var future  = new Reactor.Async.Future();
+                var future  = new Reactor.Future();
                 var resolve = new Reactor.Action<T>(value => {
                     future.Resolve();
                 });
@@ -212,9 +212,9 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public Reactor.Async.Future Finally (Reactor.Action callback) {
+        public Reactor.Future Finally (Reactor.Action callback) {
             lock (this.fields) {
-                var future  = new Reactor.Async.Future();
+                var future  = new Reactor.Future();
                 var resolve = new Reactor.Action<T>(value => {
                     callback();
                     future.Resolve();
@@ -237,26 +237,6 @@ namespace Reactor.Async {
                 }            
                 return future;
             }
-        }
-
-        /// <summary>
-        /// Cancels this future. If this future has not already
-        /// resolved, a cancelled future will reject with a exception
-        /// containing the supplied message.
-        /// </summary>*
-        /// <param name="reason"></param>
-        public void Cancel(string reason) {
-            this.Reject(new Exception(reason));
-        }
-
-        /// <summary>
-        /// Cancels this future. If this future has not already
-        /// resolved, a cancelled future will reject with a exception
-        /// containing the message 'cancelled'.
-        /// </summary>
-        /// <param name="reason"></param>
-        public void Cancel() {
-            this.Cancel("cancelled");
         }
 
         #endregion
@@ -377,9 +357,9 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public Reactor.Async.Future Then (Reactor.Action callback) {
+        public Reactor.Future Then (Reactor.Action callback) {
             lock (this.fields) {
-                var future  = new Reactor.Async.Future();
+                var future  = new Reactor.Future();
                 var reject  = new Reactor.Action<Exception>(error => {
                     future.Reject(error);
                 });
@@ -408,9 +388,9 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public Reactor.Async.Future<TResult> Then<TResult> (Reactor.Func<TResult> callback) {
+        public Reactor.Future<TResult> Then<TResult> (Reactor.Func<TResult> callback) {
             lock (this.fields) {
-                var future  = new Reactor.Async.Future<TResult>();
+                var future  = new Reactor.Future<TResult>();
                 var reject  = new Reactor.Action<Exception>(error => {
                     future.Reject(error);
                 });
@@ -439,9 +419,9 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public Reactor.Async.Future Error (Reactor.Action<Exception> callback) {
+        public Reactor.Future Error (Reactor.Action<Exception> callback) {
             lock (this.fields) {
-                var future  = new Reactor.Async.Future();
+                var future  = new Reactor.Future();
                 var resolve = new Reactor.Action(() => {
                     future.Resolve();
                 });
@@ -470,9 +450,9 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public Reactor.Async.Future Finally (Reactor.Action callback) {
+        public Reactor.Future Finally (Reactor.Action callback) {
             lock (this.fields) {
-                var future  = new Reactor.Async.Future();
+                var future  = new Reactor.Future();
                 var resolve = new Reactor.Action(() => {
                     callback();
                     future.Resolve();
@@ -495,26 +475,6 @@ namespace Reactor.Async {
                 }            
                 return future;
             }
-        }
-
-        /// <summary>
-        /// Cancels this future. If this future has not already
-        /// resolved, a cancelled future will reject with a exception
-        /// containing the supplied message.
-        /// </summary>
-        /// <param name="reason"></param>
-        public void Cancel(string reason) {
-            this.Reject(new Exception(reason));
-        }
-
-        /// <summary>
-        /// Cancels this future. If this future has not already
-        /// resolved, a cancelled future will reject with a exception
-        /// containing the message 'cancelled'.
-        /// </summary>
-        /// <param name="reason"></param>
-        public void Cancel() {
-            this.Cancel("cancelled");
         }
 
         #endregion
@@ -559,8 +519,8 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="resolver"></param>
         /// <returns></returns>
-        public static Reactor.Async.Future Create(Reactor.Action<Action, Action<Exception>> resolver) {
-            return new Reactor.Async.Future(resolver);
+        public static Reactor.Future Create(Reactor.Action<Action, Action<Exception>> resolver) {
+            return new Reactor.Future(resolver);
         }
 
         /// <summary>
@@ -568,16 +528,16 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="resolver"></param>
         /// <returns></returns>
-        public static Reactor.Async.Future<T> Create<T>(Reactor.Action<Action<T>, Action<Exception>> resolver) {
-            return new Reactor.Async.Future<T>(resolver);
+        public static Reactor.Future<T> Create<T>(Reactor.Action<Action<T>, Action<Exception>> resolver) {
+            return new Reactor.Future<T>(resolver);
         }
 
         /// <summary>
         /// Returns a resolved future.
         /// </summary>
         /// <returns></returns>
-        public static Reactor.Async.Future Resolved() {
-            return new Reactor.Async.Future((resolve, reject) => resolve());
+        public static Reactor.Future Resolved() {
+            return new Reactor.Future((resolve, reject) => resolve());
         }
 
         /// <summary>
@@ -585,16 +545,16 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="value">The resolved value.</param>
         /// <returns></returns>
-        public static Reactor.Async.Future<T> Resolved<T>(T value) {
-            return new Reactor.Async.Future<T>((resolve, reject) => resolve(value));
+        public static Reactor.Future<T> Resolved<T>(T value) {
+            return new Reactor.Future<T>((resolve, reject) => resolve(value));
         }
 
         /// <summary>
         /// Returns a rejected future.
         /// </summary>
         /// <returns></returns>
-        public static Reactor.Async.Future Rejected(Exception error) {
-            return new Reactor.Async.Future((resolve, reject) => reject(error));
+        public static Reactor.Future Rejected(Exception error) {
+            return new Reactor.Future((resolve, reject) => reject(error));
         }
 
         /// <summary>
@@ -602,8 +562,51 @@ namespace Reactor.Async {
         /// </summary>
         /// <param name="value">The rejected value.</param>
         /// <returns></returns>
-        public static Reactor.Async.Future<T> Rejected<T>(Exception error) {
-            return new Reactor.Async.Future<T>((resolve, reject) => reject(error));
+        public static Reactor.Future<T> Rejected<T>(Exception error) {
+            return new Reactor.Future<T>((resolve, reject) => reject(error));
+        }
+
+        /// <summary>
+        /// Returns a future that resolves when all of the futures in the iterable argument have been resolved. Each
+        /// future is run in parallel, if any one future rejects, then it is immediately rejected to the caller.
+        /// </summary>
+        /// <param name="futures"></param>
+        /// <returns></returns>
+        public static Reactor.Future All<T>(IEnumerable<Reactor.Future> futures) {
+            var count = 0;
+            return new Reactor.Future((resolve, reject) => {
+                foreach (var future in futures) {
+                    count++;
+                    future.Then(() => {
+                        count--;
+                        if(count == 0) 
+                            resolve();
+                    }).Error(reject);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Returns a future that resolves when all of the futures in the iterable argument have been resolved. Each
+        /// future is run in parallel, if any one future rejects, then it is immediately rejected to the caller.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="futures"></param>
+        /// <returns></returns>
+        public static Reactor.Future<IEnumerable<T>> All<T>(IEnumerable<Reactor.Future<T>> futures) {
+            var count = 0;
+            return new Reactor.Future<IEnumerable<T>>((resolve, reject) => {
+                var list = new List<T>();
+                foreach (var future in futures) {
+                    count++;
+                    future.Then(v => {
+                        list.Add(v);
+                        count--;
+                        if(count == 0) 
+                            resolve(list);
+                    }).Error(reject);
+                }
+            });
         }
 
         #endregion
@@ -614,7 +617,7 @@ namespace Reactor.Async {
     /// </summary>
     /// <typeparam name="T"></typeparam>
     public class Deferred<T> {
-        private Reactor.Async.Future<T>   future;
+        private Reactor.Future<T>         future;
         private Reactor.Action<T>         resolve;
         private Reactor.Action<Exception> reject;
 
@@ -637,7 +640,7 @@ namespace Reactor.Async {
         /// <summary>
         /// The deferred future.
         /// </summary>
-        public Reactor.Async.Future<T> Future {
+        public Reactor.Future<T> Future {
             get {  return this.future; }
         }
 
@@ -668,7 +671,7 @@ namespace Reactor.Async {
     /// Reactor Deferred
     /// </summary>
     public class Deferred {
-        private Reactor.Async.Future      future;
+        private Reactor.Future            future;
         private Reactor.Action            resolve;
         private Reactor.Action<Exception> reject;
 
@@ -691,7 +694,7 @@ namespace Reactor.Async {
         /// <summary>
         /// The deferred future.
         /// </summary>
-        public Reactor.Async.Future Future {
+        public Reactor.Future Future {
             get {  return this.future; }
         }
 

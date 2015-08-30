@@ -91,29 +91,27 @@ namespace Reactor.Http {
 
         #endregion
 
-        private Reactor.Net.HttpListenerRequest       request;
-        private Reactor.Async.Event                   onreadable;
-        private Reactor.Async.Event<Reactor.Buffer>   onread;
-        private Reactor.Async.Event<Exception>        onerror;
-        private Reactor.Async.Event                   onend;
-        private Reactor.Streams.Reader                reader;
-        private Reactor.Buffer                        buffer;
-        private ReadState                             readstate;
-        private ReadMode                              readmode;
+        private Reactor.Net.HttpListenerRequest   request;
+        private Reactor.Event                     onreadable;
+        private Reactor.Event<Reactor.Buffer>     onread;
+        private Reactor.Event<Exception>          onerror;
+        private Reactor.Event                     onend;
+        private Reactor.Streams.Reader            reader;
+        private Reactor.Buffer                    buffer;
+        private ReadState                         readstate;
+        private ReadMode                          readmode;
 
         internal ServerRequest(Reactor.Net.HttpListenerRequest request) {
             this.request    = request;
-            this.onreadable = Reactor.Async.Event.Create();
-            this.onread     = Reactor.Async.Event.Create<Reactor.Buffer>();
-            this.onerror    = Reactor.Async.Event.Create<Exception>();
-            this.onend      = Reactor.Async.Event.Create();
+            this.onreadable = Reactor.Event.Create();
+            this.onread     = Reactor.Event.Create<Reactor.Buffer>();
+            this.onerror    = Reactor.Event.Create<Exception>();
+            this.onend      = Reactor.Event.Create();
             this.buffer     = Reactor.Buffer.Create();
             this.readstate  = ReadState.Pending;
             this.readmode   = ReadMode.Unknown;
             this.reader     = Reactor.Streams.Reader.Create(request.InputStream, Reactor.Settings.DefaultBufferSize);          
         }
-
-
 
         #region Events
 

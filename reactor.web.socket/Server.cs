@@ -1,244 +1,244 @@
-﻿/*--------------------------------------------------------------------------
+﻿///*--------------------------------------------------------------------------
 
-Reactor.Web.Sockets
+//Reactor.Web.Sockets
 
-The MIT License (MIT)
+//The MIT License (MIT)
 
-Copyright (c) 2015 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
+//Copyright (c) 2015 Haydn Paterson (sinclair) <haydn.developer@gmail.com>
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+//Permission is hereby granted, free of charge, to any person obtaining a copy
+//of this software and associated documentation files (the "Software"), to deal
+//in the Software without restriction, including without limitation the rights
+//to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//copies of the Software, and to permit persons to whom the Software is
+//furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+//The above copyright notice and this permission notice shall be included in
+//all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//THE SOFTWARE.
 
----------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------*/
 
-using System;
+//using System;
 
-namespace Reactor.Web.Socket
-{
-    public class Server
-    {
-        public Reactor.Action<Reactor.Web.Socket.Context, Reactor.Action<bool, string>> OnUpgrade { get; set; }
+//namespace Reactor.Web.Socket
+//{
+//    public class Server
+//    {
+//        public Reactor.Action<Reactor.Web.Socket.Context, Reactor.Action<bool, string>> OnUpgrade { get; set; }
 
-        public Reactor.Action<Socket>                   OnSocket    { get; set; }
+//        public Reactor.Action<Socket>                   OnSocket    { get; set; }
 
-        public Reactor.Action<Exception>                OnError     { get; set; }
+//        public Reactor.Action<Exception>                OnError     { get; set; }
 
-        private string                                  path;
+//        private string                                  path;
 
-        private Reactor.Http.Server                     server;
+//        private Reactor.Http.Server                     server;
 
-        private Reactor.Action<Reactor.Http.Context>    servercb;
+//        private Reactor.Action<Reactor.Http.Context>    servercb;
 
-        #region Constructors
+//        #region Constructors
 
-        public Server(int port, string path)
-        {
-            this.path = path;
+//        public Server(int port, string path)
+//        {
+//            this.path = path;
 
-            this.server = Reactor.Http.Server.Create(context => {
+//            this.server = Reactor.Http.Server.Create(context => {
 
-                context.Response.StatusCode = 401;
+//                context.Response.StatusCode = 401;
 
-                context.Response.ContentType = "text/plain";
+//                context.Response.ContentType = "text/plain";
 
-                context.Response.Write("method not allowed");
+//                context.Response.Write("method not allowed");
 
-                context.Response.End();
+//                context.Response.End();
 
-            }).Listen(port);
+//            }).Listen(port);
 
-            this.servercb = this.server.OnContext;
+//            this.servercb = this.server.OnContext;
 
-            this.server.OnContext = this.OnContext;
+//            this.server.OnContext = this.OnContext;
 
-            this.OnUpgrade = (context, callback) => callback(true, string.Empty);
-        }
+//            this.OnUpgrade = (context, callback) => callback(true, string.Empty);
+//        }
 
-        public Server(Reactor.Http.Server server, string path)
-        {
-            this.path   = path;
+//        public Server(Reactor.Http.Server server, string path)
+//        {
+//            this.path   = path;
 
-            this.server = server;
+//            this.server = server;
 
-            if(this.server.OnContext == null)
-            {
-                this.server.OnContext = context =>
-                {
-                    context.Response.StatusCode = 401;
+//            if(this.server.OnContext == null)
+//            {
+//                this.server.OnContext = context =>
+//                {
+//                    context.Response.StatusCode = 401;
 
-                    context.Response.ContentType = "text/plain";
+//                    context.Response.ContentType = "text/plain";
 
-                    context.Response.Write("method not allowed");
+//                    context.Response.Write("method not allowed");
 
-                    context.Response.End();
-                };
-            }
+//                    context.Response.End();
+//                };
+//            }
 
-            this.servercb = this.server.OnContext;
+//            this.servercb = this.server.OnContext;
 
-            this.server.OnContext = this.OnContext;
+//            this.server.OnContext = this.OnContext;
 
-            this.OnUpgrade = (context, callback) => callback(true, string.Empty);
-        }
+//            this.OnUpgrade = (context, callback) => callback(true, string.Empty);
+//        }
 
-        #endregion
+//        #endregion
 
-        public void  OnContext(Reactor.Http.Context context)
-        {
-            if(this.path != context.Request.Url.AbsolutePath)
-            {
-                this.servercb(context);
+//        public void  OnContext(Reactor.Http.Context context)
+//        {
+//            if(this.path != context.Request.Url.AbsolutePath)
+//            {
+//                this.servercb(context);
 
-                return;
-            }
+//                return;
+//            }
 
-            this.Upgrade(context, (exception, socket) => {
+//            this.Upgrade(context, (exception, socket) => {
 
-                if (exception != null) {
+//                if (exception != null) {
 
-                    if (this.OnError != null) {
+//                    if (this.OnError != null) {
 
-                        this.OnError(exception);
+//                        this.OnError(exception);
  
-                        return;
-                    }
-                }
+//                        return;
+//                    }
+//                }
 
-                if (socket != null) {
+//                if (socket != null) {
 
-                    if (this.OnSocket != null) {
+//                    if (this.OnSocket != null) {
 
-                        this.OnSocket(socket);
-                    }
-                }
-            });
-        }
+//                        this.OnSocket(socket);
+//                    }
+//                }
+//            });
+//        }
 
-        #region Upgrade
+//        #region Upgrade
 
-        private void Upgrade(Reactor.Http.Context context, Reactor.Action<Exception, Reactor.Web.Socket.Socket> callback)
-        {
-            var request = ServerWebSocketUpgradeRequest.Create(context);
+//        private void Upgrade(Reactor.Http.Context context, Reactor.Action<Exception, Reactor.Web.Socket.Socket> callback)
+//        {
+//            var request = ServerWebSocketUpgradeRequest.Create(context);
 
-            //--------------------------------------------------------
-            // if not a web socket attempt, defer to http callback.
-            //--------------------------------------------------------
+//            //--------------------------------------------------------
+//            // if not a web socket attempt, defer to http callback.
+//            //--------------------------------------------------------
 
-            if (request == null) {
+//            if (request == null) {
                 
-                this.servercb(context);
+//                this.servercb(context);
 
-                return;
-            }
+//                return;
+//            }
 
-            var response       = ServerWebSocketUpgradeResponse.Create(request);
+//            var response       = ServerWebSocketUpgradeResponse.Create(request);
 
-            var socket_context = new Reactor.Web.Socket.Context(context);
+//            var socket_context = new Reactor.Web.Socket.Context(context);
 
-            this.OnUpgrade(socket_context, (success, reason) => {
+//            this.OnUpgrade(socket_context, (success, reason) => {
 
-                if (!success) {
+//                if (!success) {
 
-                    response.Reject(reason == null ? "" : reason, (exception) => callback(exception, null));
+//                    response.Reject(reason == null ? "" : reason, (exception) => callback(exception, null));
 
-                    return;
-                }
+//                    return;
+//                }
 
-                response.Accept((exception) => {
+//                response.Accept((exception) => {
 
-                    if(exception != null) {
+//                    if(exception != null) {
 
-                        callback(exception, null);
+//                        callback(exception, null);
 
-                        return;
-                    }
+//                        return;
+//                    }
 
-                    var channel = new Transport(context.Connection);
+//                    var channel = new Transport(context.Connection);
 
-                    var socket  = new Socket(channel);
+//                    var socket  = new Socket(channel);
 
-                    socket.Context = socket_context;
+//                    socket.Context = socket_context;
 
-                    callback(null, socket);
-                });
-            });
-        }
+//                    callback(null, socket);
+//                });
+//            });
+//        }
 
-        #endregion
+//        #endregion
 
-        #region Statics
+//        #region Statics
 
-        public static Server Create(int port)
-        {
-            return new Server(port, "/");
-        }
+//        public static Server Create(int port)
+//        {
+//            return new Server(port, "/");
+//        }
 
-        public static Server Create(Reactor.Http.Server server)
-        {
-            return new Server(server, "/");
-        }
+//        public static Server Create(Reactor.Http.Server server)
+//        {
+//            return new Server(server, "/");
+//        }
 
-        public static Server Create(int port, string path)
-        {
-            return new Server(port, path);
-        }
+//        public static Server Create(int port, string path)
+//        {
+//            return new Server(port, path);
+//        }
 
-        public static Server Create(Reactor.Http.Server server, string path)
-        {
-            return new Server(server, path);
-        }
+//        public static Server Create(Reactor.Http.Server server, string path)
+//        {
+//            return new Server(server, path);
+//        }
 
-        public static Server Create(int port, Action<Socket> OnSocket)
-        {
-            var wsserver = new Server(port, "/");
+//        public static Server Create(int port, Action<Socket> OnSocket)
+//        {
+//            var wsserver = new Server(port, "/");
 
-            wsserver.OnSocket = OnSocket;
+//            wsserver.OnSocket = OnSocket;
 
-            return wsserver;
-        }
+//            return wsserver;
+//        }
 
-        public static Server Create(Reactor.Http.Server server, Action<Socket> OnSocket)
-        {
-            var wsserver = new Server(server, "/");
+//        public static Server Create(Reactor.Http.Server server, Action<Socket> OnSocket)
+//        {
+//            var wsserver = new Server(server, "/");
 
-            wsserver.OnSocket = OnSocket;
+//            wsserver.OnSocket = OnSocket;
 
-            return wsserver;
-        }
+//            return wsserver;
+//        }
 
-        public static Server Create(int port, string path, Action<Socket> OnSocket)
-        {
-            var wsserver = new Server(port, path);
+//        public static Server Create(int port, string path, Action<Socket> OnSocket)
+//        {
+//            var wsserver = new Server(port, path);
 
-            wsserver.OnSocket = OnSocket;
+//            wsserver.OnSocket = OnSocket;
 
-            return wsserver;
-        }
+//            return wsserver;
+//        }
 
-        public static Server Create(Reactor.Http.Server server, string path, Action<Socket> OnSocket)
-        {
-            var wsserver = new Server(server, path);
+//        public static Server Create(Reactor.Http.Server server, string path, Action<Socket> OnSocket)
+//        {
+//            var wsserver = new Server(server, path);
 
-            wsserver.OnSocket = OnSocket;
+//            wsserver.OnSocket = OnSocket;
 
-            return wsserver;
-        }        
+//            return wsserver;
+//        }        
 
-        #endregion
-    }
-}
+//        #endregion
+//    }
+//}

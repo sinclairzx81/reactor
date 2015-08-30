@@ -29,7 +29,7 @@ THE SOFTWARE.
 using System;
 using System.Collections.Generic;
 
-namespace Reactor.Async {
+namespace Reactor {
 
     /// <summary>
     /// Publish / Subscribe messaging channel.
