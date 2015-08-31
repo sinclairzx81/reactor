@@ -84,6 +84,7 @@
     <Compile Include="net\RequestStream.cs" />
     <Compile Include="net\ResponseStream.cs" />
     <Compile Include="net\WebHeaderCollection.cs" />
+    <Compile Include="primitives\Tuple.cs" />
     <Compile Include="process\Current.cs" />
     <Compile Include="stream\Reader.cs" />
     <Compile Include="stream\Writer.cs" />
@@ -99,8 +100,8 @@
     <Compile Include="loop\Loop.cs" />
     <Compile Include="loop\Messages.cs" />
     <Compile Include="loop\Runtime.cs" />
-    <Compile Include="delegates\Action.cs" />
-    <Compile Include="delegates\Func.cs" />
+    <Compile Include="primitives\Action.cs" />
+    <Compile Include="primitives\Func.cs" />
     <Compile Include="ip\Socket.cs" />
     <Compile Include="process\Process.cs" />
     <Compile Include="process\Writer.cs" />
