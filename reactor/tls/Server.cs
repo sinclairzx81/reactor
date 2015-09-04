@@ -65,12 +65,12 @@ namespace Reactor.Tls {
 
         #endregion
 
-        private System.Net.Sockets.Socket                 socket;
-        private X509Certificate2                          certificate;
+        private System.Net.Sockets.Socket           socket;
+        private X509Certificate2                    certificate;
         private Reactor.Event<Reactor.Tls.Socket>   onread;
         private Reactor.Event<Exception>            onerror;
         private Reactor.Event                       onend;
-        private bool                                      listening;
+        private bool                                listening;
 
         #region Constructor
 

@@ -28,13 +28,12 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Specialized;
-using System.IO;
 using System.Net;
 using System.Text;
 
 namespace Reactor.Http {
 
-    public class ServerRequest : IReadable {
+    public class ServerRequest : Reactor.IReadable {
 
         #region States
 
@@ -453,7 +452,7 @@ namespace Reactor.Http {
 
         #endregion
 
-        #region Buffer
+        #region IReadable Extension
 
         /// <summary>
         /// Reads a boolean from this stream.

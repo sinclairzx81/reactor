@@ -31,9 +31,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Reactor.Http
-{
-    public class ServerResponse : IWritable {
+namespace Reactor.Http {
+
+    public class ServerResponse : Reactor.IWritable {
+
         #region State
 
         /// <summary>
@@ -261,7 +262,7 @@ namespace Reactor.Http
 
         #endregion
 
-        #region Buffer
+        #region IWritable Extension
 
         /// <summary>
         /// Writes this data to the stream.

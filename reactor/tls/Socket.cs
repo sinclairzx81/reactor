@@ -95,7 +95,7 @@ namespace Reactor.Tls {
         #endregion
 
         private Reactor.Func<X509Certificate, X509Chain, SslPolicyErrors, bool> certificateValidationCallback;
-        private System.Net.Sockets.Socket             socket;
+        private System.Net.Sockets.Socket       socket;
         private Reactor.Queue                   queue;
         private Reactor.Event                   onconnect;
         private Reactor.Event                   ondrain;
@@ -103,13 +103,13 @@ namespace Reactor.Tls {
         private Reactor.Event<Reactor.Buffer>   onread;
         private Reactor.Event<Exception>        onerror;
         private Reactor.Event                   onend;
-        private Reactor.Streams.Reader                reader;
-        private Reactor.Streams.Writer                writer;
-        private Reactor.Buffer                        buffer;
-        private Reactor.Interval                      poll;
-        private ReadState                             readstate;
-        private ReadMode                              readmode;
-        private bool                                  corked;
+        private Reactor.Streams.Reader          reader;
+        private Reactor.Streams.Writer          writer;
+        private Reactor.Buffer                  buffer;
+        private Reactor.Interval                poll;
+        private ReadState                       readstate;
+        private ReadMode                        readmode;
+        private bool                            corked;
         
         #region Constructors
 
@@ -818,7 +818,7 @@ namespace Reactor.Tls {
 
         #endregion
 
-        #region Buffer
+        #region IWritable Extension
 
         /// <summary>
         /// Writes this data to the stream.
@@ -949,6 +949,10 @@ namespace Reactor.Tls {
         public Reactor.Future Write (double value) {
             return this.Write(BitConverter.GetBytes(value));
         }
+
+        #endregion
+
+        #region IReadable Extension
 
         /// <summary>
         /// Reads a boolean from this stream.

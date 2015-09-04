@@ -572,15 +572,16 @@ namespace Reactor {
         /// </summary>
         /// <param name="futures"></param>
         /// <returns></returns>
-        public static Reactor.Future All<T>(IEnumerable<Reactor.Future> futures) {
-            var count = 0;
+        public static Reactor.Future All(IEnumerable<Reactor.Future> futures) {
             return new Reactor.Future((resolve, reject) => {
+                var count = 0;
                 foreach (var future in futures) {
                     count++;
                     future.Then(() => {
                         count--;
-                        if(count == 0) 
+                        if (count == 0) { 
                             resolve();
+                        }
                     }).Error(reject);
                 }
             });

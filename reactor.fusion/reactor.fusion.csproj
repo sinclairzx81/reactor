@@ -4,17 +4,16 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{07835FE9-CCC9-4DB2-A5E4-EA0B952AC233}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <ProjectGuid>{D1DAFD41-D1CD-4680-B22C-B383870B9043}</ProjectGuid>
+    <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>console</RootNamespace>
-    <AssemblyName>console</AssemblyName>
+    <RootNamespace>Reactor.Fusion</RootNamespace>
+    <AssemblyName>Reactor.Fusion</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>x86</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -22,38 +21,38 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
-  <PropertyGroup />
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Security" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.cs" />
+    <Compile Include="protocol\buffers\ReceiveBuffer.cs" />
+    <Compile Include="protocol\buffers\SendBuffer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="protocol\packets\Ack.cs" />
+    <Compile Include="protocol\packets\Data.cs" />
+    <Compile Include="protocol\packets\Fin.cs" />
+    <Compile Include="protocol\packets\Packet.cs" />
+    <Compile Include="protocol\packets\PingAck.cs" />
+    <Compile Include="protocol\packets\Ping.cs" />
+    <Compile Include="protocol\packets\Syn.cs" />
+    <Compile Include="protocol\packets\SynAck.cs" />
+    <Compile Include="Server.cs" />
+    <Compile Include="Socket.cs" />
+    <Compile Include="transport\ITransport.cs" />
+    <Compile Include="protocol\ProtocolReceiver.cs" />
+    <Compile Include="protocol\ProtocolSender.cs" />
   </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
-    <None Include="app.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\reactor.fusion\reactor.fusion.csproj">
-      <Project>{d1dafd41-d1cd-4680-b22c-b383870b9043}</Project>
-      <Name>reactor.fusion</Name>
-    </ProjectReference>
     <ProjectReference Include="..\reactor\reactor.csproj">
       <Project>{313a33d5-3743-4610-8e37-225f0376bcc9}</Project>
       <Name>reactor</Name>

@@ -63,11 +63,11 @@ namespace Reactor.Tcp {
 
         #endregion
         
-        private System.Net.Sockets.Socket                 socket;
+        private System.Net.Sockets.Socket           socket;
         private Reactor.Event<Reactor.Tcp.Socket>   onread;
         private Reactor.Event<Exception>            onerror;
         private Reactor.Event                       onend;
-        private bool                                      listening;
+        private bool                                listening;
 
         #region Constructor
 

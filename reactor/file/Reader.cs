@@ -95,14 +95,14 @@ namespace Reactor.File {
         private Reactor.Event<Reactor.Buffer>   onread;
         private Reactor.Event<Exception>        onerror;
         private Reactor.Event                   onend;
-        private Reactor.Streams.Reader                reader;
-        private Reactor.Buffer                        buffer;
-        private ReadState                             readstate;
-        private ReadMode                              readmode;
-        private long                                  offset;
-        private long                                  count;
-        private long                                  received;
-        private long                                  length;
+        private Reactor.Streams.Reader          reader;
+        private Reactor.Buffer                  buffer;
+        private ReadState                       readstate;
+        private ReadMode                        readmode;
+        private long                            offset;
+        private long                            count;
+        private long                            received;
+        private long                            length;
 
         #region Constructors
 
@@ -379,7 +379,7 @@ namespace Reactor.File {
 
         #endregion
 
-        #region Buffer
+        #region IReadable Extension
 
         /// <summary>
         /// Reads a boolean from this stream.

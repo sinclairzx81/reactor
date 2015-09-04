@@ -92,7 +92,7 @@ namespace Reactor.Tcp {
 
         #endregion
 
-        private System.Net.Sockets.Socket             socket;
+        private System.Net.Sockets.Socket       socket;
         private Reactor.Queue                   queue;
         private Reactor.Event                   onconnect;
         private Reactor.Event                   ondrain;
@@ -100,13 +100,13 @@ namespace Reactor.Tcp {
         private Reactor.Event<Reactor.Buffer>   onread;
         private Reactor.Event<Exception>        onerror;
         private Reactor.Event                   onend;
-        private Reactor.Streams.Reader                reader;
-        private Reactor.Streams.Writer                writer;
-        private Reactor.Buffer                        buffer;
-        private Reactor.Interval                      poll;
-        private ReadState                             readstate;
-        private ReadMode                              readmode;
-        private bool                                  corked;
+        private Reactor.Streams.Reader          reader;
+        private Reactor.Streams.Writer          writer;
+        private Reactor.Buffer                  buffer;
+        private Reactor.Interval                poll;
+        private ReadState                       readstate;
+        private ReadMode                        readmode;
+        private bool                            corked;
         
         #region Constructors
 
@@ -813,7 +813,7 @@ namespace Reactor.Tcp {
 
         #endregion
 
-        #region Buffer
+        #region IWritable Extension
 
         /// <summary>
         /// Writes this data to the stream.
@@ -832,7 +832,7 @@ namespace Reactor.Tcp {
         /// <param name="buffer"></param>
         /// <returns>A future resolved when this write has completed.</returns>
         public Reactor.Future Write (byte[] buffer) {
-            return this.Write(buffer, 0, buffer.Length);
+            return this.Write(Reactor.Buffer.Create(buffer));
         }
 
         /// <summary>
@@ -944,6 +944,10 @@ namespace Reactor.Tcp {
         public Reactor.Future Write (double value) {
             return this.Write(BitConverter.GetBytes(value));
         }
+
+        #endregion
+
+        #region IReadable Extension
 
         /// <summary>
         /// Reads a boolean from this stream.

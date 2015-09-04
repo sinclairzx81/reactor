@@ -57,8 +57,8 @@ namespace Reactor.Process {
         private Reactor.Event            ondrain;
         private Reactor.Event<Exception> onerror;
         private Reactor.Event            onend;
-        private Reactor.Streams.Writer         writer;
-        private State                          state;
+        private Reactor.Streams.Writer   writer;
+        private State                    state;
 
         #region Constructor
 
@@ -191,7 +191,7 @@ namespace Reactor.Process {
 
         #endregion
 
-        #region Buffer
+        #region IWritable Extension
 
         /// <summary>
         /// Writes this data to the stream.
