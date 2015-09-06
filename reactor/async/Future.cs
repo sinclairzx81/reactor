@@ -126,8 +126,8 @@ namespace Reactor {
                     future.Reject(error);
                 });
                 var resolve = new Reactor.Action<T>(value => {
-                    callback(value);
-                    future.Resolve();
+                    try { callback(value); future.Resolve(); }
+                    catch (Exception error) { future.Reject(error); }
                 });
                 switch (this.fields.state) {
                     case State.Resolved:
@@ -157,8 +157,8 @@ namespace Reactor {
                     future.Reject(error);
                 });
                 var resolve = new Reactor.Action<T>(value => {
-                    var v = callback(value);
-                    future.Resolve(v);
+                    try { future.Resolve(callback(value)); }
+                    catch (Exception error) { future.Reject(error); }
                 });
                 switch (this.fields.state) {
                     case State.Resolved:
@@ -364,8 +364,8 @@ namespace Reactor {
                     future.Reject(error);
                 });
                 var resolve = new Reactor.Action(() => {
-                    callback();
-                    future.Resolve();
+                    try { callback(); future.Resolve(); }
+                    catch (Exception error) { future.Reject(error); }
                 });
                 switch (this.fields.state) {
                     case State.Resolved:
@@ -395,8 +395,8 @@ namespace Reactor {
                     future.Reject(error);
                 });
                 var resolve = new Reactor.Action(() => {
-                    var v = callback();
-                    future.Resolve(v);
+                    try { future.Resolve(callback()); }
+                    catch (Exception error) { future.Reject(error); }
                 });
                 switch (this.fields.state) {
                     case State.Resolved:
