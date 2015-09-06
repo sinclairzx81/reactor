@@ -26,27 +26,27 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using Reactor.Fusion.Transport;
+using Reactor.Fusion.Protocol;
 
 namespace Reactor.Fusion.Protocol {
 
     /// <summary>
-    /// ProtocolReceiver: 
+    /// ProtocolReceiver: Receives and sequences incoming data packets from a transport.
     /// </summary>
     public class ProtocolReceiver: System.IDisposable {
 
         #region Fields
         internal class Fields {
-            public ReceiveBuffer                buffer;
-            public Reactor.Event<System.Byte[]> ondata;
-            public Reactor.Event                onfin;
-            public System.UInt32                seq;
-            public System.Boolean               reading;
-            public Fields(ReceiveBuffer                buffer,
-                          Reactor.Event<System.Byte[]> ondata,
-                          Reactor.Event                onfin,
-                          System.UInt32                seq,
-                          System.Boolean               reading) {
+            public ReceiveBuffer                    buffer;
+            public Reactor.Event<System.Byte[]>     ondata;
+            public Reactor.Event                    onfin;
+            public System.UInt32                    seq;
+            public System.Boolean                   reading;
+            public Fields(ReceiveBuffer                    buffer,
+                          Reactor.Event<System.Byte[]>     ondata,
+                          Reactor.Event                    onfin,
+                          System.UInt32                    seq,
+                          System.Boolean                   reading) {
                 this.buffer     = buffer;
                 this.ondata     = ondata;
                 this.onfin      = onfin;
@@ -64,19 +64,33 @@ namespace Reactor.Fusion.Protocol {
         /// <summary>
         /// Initializes a new ProtocolReceiver.
         /// </summary>
-        /// <param name="seq">The sequence number obtained from a syn / synack packet.</param>
-        /// <param name="window">The window size (needs to match the sender)</param>
-        /// <param name="transport">The transport in which to send packets.</param>
-        public ProtocolReceiver(System.UInt32 seq, System.UInt16 window, ITransport transport) {
-            this.fields = new Fields(buffer  : new ReceiveBuffer(window),
-                                     ondata  : Reactor.Event.Create<byte[]>(),
-                                     onfin   : Reactor.Event.Create(),
-                                     seq     : seq,
-                                     reading : true);
+        /// <param name="seq">the sequence number obtained from a syn / synack packet.</param>
+        /// <param name="window">the window size (needs to match the sender)</param>
+        /// <param name="transport">(shared) the transport in which to send packets.</param>
+        public ProtocolReceiver(ITransport transport, System.UInt32 isn, System.UInt16 window) {
+            this.fields = new Fields(buffer   : new ReceiveBuffer(window),
+                                     ondata   : Reactor.Event.Create<byte[]>(),
+                                     onfin    : Reactor.Event.Create(),
+                                     seq      : isn,
+                                     reading  : true);
             this.transport = transport;
-            this.transport.Receive(this.Receive);
+            this.transport.OnRead(this.ReadInternal);
         }
         
+        #endregion
+
+        #region Methods
+
+        /// <summary>
+        /// Sets the seq value for this receiver.
+        /// </summary>
+        /// <param name="seq"></param>
+        public void Seq(System.UInt32 seq) {
+            lock (this.fields) {
+                this.fields.seq = seq;
+            }
+        }
+
         #endregion
 
         #region Events
@@ -84,43 +98,39 @@ namespace Reactor.Fusion.Protocol {
         /// <summary>
         /// Subscribes this action to the OnData event.
         /// </summary>
-        /// <param name="callback"></param>
-        public void OnData(Reactor.Action<System.Byte[]> callback) {
+        /// <param name="action"></param>
+        public void OnData(Reactor.Action<System.Byte[]> action) {
             lock (this.fields) {
-                this.fields.ondata.On(callback);
+                this.fields.ondata.On(action);
             }
         }
         
         /// <summary>
         /// Subscribes this action to the OnFin event.
         /// </summary>
-        /// <param name="callback"></param>
-        public void OnFin(Reactor.Action callback) {
+        /// <param name="action"></param>
+        public void OnFin(Reactor.Action action) {
             lock (this.fields) {
-                this.fields.onfin.On(callback);
+                this.fields.onfin.On(action);
             }
         }
 
         #endregion
 
-        #region Receive
+        #region ReadInternal
         
         /// <summary>
         /// Receives a packet.
         /// </summary>
         /// <param name="packet"></param>
-        public void Receive(Packet packet) {
+        public void ReadInternal(Packet packet) {
             lock (this.fields) {
-                if(packet.type == PacketType.Data || 
-                   packet.type == PacketType.Fin) {
+                if(packet.type == PacketType.Data || packet.type == PacketType.Fin) {
                     var sequential_packet = packet as SequencedPacket;
                     if (sequential_packet.seq < this.fields.seq) {
-                        this.transport.Send(new Ack ( 
-                            ack: this.fields.seq 
-                            ));
+                        this.transport.Write(new Ack(this.fields.seq));
                         return;
                     }
-
                     this.fields.buffer.Write(sequential_packet);
                     while (this.fields.buffer.Length > 0) {
                         var current = this.fields.buffer.Read();
@@ -139,12 +149,10 @@ namespace Reactor.Fusion.Protocol {
                                 var fin = (Fin)current;
                                 this.fields.onfin.Emit();
                                 this.fields.reading = false;
+                                this.Dispose();
                                 break;
                         }
-                    }
-                    this.transport.Send(new Ack( 
-                        ack: this.fields.seq 
-                        ));
+                    } this.transport.Write(new Ack(this.fields.seq));
                 }
             }
         }

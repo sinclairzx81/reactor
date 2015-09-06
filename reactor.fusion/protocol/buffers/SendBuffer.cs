@@ -39,14 +39,14 @@ namespace Reactor.Fusion.Protocol {
 
         #region Internals
         internal class PendingItem {
-            public Reactor.Deferred deferred;
-            public SequencedPacket  packet;
+            public Reactor.Deferred<Packet> deferred;
+            public SequencedPacket          packet;
         }
         internal class TransmitItem {
-            public Reactor.Deferred deferred;
-            public SequencedPacket  packet;
-            public System.DateTime  timestamp;
-            public System.Boolean   inflight;
+            public Reactor.Deferred<Packet> deferred;
+            public SequencedPacket          packet;
+            public System.DateTime          timestamp;
+            public System.Boolean           inflight;
         }
         internal class Fields {
             public Queue<PendingItem>     pending;
@@ -77,13 +77,13 @@ namespace Reactor.Fusion.Protocol {
         #region Methods
 
         /// <summary>
-        /// Writes a new packet to the buffer.
+        /// Writes a new packet to the buffer. Responds with the acknowledged packet.
         /// </summary>
         /// <param name="ordinal"></param>
         /// <param name="value"></param>
-        public Reactor.Future Write(SequencedPacket packet) {
+        public Reactor.Future<Packet> Write(SequencedPacket packet) {
             lock (this.fields) {
-                var deferred = new Reactor.Deferred();
+                var deferred = new Reactor.Deferred<Packet>();
                 this.fields.pending.Enqueue(new PendingItem{
                     deferred = deferred,
                     packet   = packet
@@ -138,7 +138,7 @@ namespace Reactor.Fusion.Protocol {
                 return this.fields.transmit.RemoveAll(item => {
                     var completed = item.packet.seq < seq;
                     if(completed)
-                        item.deferred.Resolve();
+                        item.deferred.Resolve(item.packet);
                     return completed;
                 });
             }

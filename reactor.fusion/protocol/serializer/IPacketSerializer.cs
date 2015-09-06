@@ -27,20 +27,22 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 namespace Reactor.Fusion.Protocol {
-    public enum PacketType: byte {
-        Unknown = 0,
-        Syn     = 1,
-        SynAck  = 2,
-        Ack     = 3,
-        Data    = 4,
-        Ping    = 5,
-        PingAck = 6,
-        Fin     = 7
-    }
-    public class Packet {
-        public PacketType type;
-        public Packet() {
-            this.type = PacketType.Unknown;
-        }
+
+    public interface IPacketSerializer {
+
+        /// <summary>
+        /// Serializers this packet to bytes.
+        /// </summary>
+        /// <param name="packet">The packet to serialize.</param>
+        /// <returns>The serialized packet or null if error.</returns>
+        byte[] Serialize(Packet packet);
+
+        /// <summary>
+        /// Deserialized these bytes into a packet.
+        /// </summary>
+        /// <param name="bytes">The bytes to deserialize.</param>
+        /// <param name="packetType">the Output packetType</param>
+        /// <returns>A Packet on success or null if error.</returns>
+        Packet Deserialize(byte[] bytes, out PacketType packetType);
     }
 }

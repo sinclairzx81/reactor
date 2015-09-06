@@ -27,20 +27,11 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 namespace Reactor.Fusion.Protocol {
-    public enum PacketType: byte {
-        Unknown = 0,
-        Syn     = 1,
-        SynAck  = 2,
-        Ack     = 3,
-        Data    = 4,
-        Ping    = 5,
-        PingAck = 6,
-        Fin     = 7
-    }
-    public class Packet {
-        public PacketType type;
-        public Packet() {
-            this.type = PacketType.Unknown;
-        }
+    public interface IRandomizer {
+        /// <summary>
+        /// Returns a randomized UInt32 value.
+        /// </summary>
+        /// <returns></returns>
+        System.UInt32 Next();
     }
 }

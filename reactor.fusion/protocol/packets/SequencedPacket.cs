@@ -26,10 +26,21 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
+using System;
+
 namespace Reactor.Fusion.Protocol {
-    public class PingAck: Packet {
-        public PingAck() {
-            this.type = PacketType.PingAck;
+
+    public class SequencedPacket: Packet, IComparable {
+        public System.UInt32 seq;
+        public SequencedPacket(System.UInt32 seq): base() {
+            this.seq = seq;
+        }
+        public int CompareTo(object other) {
+            if (other is SequencedPacket) {
+                var packet = other as SequencedPacket;
+                return this.seq.CompareTo(packet.seq);
+            }
+            return 0;
         }
     }
 }

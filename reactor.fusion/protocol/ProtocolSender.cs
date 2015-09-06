@@ -26,14 +26,12 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-using System.Collections.Generic;
-using Reactor.Fusion.Transport;
-using System.Threading;
+using Reactor.Fusion.Protocol;
 
 namespace Reactor.Fusion.Protocol {
-
+    
     /// <summary>
-    /// ProtocolSender: 
+    /// DataSender: Sends sequenced data packets to a transport.
     /// </summary>
     public class ProtocolSender : System.IDisposable {
 
@@ -54,23 +52,25 @@ namespace Reactor.Fusion.Protocol {
         private Fields           fields;
 
         #region Contructor
+
         /// <summary>
         /// Initializes a new ProtocolSender.
         /// </summary>
-        /// <param name="seq">The initial sequence number (randomized from the handshake)</param>
-        /// <param name="window">The sender window size (needs to match the receiver)</param>
-        /// <param name="timeout">The timeout in which unacknowledged packets should be resent.</param>
-        /// <param name="transport">The transport in which to send packets.</param>
-        public ProtocolSender(System.UInt32 seq, 
-                              System.UInt16 window, 
-                              System.Int32  timeout, 
-                              ITransport    transport) {
+        /// <param name="seq">the initial sequence number (randomized from the handshake)</param>
+        /// <param name="window">the sender window size (needs to match the receiver)</param>
+        /// <param name="timeout">the timeout in which unacknowledged packets should be resent.</param>
+        /// <param name="transport">(shared) the transport in which to send packets.</param>
+        public ProtocolSender(ITransport    transport,
+                              System.UInt32 isn,
+                              System.UInt16 window) {
             this.fields = new Fields(
-                    buffer : new SendBuffer(window : window, 
-                                            timeout: timeout), 
-                    seq    : seq);
+                    seq    : isn,
+                    buffer : new SendBuffer(
+                        window : window, 
+                        timeout: 20
+                        ));
             this.transport = transport;
-            this.transport.Receive(this.Receive);
+            this.transport.OnRead(this.Receive);
             this.sender = Reactor.Interval.Create(this.Send);
         }
         #endregion
@@ -78,15 +78,25 @@ namespace Reactor.Fusion.Protocol {
         #region Methods
 
         /// <summary>
+        /// Sets the seq value for this sender.
+        /// </summary>
+        /// <param name="seq"></param>
+        public void Seq(System.UInt32 seq) {
+            lock (this.fields) {
+                this.fields.seq = seq;
+            }
+        }
+
+        /// <summary>
         /// Sends a data packet to the transport.
         /// </summary>
-        /// <param name="buffer"></param>
-        /// <returns>A future to signal once this buffer has been written.</returns>
-        public Reactor.Future Data(System.Byte[] data) {
+        /// <param name="data"></param>
+        /// <returns>A future </returns>
+        public Reactor.Future<Packet> Data(System.Byte[] data) {
             lock (this.fields) {
                 var future = this.fields.buffer.Write(new Data (
-                    seq  : this.fields.seq,
-                    data : data
+                    seq : this.fields.seq,
+                    data: data
                     ));
                 this.fields.seq += 1;
                 return future;
@@ -97,7 +107,7 @@ namespace Reactor.Fusion.Protocol {
         /// Sends a fin packet to the transport.
         /// </summary>
         /// <returns>A future to signal once this end has been acknowledged.</returns>
-        public Reactor.Future Fin() {
+        public Reactor.Future<Packet> Fin() {
             lock (this.fields) {
                 var future = this.fields.buffer.Write(new Fin (
                         seq : this.fields.seq
@@ -118,7 +128,7 @@ namespace Reactor.Fusion.Protocol {
             lock (this.fields) {
                 var current = this.fields.buffer.Read();
                 while (current != null) {
-                    this.transport.Send(current);
+                    this.transport.Write(current);
                     current = this.fields.buffer.Read();
                 }
             }
@@ -133,7 +143,6 @@ namespace Reactor.Fusion.Protocol {
                 switch (packet.type) {
                     case PacketType.Ack:
                         var ack = (Ack)packet;
-                        System.Console.WriteLine("Ack: {0}", ack.ack);
                         this.fields.buffer.Ack(ack.ack);
                         break;
                 }

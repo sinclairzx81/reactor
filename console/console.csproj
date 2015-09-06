@@ -38,9 +38,7 @@
   <PropertyGroup />
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Data" />
     <Reference Include="System.Security" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
@@ -51,7 +49,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\reactor.fusion\reactor.fusion.csproj">
-      <Project>{d1dafd41-d1cd-4680-b22c-b383870b9043}</Project>
+      <Project>{397a5a71-91d7-4103-a182-688f69bda87f}</Project>
       <Name>reactor.fusion</Name>
     </ProjectReference>
     <ProjectReference Include="..\reactor\reactor.csproj">

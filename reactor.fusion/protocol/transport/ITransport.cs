@@ -26,21 +26,30 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
+using System;
+
 namespace Reactor.Fusion.Protocol {
-    public enum PacketType: byte {
-        Unknown = 0,
-        Syn     = 1,
-        SynAck  = 2,
-        Ack     = 3,
-        Data    = 4,
-        Ping    = 5,
-        PingAck = 6,
-        Fin     = 7
-    }
-    public class Packet {
-        public PacketType type;
-        public Packet() {
-            this.type = PacketType.Unknown;
-        }
+
+    /// <summary>
+    /// ITransport: provides a packet read/write interface.
+    /// </summary>
+    public interface ITransport {
+        /// <summary>
+        /// Writes this packet to the transport.
+        /// </summary>
+        /// <param name="packet"></param>
+        void Write (Reactor.Fusion.Protocol.Packet packet);
+        
+        /// <summary>
+        /// Subscribes this action to the OnRead event.
+        /// </summary>
+        /// <param name="callback"></param>
+        void OnRead (Reactor.Action<Reactor.Fusion.Protocol.Packet> action);
+
+        /// <summary>
+        /// Unsubscribes this action from the OnRead event.
+        /// </summary>
+        /// <param name="callback"></param>
+        void RemoveRead (Reactor.Action<Reactor.Fusion.Protocol.Packet> action);
     }
 }

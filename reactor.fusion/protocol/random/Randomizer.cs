@@ -28,9 +28,21 @@ THE SOFTWARE.
 
 using System;
 
-namespace Reactor.Fusion.Transport {
-    public interface ITransport {
-        void Send    (Reactor.Fusion.Protocol.Packet packet);
-        void Receive (Reactor.Action<Reactor.Fusion.Protocol.Packet> callback);
+namespace Reactor.Fusion.Protocol {
+    /// <summary>
+    /// Basic randomization.
+    /// </summary>
+    public class Randomizer : IRandomizer {
+        private Random random;
+        public Randomizer() {
+            this.random = new Random();
+        }
+        /// <summary>
+        /// Returns a randomized UInt32 value.
+        /// </summary>
+        /// <returns></returns>
+        public System.UInt32 Next() {
+            return (System.UInt32)random.Next(0, System.UInt16.MaxValue);
+        }
     }
 }

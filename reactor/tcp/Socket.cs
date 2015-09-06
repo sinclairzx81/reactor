@@ -1181,14 +1181,14 @@ namespace Reactor.Tcp {
         /// <param name="endpoint">The endpoint.</param>
         /// <param name="port">The port.</param>
         /// <returns></returns>
-        private Reactor.Future<System.Net.Sockets.Socket> Connect (IPEndPoint local, IPEndPoint remote) {
+        private Reactor.Future<System.Net.Sockets.Socket> Connect (IPEndPoint localEndPoint, IPEndPoint remoteEndPoint) {
             return new Reactor.Future<System.Net.Sockets.Socket>((resolve, reject) => {
                 Loop.Post(() => {
                     try {
-                        var socket = new System.Net.Sockets.Socket(local.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                        var socket = new System.Net.Sockets.Socket(localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                         socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                        socket.Bind(local);
-                        socket.BeginConnect(remote.Address, remote.Port, result => {
+                        socket.Bind(localEndPoint);
+                        socket.BeginConnect(remoteEndPoint, result => {
                             Loop.Post(() => {
                                 try {
                                     socket.EndConnect(result);
