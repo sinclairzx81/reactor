@@ -27,14 +27,13 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using Reactor.Fusion.Protocol;
-using Reactor.Fusion.Protocol;
 using System;
 using System.Net;
 
 namespace Reactor.Fusion {
 
     /// <summary>
-    /// Reactor TCP server.
+    /// Reactor Fusion server.
     /// </summary>
     public class Server {
 
@@ -177,7 +176,7 @@ namespace Reactor.Fusion {
                             send_seq     = ack.ack;
                             var sender   = new ProtocolSender  (transport, send_seq, 16);
                             var receiver = new ProtocolReceiver(transport, recv_seq, 16);
-                            var socket   = new Reactor.Fusion.Socket(sender, receiver);
+                            var socket   = new Reactor.Fusion.Socket(transport, sender, receiver);
                             this.onread.Emit(socket);
                             break;
                     }

@@ -35,11 +35,12 @@ namespace Reactor.Fusion.Protocol {
     /// ServerDatagramTransport: The server datagram packet.
     /// </summary>
     public class ServerDatagramTransport: ITransport, System.IDisposable {
+        
         private Reactor.Event<Reactor.Fusion.Protocol.Packet> onread;
-        private ServerDatagramTransportHost                host;
-        private System.Net.EndPoint                        localEndPoint;
-        private System.Net.EndPoint                        remoteEndPoint;
-        private System.Boolean                             disposed;
+        private ServerDatagramTransportHost                   host;
+        private System.Net.EndPoint                           localEndPoint;
+        private System.Net.EndPoint                           remoteEndPoint;
+        private System.Boolean                                disposed;
 
         /// <summary>
         /// Initializes a new ServerDatagramTransport.

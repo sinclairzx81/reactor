@@ -35,7 +35,7 @@ using System.Net;
 namespace Reactor.Fusion {
 	
     /// <summary>
-    /// Reactor Tao Socket.
+    /// Reactor Fusion Socket.
     /// </summary>
     public class Socket : IDuplexable {
 
@@ -111,7 +111,8 @@ namespace Reactor.Fusion {
         private ReadMode                        readmode;
         //private bool                            corked;
 		
-        public Socket(ProtocolSender sender, ProtocolReceiver receiver) {
+        public Socket(ITransport transport, ProtocolSender sender, ProtocolReceiver receiver) {
+            this.transport  = transport;
             this.queue      = Reactor.Queue.Create(1);
             this.onconnect  = Reactor.Event.Create();
             this.ondrain    = Reactor.Event.Create();
@@ -165,6 +166,37 @@ namespace Reactor.Fusion {
             this.transport.OnRead(onread);
             this.transport.Write(new Syn(send_isn));
         }
+
+        #region Properties
+
+        public EndPoint LocalEndPoint {
+            get {
+                if (this.transport is ClientDatagramTransport) {
+                    var transport = this.transport as ClientDatagramTransport;
+                    return transport.LocalEndPoint;
+                }
+                if (this.transport is ServerDatagramTransport) {
+                    var transport = this.transport as ServerDatagramTransport;
+                    return transport.LocalEndPoint;
+                }
+                return null;
+            }
+        }
+        public EndPoint RemoteEndPoint {
+            get {
+                if (this.transport is ClientDatagramTransport) {
+                    var transport = this.transport as ClientDatagramTransport;
+                    return transport.RemoteEndPoint;
+                }
+                if (this.transport is ServerDatagramTransport) {
+                    var transport = this.transport as ServerDatagramTransport;
+                    return transport.RemoteEndPoint;
+                }
+                return null;
+            }
+        }
+
+        #endregion
 
         #region Events
 
@@ -912,12 +944,12 @@ namespace Reactor.Fusion {
         /// Begins reading from the underlying stream.
         /// </summary>
         private void _Read  () {
-            if (this.buffer.Length > 0) {
-                var clone = this.buffer.Clone();
-                this.buffer.Clear();
-                this.onread.Emit(clone);
-            }
             Loop.Post(() => {
+                if (this.buffer.Length > 0) {
+                    var clone = this.buffer.Clone();
+                    this.buffer.Clear();
+                    this.onread.Emit(clone);
+                }
                 if(this.readstate == ReadState.Reading)
                     _Read();
             });

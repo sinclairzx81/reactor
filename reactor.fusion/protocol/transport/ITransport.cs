@@ -27,6 +27,7 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
+using System.Net;
 
 namespace Reactor.Fusion.Protocol {
 
@@ -34,6 +35,17 @@ namespace Reactor.Fusion.Protocol {
     /// ITransport: provides a packet read/write interface.
     /// </summary>
     public interface ITransport {
+
+        /// <summary>
+        /// The local endpoint for this transport.
+        /// </summary>
+        EndPoint LocalEndPoint  {  get; }
+
+        /// <summary>
+        /// The remote endpoint for this transport.
+        /// </summary>
+        EndPoint RemoteEndPoint {  get; }
+
         /// <summary>
         /// Writes this packet to the transport.
         /// </summary>

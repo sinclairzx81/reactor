@@ -42,14 +42,14 @@ namespace Reactor.Fusion.Protocol {
     /// itself.
     /// </summary>
     public class ServerDatagramTransportHost : System.IDisposable {
-        private List<Reactor.Fusion.Protocol.ServerDatagramTransport>          transports;
-        private Reactor.Event<Reactor.Fusion.Protocol.ServerDatagramTransport> ontransport;
+        private List<Reactor.Fusion.Protocol.ServerDatagramTransport>           transports;
+        private Reactor.Event<Reactor.Fusion.Protocol.ServerDatagramTransport>  ontransport;
         private Reactor.Fusion.Protocol.IPacketSerializer                       serializer;
-        private System.Threading.Thread                                      thread;
-        private System.Net.Sockets.Socket                                    socket;
-        private System.Net.EndPoint                                          localEndPoint;
-        private System.Byte []                                               buffer;
-        private System.Boolean                                               disposed;
+        private System.Threading.Thread                                         thread;
+        private System.Net.Sockets.Socket                                       socket;
+        private System.Net.EndPoint                                             localEndPoint;
+        private System.Byte []                                                  buffer;
+        private System.Boolean                                                  disposed;
 
         /// <summary>
         /// Creates a new datagram transport.

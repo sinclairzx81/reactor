@@ -37,16 +37,16 @@ namespace Reactor.Fusion.Protocol {
 
         #region Fields
         internal class Fields {
-            public ReceiveBuffer                    buffer;
-            public Reactor.Event<System.Byte[]>     ondata;
-            public Reactor.Event                    onfin;
-            public System.UInt32                    seq;
-            public System.Boolean                   reading;
-            public Fields(ReceiveBuffer                    buffer,
-                          Reactor.Event<System.Byte[]>     ondata,
-                          Reactor.Event                    onfin,
-                          System.UInt32                    seq,
-                          System.Boolean                   reading) {
+            public ReceiveBuffer                buffer;
+            public Reactor.Event<System.Byte[]> ondata;
+            public Reactor.Event                onfin;
+            public System.UInt32                seq;
+            public System.Boolean               reading;
+            public Fields(ReceiveBuffer                buffer,
+                          Reactor.Event<System.Byte[]> ondata,
+                          Reactor.Event                onfin,
+                          System.UInt32                seq,
+                          System.Boolean               reading) {
                 this.buffer     = buffer;
                 this.ondata     = ondata;
                 this.onfin      = onfin;

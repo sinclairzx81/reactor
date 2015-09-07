@@ -75,7 +75,9 @@ namespace Reactor.Fusion.Protocol {
         /// The localEndPoint for this transport.
         /// </summary>
         public System.Net.EndPoint LocalEndPoint {
-            get {  return this.localEndPoint; }
+            get {  
+                return this.socket.LocalEndPoint; 
+            }
         }
 
         /// <summary>

@@ -54,12 +54,12 @@ namespace Reactor.Streams {
 
         #endregion
 
-        private System.IO.Stream                 stream;
+        private System.IO.Stream           stream;
         private Reactor.Queue              queue;
         private Reactor.Event              ondrain;
         private Reactor.Event<Exception>   onerror;
         private Reactor.Event              onend;
-        private State                            state;
+        private State                      state;
 
         #region Constructors
 

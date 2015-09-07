@@ -7,8 +7,8 @@
     <ProjectGuid>{397A5A71-91D7-4103-A182-688F69BDA87F}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>reactor.fusion</RootNamespace>
-    <AssemblyName>reactor.fusion</AssemblyName>
+    <RootNamespace>Reactor.Fusion</RootNamespace>
+    <AssemblyName>Reactor.Fusion</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -34,6 +34,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="protocol\buffers\ReadWriteBuffer.cs" />
     <Compile Include="protocol\buffers\ReceiveBuffer.cs" />
     <Compile Include="protocol\buffers\SendBuffer.cs" />
     <Compile Include="protocol\packets\Ack.cs" />
