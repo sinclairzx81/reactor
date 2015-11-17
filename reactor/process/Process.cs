@@ -33,59 +33,84 @@ using System.IO;
 namespace Reactor.Process
 {
     /// <summary>
-    /// Provides functionality to child OS processes and stream data via stdin/stdout/stderr.
+    /// Provides functionality to spawn OS processes and stream data via stdin/stdout/stderr.
     /// </summary>
     public class Process {
 
-        private System.Diagnostics.Process process;
+        #region Fields
+
+        private System.Diagnostics.Process      process;
+        private Reactor.Process.Writer          stdin;
+        private Reactor.Process.Reader          stdout;
+        private Reactor.Process.Reader          stderr;
+        private Reactor.Event<System.Exception> onerror;
+        private Reactor.Event                   onend;
+        private bool ended;
+
+        #endregion
+
+        #region Constructor
+
+        /// <summary>
+        /// Createa a new process.
+        /// </summary>
+        /// <param name="filename">The filepath to the process.</param>
+        /// <param name="arguments">The command line arguments</param>
+        /// <param name="workingdirectory">The current working directory.</param>
+        public Process(string filename, string arguments, string workingdirectory) {
+            this.onerror = Reactor.Event.Create<System.Exception>();
+            this.onend   = Reactor.Event.Create();
+            this.ended   = false;
+            try {
+                this.process                                  = new System.Diagnostics.Process();
+                this.process.StartInfo.UseShellExecute        = false;
+                this.process.StartInfo.RedirectStandardInput  = true;
+                this.process.StartInfo.RedirectStandardOutput = true;
+                this.process.StartInfo.RedirectStandardError  = true;
+                this.process.StartInfo.CreateNoWindow         = true;
+                this.process.StartInfo.WindowStyle            = ProcessWindowStyle.Hidden;
+                this.process.StartInfo.FileName               = filename;
+                this.process.StartInfo.WorkingDirectory       = workingdirectory;
+                if (arguments != null) {
+                    this.process.StartInfo.Arguments = arguments;
+                }
+                this.process.Start();
+                this.stdin   = Reactor.Process.Writer.Create (this.process.StandardInput.BaseStream);
+                this.stdout  = Reactor.Process.Reader.Create (this.process.StandardOutput.BaseStream);
+                this.stderr  = Reactor.Process.Reader.Create (this.process.StandardError.BaseStream);
+            } catch(System.Exception exception) {
+                Reactor.Loop.Post(() => this._Error(exception));
+            }
+        }
+
+        #endregion
 
         #region Properties
 
         /// <summary>
         /// Standard input stream.
         /// </summary>
-        public Reactor.Process.Writer  In     { get; private set; }
+        public Reactor.Process.Writer  StdIn     {
+            get { return this.stdin;  }
+        }
 
         /// <summary>
         /// Standard output stream.
         /// </summary>
-        public Reactor.Process.Reader  Out    { get; private set; }
+        public Reactor.Process.Reader  StdOut {
+            get { return this.stdout; }
+        }
         
         /// <summary>
         /// Standard error stream.
         /// </summary>
-        public Reactor.Process.Reader  Error  { get; private set; }
-
-        #endregion
-
-        #region Constructor
-
-        public Process(string filename, string arguments, string workingdirectory) {
-            this.process                                  = new System.Diagnostics.Process();
-            this.process.StartInfo.UseShellExecute        = false;
-            this.process.StartInfo.RedirectStandardInput  = true;
-            this.process.StartInfo.RedirectStandardOutput = true;
-            this.process.StartInfo.RedirectStandardError  = true;
-            this.process.StartInfo.CreateNoWindow         = true;
-            this.process.StartInfo.WindowStyle            = ProcessWindowStyle.Hidden;
-            this.process.StartInfo.FileName               = filename;
-            this.process.StartInfo.WorkingDirectory       = workingdirectory;
-            if (arguments != null) {
-                this.process.StartInfo.Arguments = arguments;
-            }
-            this.process.Start();
-            this.In     = Reactor.Process.Writer.Create (this.process.StandardInput.BaseStream);
-            this.Out    = Reactor.Process.Reader.Create (this.process.StandardOutput.BaseStream);
-            this.Error  = Reactor.Process.Reader.Create (this.process.StandardError.BaseStream);
+        public Reactor.Process.Reader  StdErr {
+            get { return this.stderr; }
         }
 
-        public Process(string filename, string arguments) : this(filename, arguments, Directory.GetCurrentDirectory()) { }
-
-        public Process(string filename) : this(filename, string.Empty, Directory.GetCurrentDirectory()) { }
-
         #endregion
 
-        #region Properties
+        #region Process
 
         /// <summary>
         /// Gets the base priority of the associated process.
@@ -383,18 +408,60 @@ namespace Reactor.Process
 
         #endregion
 
+        #region Machine
+
+        /// <summary>
+        /// Handles exceptions raised by this process.
+        /// </summary>
+        /// <param name="exception"></param>
+        private void _Error(System.Exception exception) {
+            if(!this.ended) {
+                this.onerror.Emit(exception);
+                this._End();
+            }
+        }
+
+        /// <summary>
+        /// Ends this process.
+        /// </summary>
+        private void _End() {
+            if(!this.ended) {
+                this.ended = true;
+                this.onend.Emit();
+            }
+        }
+
+        #endregion
+
         #region Statics
 
+        /// <summary>
+        /// Creates a new process.
+        /// </summary>
+        /// <param name="filename">The filepath to the process.</param>
+        /// <param name="arguments">The command line arguments</param>
+        /// <param name="workingdirectory">The current working directory.</param>
+        /// <returns>The process</returns>
         public static Reactor.Process.Process Create(string filename, string arguments, string workingdirectory) {
             return new Reactor.Process.Process(filename, arguments, workingdirectory);
         }
-
+        /// <summary>
+        /// Creates a new process in the current working directory.
+        /// </summary>
+        /// <param name="filename">The filepath to the process.</param>
+        /// <param name="arguments">The command line arguments</param>
+        /// <returns>The process</returns>
         public static Reactor.Process.Process Create(string filename, string arguments) {
-            return new Reactor.Process.Process(filename, arguments);
+            return new Reactor.Process.Process(filename, arguments, Directory.GetCurrentDirectory());
         }
-        
+
+        /// <summary>
+        /// Creates a new process in the current working directory.
+        /// </summary>
+        /// <param name="filename">The filepath to the process.</param>
+        /// <returns>The process</returns>
         public static Reactor.Process.Process Create(string filename) {
-            return new Reactor.Process.Process(filename);
+            return new Reactor.Process.Process(filename, string.Empty, Directory.GetCurrentDirectory());
         }
 
         #endregion

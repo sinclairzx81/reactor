@@ -122,13 +122,17 @@ namespace Reactor.File {
             this.onerror = Reactor.Event.Create<Exception>();
             this.onend   = Reactor.Event.Create();
             this.state   = State.Writing;
-            var stream   = System.IO.File.Open(filename, mode, FileAccess.Write, share);
-            offset       = (offset > stream.Length) ? stream.Length : offset;
-            stream.Seek(offset, SeekOrigin.Begin);
-            this.writer  = Reactor.IO.Writer.Create(stream);
-            this.writer.OnDrain (this._Drain);
-            this.writer.OnError (this._Error);
-            this.writer.OnEnd   (this._End);
+            try {
+                var stream = System.IO.File.Open(filename, mode, FileAccess.Write, share);
+                offset = (offset > stream.Length) ? stream.Length : offset;
+                stream.Seek(offset, SeekOrigin.Begin);
+                this.writer = Reactor.IO.Writer.Create(stream);
+                this.writer.OnDrain(this._Drain);
+                this.writer.OnError(this._Error);
+                this.writer.OnEnd(this._End);
+            } catch(System.Exception exception) {
+                Reactor.Loop.Post(() => this._Error(exception));
+            }
         }
 
         #endregion
@@ -547,7 +551,7 @@ namespace Reactor.File {
         private void _End() {
             if (this.state != State.Ended) {
                 this.state = State.Ended;
-                this.writer.Dispose();
+                if(this.writer != null) this.writer.Dispose();
                 this.onend.Emit();
             }
         }

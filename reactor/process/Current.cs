@@ -26,40 +26,52 @@ THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
 
-namespace Reactor.Process
-{
+namespace Reactor.Process {
+
     /// <summary>
-    /// Provides event streams for stdin, stdout and stderr for the 
-    /// current running process.
+    /// Provides functionality to stream data over stdin/stdout/stderr for the current process.
     /// </summary>
     public static class Current {
 
-        #region Streams
+        #region Fields
 
-        /// <summary>
-        /// The standard input stream.
-        /// </summary>
-        public static Reactor.Process.Reader In    {  get; private set; }
-
-        /// <summary>
-        /// The standard output stream.
-        /// </summary>
-        public static Reactor.Process.Writer Out   {  get; private set; }
-
-        /// <summary>
-        /// The standard error stream.
-        /// </summary>
-        public static Reactor.Process.Writer Error {  get; private set; }
+        public static Reactor.Process.Reader stdin;
+        public static Reactor.Process.Writer stdout;
+        public static Reactor.Process.Writer stderr;
 
         #endregion
 
-        #region Statics
+        #region Constructor
 
         static Current() {
+            Current.stdin  = Reactor.Process.Reader.Create(System.Console.OpenStandardInput());
+            Current.stdout = Reactor.Process.Writer.Create(System.Console.OpenStandardOutput());
+            Current.stderr = Reactor.Process.Writer.Create(System.Console.OpenStandardError());
+        }
 
-            Current.In    = Reactor.Process.Reader.Create(System.Console.OpenStandardInput());
-            Current.Out   = Reactor.Process.Writer.Create(System.Console.OpenStandardOutput());
-            Current.Error = Reactor.Process.Writer.Create(System.Console.OpenStandardError());
+        #endregion
+
+        #region Properties
+
+        /// <summary>
+        /// Returns the current process stdin stream.
+        /// </summary>
+        public static Reactor.Process.Reader StdIn {
+            get { return stdin;  }
+        }
+
+        /// <summary>
+        /// Returns the current process stdout stream.
+        /// </summary>
+        public static Reactor.Process.Writer StdOut {
+            get { return stdout; }
+        }
+
+        /// <summary>
+        /// Returns the current process stderr stream.
+        /// </summary>
+        public static Reactor.Process.Writer StdErr {
+            get { return stderr; }
         }
 
         #endregion

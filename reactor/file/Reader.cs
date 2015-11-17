@@ -172,13 +172,17 @@ namespace Reactor.File {
             this.buffer     = Reactor.Buffer.Create();
             this.readstate  = ReadState.Pending;
             this.readmode   = ReadMode.Unknown;
-            var stream      = new FileStream(filename, mode, FileAccess.Read, share);
-            this.length     = stream.Length;
-            this.received   = 0;
-            this.offset     = (offset > (stream.Length)) ? stream.Length : offset;
-            this.count      = (count  > (stream.Length - this.offset)) ? (stream.Length - this.offset) : count;
-            stream.Seek(this.offset, SeekOrigin.Begin);
-            this.reader     = Reactor.IO.Reader.Create(stream, Reactor.Settings.DefaultReadBufferSize);
+            try {
+                var stream = new FileStream(filename, mode, FileAccess.Read, share);
+                this.length = stream.Length;
+                this.received = 0;
+                this.offset = (offset > (stream.Length)) ? stream.Length : offset;
+                this.count = (count > (stream.Length - this.offset)) ? (stream.Length - this.offset) : count;
+                stream.Seek(this.offset, SeekOrigin.Begin);
+                this.reader = Reactor.IO.Reader.Create(stream, Reactor.Settings.DefaultReadBufferSize);
+            } catch(System.Exception exception) {
+                Reactor.Loop.Post(() => this._Error(exception));
+            }
         }
 
         #endregion
@@ -687,7 +691,7 @@ namespace Reactor.File {
         private void _End () {
             if (this.readstate != ReadState.Ended) {
                 this.readstate = ReadState.Ended;
-                this.reader.Dispose();
+                if(this.reader != null) this.reader.Dispose();
                 this.buffer.Dispose();
                 this.onend.Emit();
             }
