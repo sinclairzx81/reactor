@@ -33,6 +33,9 @@ using System.Text;
 
 namespace Reactor.Http {
 
+    /// <summary>
+    /// Provides a asynchronous abstraction over a System.Net.HttpListenerResponse.
+    /// </summary>
     public class ServerResponse : Reactor.IWritable {
 
         #region State
@@ -54,12 +57,18 @@ namespace Reactor.Http {
 
         #endregion
 
+        #region Fields
+
         private Reactor.Net.HttpListenerResponse response;
         private Reactor.Event                    ondrain;
         private Reactor.Event<Exception>         onerror;
         private Reactor.Event                    onend;
-        private Reactor.Streams.Writer           writer;
+        private Reactor.IO.Writer                writer;
         private State                            state;
+
+        #endregion
+
+        #region Constructor
 
         public ServerResponse(Reactor.Net.HttpListenerResponse response) {
             this.response = response;
@@ -68,11 +77,13 @@ namespace Reactor.Http {
             this.onerror  = Reactor.Event.Create<Exception>();
             this.onend    = Reactor.Event.Create();
             this.state    = State.Writing;
-            this.writer   = Reactor.Streams.Writer.Create(response.OutputStream);
+            this.writer   = Reactor.IO.Writer.Create(response.OutputStream);
             this.writer.OnDrain (this._Drain);
             this.writer.OnError (this._Error);
             this.writer.OnEnd   (this._End);
         }
+
+        #endregion
 
         #region Events
 
@@ -392,6 +403,150 @@ namespace Reactor.Http {
         /// <returns>A future resolved when this write has completed.</returns>
         public Reactor.Future Write (double value) {
             return this.Write(BitConverter.GetBytes(value));
+        }
+        
+        /// <summary>
+        /// Writes this data to the stream then ends the stream.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="index"></param>
+        /// <param name="count"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End (byte[] buffer, int index, int count) {
+            this.Write(Reactor.Buffer.Create(buffer, 0, count));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes this data to the stream then ends the stream.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(byte[] buffer) {
+            this.Write(buffer, 0, buffer.Length);
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes this data to the stream then ends the stream.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(string data) {
+            this.Write(System.Text.Encoding.UTF8.GetBytes(data));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes this data to the stream then ends the stream.
+        /// </summary>
+        /// <param name="format"></param>
+        /// <param name="args"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(string format, params object[] args) {
+            format = string.Format(format, args);
+            this.Write(System.Text.Encoding.UTF8.GetBytes(format));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes this data to the stream then ends the stream.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(byte data) {
+            this.Write(new byte[1] { data });
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Boolean value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(bool value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Int16 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(short value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.UInt16 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(ushort value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Int32 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(int value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.UInt32 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(uint value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Int64 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(long value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.UInt64 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(ulong value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Single value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(float value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Double value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(double value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
         }
 
         #endregion

@@ -31,16 +31,69 @@ using System.Security.Principal;
 namespace Reactor.Http {
 
     /// <summary>
-    /// Reactor HTTP Context
+    /// Encapsultes a reactor http request.
     /// </summary>
     public class Context {
-        public IPrincipal                   User                     { get; set; }
-        public ServerRequest                Request                  { get; set; }
-        public ServerResponse               Response                 { get; set; }
+        
+        private System.Security.Principal.IPrincipal   user;
+        private Reactor.Http.ServerRequest             request;
+        private Reactor.Http.ServerResponse            response;
+        private Reactor.Http.ServerTransport           transport;
+
+        /// <summary>
+        /// Creates a new http context.
+        /// </summary>
+        /// <param name="context">A context issued from a http listener.</param>
         internal Context(Reactor.Net.HttpListenerContext context) {
-            this.User                   = context.User;
-            this.Request                = new ServerRequest  (context.Request);
-            this.Response               = new ServerResponse (context.Response);
+            this.user       = context.User;
+            this.request    = new ServerRequest   (context.Request);
+            this.response   = new ServerResponse  (context.Response);
+            this.transport  = new ServerTransport (context.Connection);
         }
+
+        #region Properties
+
+        /// <summary>
+        /// Gets or sets the IPrincipal for this context.
+        /// </summary>
+        public System.Security.Principal.IPrincipal User {
+            get { return this.user; }
+            set { this.user = value; }
+        }
+
+        /// <summary>
+        /// The HTTP Request reader.
+        /// </summary>
+        public Reactor.Http.ServerRequest Request {
+            get { return this.request; }
+        }
+
+        /// <summary>
+        /// The HTTP Response writer.
+        /// </summary>
+        public Reactor.Http.ServerResponse Response {
+            get {
+                if (this.transport.InUse)
+                    throw new System.Exception("Access to the Response object is disallowed following access to the Transport object.");
+                return this.response;
+            }
+        }
+
+        /// <summary>
+        /// Provides direct access to the raw http transport stream for 
+        /// this request. This stream is available in a state post reading the 
+        /// http headers to initialize this context and prior to writing 
+        /// any data to the client. Access to this property will transform
+        /// the inuse state of this transport and access to the Response object
+        /// may result in undesirable behaviour.
+        /// </summary>
+        public Reactor.Http.ServerTransport Transport {
+            get {
+                this.transport.InUse = true;
+                return this.transport;
+            }
+        }
+
+        #endregion
     }
 }

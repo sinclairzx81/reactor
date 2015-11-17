@@ -96,20 +96,19 @@ namespace Reactor.Tls {
 
         private Reactor.Func<X509Certificate, X509Chain, SslPolicyErrors, bool> certificateValidationCallback;
         private System.Net.Sockets.Socket       socket;
-        private Reactor.Queue                   queue;
+        private Reactor.IO.Reader               reader;
+        private Reactor.IO.Writer               writer;
+        private Reactor.Scheduler                   queue;
         private Reactor.Event                   onconnect;
         private Reactor.Event                   ondrain;
         private Reactor.Event                   onreadable;
-        private Reactor.Event<Reactor.Buffer>   onread;
+        private Reactor.Event<Reactor.Buffer>   ondata;
         private Reactor.Event<Exception>        onerror;
         private Reactor.Event                   onend;
-        private Reactor.Streams.Reader          reader;
-        private Reactor.Streams.Writer          writer;
         private Reactor.Buffer                  buffer;
         private Reactor.Interval                poll;
         private ReadState                       readstate;
         private ReadMode                        readmode;
-        private bool                            corked;
         
         #region Constructors
 
@@ -118,19 +117,18 @@ namespace Reactor.Tls {
         /// </summary>
         /// <param name="socket">The socket to bind.</param>
         internal Socket (System.Net.Sockets.Socket socket, SslStream stream) {
-            this.queue      = Reactor.Queue.Create(1);
+            this.queue      = Reactor.Scheduler.Create(1);
             this.onconnect  = Reactor.Event.Create();
             this.ondrain    = Reactor.Event.Create();
             this.onreadable = Reactor.Event.Create();
-            this.onread     = Reactor.Event.Create<Reactor.Buffer>();
+            this.ondata     = Reactor.Event.Create<Reactor.Buffer>();
             this.onerror    = Reactor.Event.Create<Exception>();
             this.onend      = Reactor.Event.Create();
             this.readstate  = ReadState.Pending;
             this.readmode   = ReadMode.NonFlowing;
-            this.corked     = false;
             this.socket     = socket;
-            this.reader     = Reactor.Streams.Reader.Create(stream, Reactor.Settings.DefaultBufferSize);
-            this.writer     = Reactor.Streams.Writer.Create(stream);
+            this.reader     = Reactor.IO.Reader.Create(stream, Reactor.Settings.DefaultReadBufferSize);
+            this.writer     = Reactor.IO.Writer.Create(stream);
             this.poll       = Reactor.Interval.Create(this.Poll, 1000);
             this.buffer     = Reactor.Buffer.Create();
             this.writer.OnDrain (this._Drain);
@@ -147,33 +145,31 @@ namespace Reactor.Tls {
         /// <param name="port">The port to connect to.</param>
         public Socket (System.Net.IPEndPoint local, System.Net.IPEndPoint remote,  Reactor.Func<X509Certificate, X509Chain, SslPolicyErrors, bool> certificateValidationCallback) {
             this.certificateValidationCallback = certificateValidationCallback;
-            this.queue      = Reactor.Queue.Create(1);
+            this.queue      = Reactor.Scheduler.Create(1);
             this.onconnect  = Reactor.Event.Create();
             this.ondrain    = Reactor.Event.Create();
             this.onreadable = Reactor.Event.Create();
-            this.onread     = Reactor.Event.Create<Reactor.Buffer>();
+            this.ondata     = Reactor.Event.Create<Reactor.Buffer>();
             this.onerror    = Reactor.Event.Create<Exception>();
             this.onend      = Reactor.Event.Create();
             this.readstate  = ReadState.Pending;
             this.readmode   = ReadMode.NonFlowing;
-            this.corked     = false;
             this.queue.Pause();
             this.Connect(local, remote).Then(socket => {
                 this.socket = socket;
                 var networkstream  = new NetworkStream(socket);
                 this.Authenticate(networkstream).Then(stream => {
-                    this.reader = Reactor.Streams.Reader.Create(stream, Reactor.Settings.DefaultBufferSize);
-                    this.writer = Reactor.Streams.Writer.Create(stream);
+                    this.reader = Reactor.IO.Reader.Create(stream, Reactor.Settings.DefaultReadBufferSize);
+                    this.writer = Reactor.IO.Writer.Create(stream);
                     this.poll   = Reactor.Interval.Create(this.Poll, 1000);
                     this.buffer = Reactor.Buffer.Create();
                     this.writer.OnDrain (this._Drain);
                     this.writer.OnError (this._Error);
                     this.writer.OnEnd   (this._End);
-                    if(this.corked) this.Cork();
                     this.onconnect.Emit();
                     this.queue.Resume();
-                }).Error(error => { this.queue.Resume(); this._Error(error); });
-            }).Error(error => { this.queue.Resume(); this._Error(error); });
+                }).Catch(error => { this.queue.Resume(); this._Error(error); });
+            }).Catch(error => { this.queue.Resume(); this._Error(error); });
         }
 
         /// <summary>
@@ -183,16 +179,15 @@ namespace Reactor.Tls {
         /// <param name="port">The port to connect to.</param>
         public Socket (string hostname, int port, Reactor.Func<X509Certificate, X509Chain, SslPolicyErrors, bool> certificateValidationCallback) {
             this.certificateValidationCallback = certificateValidationCallback;
-            this.queue      = Reactor.Queue.Create(1);
+            this.queue      = Reactor.Scheduler.Create(1);
             this.onconnect  = Reactor.Event.Create();
             this.ondrain    = Reactor.Event.Create();
             this.onreadable = Reactor.Event.Create();
-            this.onread     = Reactor.Event.Create<Reactor.Buffer>();
+            this.ondata     = Reactor.Event.Create<Reactor.Buffer>();
             this.onerror    = Reactor.Event.Create<Exception>();
             this.onend      = Reactor.Event.Create();
             this.readstate  = ReadState.Pending;
             this.readmode   = ReadMode.NonFlowing;
-            this.corked     = false;
             this.queue.Pause();
             this.ResolveHost(hostname).Then(ipaddress => {
                 var local  = new IPEndPoint(IPAddress.Any, 0);
@@ -201,19 +196,18 @@ namespace Reactor.Tls {
                     this.socket = socket;
                     var networkstream  = new NetworkStream(socket);
                     this.Authenticate(networkstream).Then(stream => {
-                        this.reader = Reactor.Streams.Reader.Create(stream, Reactor.Settings.DefaultBufferSize);
-                        this.writer = Reactor.Streams.Writer.Create(stream);
+                        this.reader = Reactor.IO.Reader.Create(stream, Reactor.Settings.DefaultReadBufferSize);
+                        this.writer = Reactor.IO.Writer.Create(stream);
                         this.poll   = Reactor.Interval.Create(this.Poll, 1000);
                         this.buffer = Reactor.Buffer.Create();
                         this.writer.OnDrain (this._Drain);
                         this.writer.OnError (this._Error);
                         this.writer.OnEnd   (this._End);
-                        if(this.corked) this.Cork();
                         this.onconnect.Emit();
                         this.queue.Resume();
-                    }).Error(error => { this.queue.Resume(); this._Error(error); });
-                }).Error(error => { this.queue.Resume(); this._Error(error); });
-            }).Error(error => { this.queue.Resume(); this._Error(error); });
+                    }).Catch(error => { this.queue.Resume(); this._Error(error); });
+                }).Catch(error => { this.queue.Resume(); this._Error(error); });
+            }).Catch(error => { this.queue.Resume(); this._Error(error); });
         }
 
         #endregion
@@ -331,12 +325,12 @@ namespace Reactor.Tls {
         /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnRead (Reactor.Action<Reactor.Buffer> callback) {
+        public void OnData (Reactor.Action<Reactor.Buffer> callback) {
             this.queue.Run(next => {
                 if(this.readmode == ReadMode.Unknown ||
                    this.readmode == ReadMode.Flowing) {
                     this.readmode = ReadMode.Flowing;
-                    this.onread.On(callback);
+                    this.ondata.On(callback);
                     if (this.readstate == ReadState.Pending) {
                         this.readstate = ReadState.Reading;
                         this._Read();
@@ -352,12 +346,12 @@ namespace Reactor.Tls {
         /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnceRead(Reactor.Action<Reactor.Buffer> callback) {
+        public void OnceData(Reactor.Action<Reactor.Buffer> callback) {
             this.queue.Run(next => {
                 if(this.readmode == ReadMode.Unknown ||
                    this.readmode == ReadMode.Flowing) {
                     this.readmode = ReadMode.Flowing;
-                    this.onread.Once(callback);
+                    this.ondata.Once(callback);
                     if (this.readstate == ReadState.Pending) {
                         this.readstate = ReadState.Reading;
                         this._Read();
@@ -370,12 +364,12 @@ namespace Reactor.Tls {
         /// Unsubscribes this action from the 'read' event.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveRead (Reactor.Action<Reactor.Buffer> callback) {
+        public void RemoveData (Reactor.Action<Reactor.Buffer> callback) {
             this.queue.Run(next => {
                 if(this.readmode == ReadMode.Unknown ||
                    this.readmode == ReadMode.Flowing) {
                     this.readmode = ReadMode.Flowing;
-                    this.onread.Remove(callback);
+                    this.ondata.Remove(callback);
                 } next();
             });
         }
@@ -483,8 +477,8 @@ namespace Reactor.Tls {
                 this.queue.Run(next => {
                     this.writer.Write(buffer)
                                .Then(resolve)
-                               .Error(reject)
-                               .Finally(next);
+                               .Catch(reject);
+                    next();
                 });
             });
         }
@@ -498,8 +492,8 @@ namespace Reactor.Tls {
                 this.queue.Run(next => {
                     this.writer.Flush()
                                .Then(resolve)
-                               .Error(reject)
-                               .Finally(next);
+                               .Catch(reject);
+                    next();
                 });
             });
         }
@@ -511,8 +505,8 @@ namespace Reactor.Tls {
         public Reactor.Future End () {
             return new Reactor.Future((resolve, reject) => {
                 this.queue.Run(next => {
-                    this._End();
-                    next();          
+                    this.writer.End().Finally(this._End);
+                    next();
                 });
             });
         }
@@ -523,9 +517,7 @@ namespace Reactor.Tls {
         /// </summary>
         public void Cork() {
             this.queue.Run(next => {
-                this.corked = true;
-                if(this.writer != null)
-                    this.writer.Cork();
+                this.writer.Cork();
                 next();
             });
         }
@@ -535,9 +527,7 @@ namespace Reactor.Tls {
         /// </summary>
         public void Uncork() {
             this.queue.Run(next => {
-                this.corked = false;
-                if(this.writer != null)
-                    this.writer.Uncork();
+                this.writer.Uncork();
                 next();
             });
         }
@@ -582,11 +572,11 @@ namespace Reactor.Tls {
         /// <param name="writable"></param>
         /// <returns></returns>
         public Reactor.IReadable Pipe (Reactor.IWritable writable) {
-            this.OnRead(buffer => {
+            this.OnData(buffer => {
                 this.Pause();
                 writable.Write(buffer)
                         .Then(this.Resume)
-                        .Error(this._Error);
+                        .Catch(this._Error);
             }); this.OnEnd (() => writable.End());
             return this;
         }
@@ -837,7 +827,7 @@ namespace Reactor.Tls {
         /// <param name="buffer"></param>
         /// <returns>A future resolved when this write has completed.</returns>
         public Reactor.Future Write (byte[] buffer) {
-            return this.Write(Reactor.Buffer.Create(buffer));
+            return this.Write(buffer, 0, buffer.Length);
         }
 
         /// <summary>
@@ -948,6 +938,150 @@ namespace Reactor.Tls {
         /// <returns>A future resolved when this write has completed.</returns>
         public Reactor.Future Write (double value) {
             return this.Write(BitConverter.GetBytes(value));
+        }
+        
+        /// <summary>
+        /// Writes this data to the stream then ends the stream.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="index"></param>
+        /// <param name="count"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End (byte[] buffer, int index, int count) {
+            this.Write(Reactor.Buffer.Create(buffer, 0, count));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes this data to the stream then ends the stream.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(byte[] buffer) {
+            this.Write(buffer, 0, buffer.Length);
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes this data to the stream then ends the stream.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(string data) {
+            this.Write(System.Text.Encoding.UTF8.GetBytes(data));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes this data to the stream then ends the stream.
+        /// </summary>
+        /// <param name="format"></param>
+        /// <param name="args"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(string format, params object[] args) {
+            format = string.Format(format, args);
+            this.Write(System.Text.Encoding.UTF8.GetBytes(format));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes this data to the stream then ends the stream.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(byte data) {
+            this.Write(new byte[1] { data });
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Boolean value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(bool value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Int16 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(short value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.UInt16 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(ushort value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Int32 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(int value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.UInt32 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(uint value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Int64 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(long value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.UInt64 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(ulong value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Single value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(float value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Double value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(double value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
         }
 
         #endregion
@@ -1176,7 +1310,7 @@ namespace Reactor.Tls {
                                     reject(new Exception("host not found"));
                                 else
                                     resolve(addresses[0]);
-                            }).Error(reject);
+                            }).Catch(reject);
             });
         }
         
@@ -1259,7 +1393,7 @@ namespace Reactor.Tls {
                         throw new Exception("socket: poll detected unexpected termination");
                     }
                 } else poll_failed = 0;
-            }).Error(this._Error);
+            }).Catch(this._Error);
         }
 
         /// <summary>
@@ -1313,7 +1447,7 @@ namespace Reactor.Tls {
                     case ReadMode.Flowing:
                         var clone = this.buffer.Clone();
                         this.buffer.Clear();
-                        this.onread.Emit(clone);
+                        this.ondata.Emit(clone);
                         if (this.readstate == ReadState.Reading)
                             this._Read();
                         break;
@@ -1322,7 +1456,7 @@ namespace Reactor.Tls {
                         this.onreadable.Emit();
                         break;
                 }
-            }).Error(this._Error);
+            }).Catch(this._Error);
         }
 
         /// <summary>

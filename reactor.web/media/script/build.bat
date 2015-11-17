@@ -1,1 +1,0 @@
-tsc --out Client.js index.ts --removeComments

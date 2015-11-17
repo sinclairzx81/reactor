@@ -27,57 +27,71 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
+using System.Collections.Generic;
+using System.Text;
 
-namespace Reactor.Process {
+namespace Reactor.Web {
 
     /// <summary>
-    /// Reactor file writer.
+    /// Reactor web socket class.
     /// </summary>
-    public class Writer : Reactor.IWritable, IDisposable {
+    public class Socket {
 
-        #region State
 
         /// <summary>
-        /// Internal state of this writer.
+        /// Readable state.
         /// </summary>
         internal enum State {
             /// <summary>
-            /// Indicates that this stream is still writing.
+            /// The initial state of this stream. A stream
+            /// in a pending state signals that the stream
+            /// is waiting on the caller to issue a read request
+            /// the the underlying resource, by attaching a
+            /// OnRead, OnReadable, or calling Read().
             /// </summary>
-            Writing, 
-
+            Pending,
             /// <summary>
-            /// Indicates that this stream has ended.
+            /// A stream in a reading state signals that the
+            /// stream is currently requesting data from the
+            /// underlying resource and is waiting on a 
+            /// response.
+            /// </summary>
+            Reading,
+            /// <summary>
+            /// Indicates this stream has ended. Streams can end
+            /// by way of reaching the end of the stream, or through
+            /// error.
             /// </summary>
             Ended
         }
 
-        #endregion
+        #region Fields
 
-        private Reactor.IO.Writer        writer;
-        private Reactor.Event            ondrain;
-        private Reactor.Event<Exception> onerror;
-        private Reactor.Event            onend;
-        private State                    state;
+        private Reactor.IDuplexable             duplexable;
+        private Reactor.Event                   onconnect;
+        private Reactor.Event                   onreadable;
+        private Reactor.Event<Reactor.Buffer>   ondata;
+        private Reactor.Event<System.Exception> onerror;
+        private Reactor.Event                   onend;
+        private State state;
+
+        #endregion
 
         #region Constructor
 
         /// <summary>
-        /// Creates a new file writer.
+        /// Initializes a new web socket from this duplex stream.
         /// </summary>
-        /// <param name="filename"></param>
-        /// <param name="offset"></param>
-        /// <param name="mode"></param>
-        /// <param name="share"></param>
-        internal Writer(System.IO.Stream stream) {
-            this.ondrain = Reactor.Event.Create();
-            this.onerror = Reactor.Event.Create<Exception>();
-            this.onend   = Reactor.Event.Create();
-            this.state   = State.Writing;
-            this.writer  = Reactor.IO.Writer.Create(stream);
-            this.writer.OnDrain (this._Drain);
-            this.writer.OnError (this._Error);
-            this.writer.OnEnd   (this._End);
+        /// <param name="duplexable"></param>
+        public Socket(IDuplexable duplexable) {
+            this.duplexable  = duplexable;
+            this.onconnect   = Reactor.Event.Create();
+            this.onreadable  = Reactor.Event.Create();
+            this.ondata      = Reactor.Event.Create<Reactor.Buffer>();
+            this.onerror     = Reactor.Event.Create<System.Exception>();
+            this.onend       = Reactor.Event.Create();
+            this.state       = State.Reading;
+            this._Read();
         }
 
         #endregion
@@ -85,35 +99,53 @@ namespace Reactor.Process {
         #region Events
 
         /// <summary>
-        /// Subscribes this action to the 'drain' event. The event indicates
-        /// when a write operation has completed and the caller should send
-        /// more data.
+        /// Subscribes this action to the 'connect' event.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnDrain (Reactor.Action callback) {
-            this.ondrain.On(callback);
+        public void OnConnect(Reactor.Action action) {
+            this.onconnect.On(action);
+        }
+        
+        /// <summary>
+        /// Unsubscribes this action to the 'connect' event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void RemoveConnect(Reactor.Action action) {
+            this.onconnect.Remove(action);
         }
 
         /// <summary>
-        /// Subscribes this action once to the 'drain' event. The event indicates
-        /// when a write operation has completed and the caller should send
-        /// more data.
+        /// Subscribes this action to the 'read' event. Attaching a data event 
+        /// listener to a stream that has not been explicitly paused will 
+        /// switch the stream into flowing mode and begin reading immediately. 
+        /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnceDrain(Reactor.Action callback) {
-            this.ondrain.Once(callback);
+        public void OnData (Reactor.Action<Reactor.Buffer> callback) {
+            this.ondata.On(callback);
         }
 
         /// <summary>
-        /// Unsubscribes to from the OnDrain event.
+        /// Subscribes this action once to the 'read' event. Attaching a data event 
+        /// listener to a stream that has not been explicitly paused will 
+        /// switch the stream into flowing mode and begin reading immediately. 
+        /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveDrain(Reactor.Action callback) {
-            this.ondrain.Remove(callback);
+        public void OnceData (Reactor.Action<Reactor.Buffer> callback) {
+            this.ondata.Once(callback);
         }
 
         /// <summary>
-        /// Subscribes this action to the OnError event.
+        /// Unsubscribes this action from the 'read' event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void RemoveData (Reactor.Action<Reactor.Buffer> callback) {
+            this.ondata.Remove(callback);
+        }
+
+        /// <summary>
+        /// Subscribes this action to the 'error' event.
         /// </summary>
         /// <param name="callback"></param>
         public void OnError (Reactor.Action<Exception> callback) {
@@ -121,7 +153,7 @@ namespace Reactor.Process {
         }
 
         /// <summary>
-        /// Unsubscribes this action from the OnError event.
+        /// Unsubscribes this action from the 'error' event.
         /// </summary>
         /// <param name="callback"></param>
         public void RemoveError (Reactor.Action<Exception> callback) {
@@ -129,18 +161,18 @@ namespace Reactor.Process {
         }
 
         /// <summary>
-        /// Subscribes this action to the OnEnd event.
+        /// Subscribes this action to the 'end' event.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnEnd(Reactor.Action callback) {
+        public void OnEnd (Reactor.Action callback) {
             this.onend.On(callback);
         }
 
         /// <summary>
-        /// Unsubscribes this action from the OnEnd event.
+        /// Unsubscribes this action from the 'end' event.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveEnd(Reactor.Action callback) {
+        public void RemoveEnd (Reactor.Action callback) {
             this.onend.Remove(callback);
         }
 
@@ -152,41 +184,26 @@ namespace Reactor.Process {
         /// Writes this buffer to the stream.
         /// </summary>
         /// <param name="buffer">The buffer to write.</param>
-        /// <param name="callback">A callback to signal when this data has been written.</param>
-        public Reactor.Future Write (Reactor.Buffer buffer) {
+        public Reactor.Future Write(Buffer buffer) {
             buffer.Locked = true;
-            return this.writer.Write(buffer);
-        }
-
-        /// <summary>
-        /// Flushes this stream.
-        /// </summary>
-        /// <param name="callback"></param>
-        public Reactor.Future Flush () {
-            return this.writer.Flush();
+            var writable = this.duplexable as IWritable;
+            var frame = Reactor.Web.Frame.CreateFrame(
+                Reactor.Web.Fin.Final,
+                Reactor.Web.Opcode.TEXT,
+                Reactor.Web.Mask.Unmask, buffer.ToArray(), false);
+            return writable.Write(Reactor.Buffer.Create(frame.ToByteArray()));
         }
 
         /// <summary>
         /// Ends the stream.
         /// </summary>
-        /// <param name="callback">A callback to signal when this stream has ended.</param>
-        public Reactor.Future End () {
-            return this.writer.End();
-        }
-
-        /// <summary>
-        /// Forces buffering of all writes. Buffered data will be 
-        /// flushed either at .Uncork() or at .End() call.
-        /// </summary>
-        public void Cork () {
-            this.writer.Cork();
-        }
-
-        /// <summary>
-        /// Flush all data, buffered since .Cork() call.
-        /// </summary>
-        public void Uncork () {
-             this.writer.Uncork();
+        public Reactor.Future End() {
+            var writable = this.duplexable as IWritable;
+            var frame = Reactor.Web.Frame.CreateCloseFrame(
+                Reactor.Web.Mask.Unmask,
+                Reactor.Web.CloseStatusCode.Normal, "");
+            writable.Write(Reactor.Buffer.Create(frame.ToByteArray()));
+            return writable.End().Finally(this._End);
         }
 
         #endregion
@@ -469,68 +486,53 @@ namespace Reactor.Process {
 
         #endregion
 
-        #region Machine
+        #region Internal
 
         /// <summary>
-        /// Emits the ondrain event.
+        /// Reads from the underlying duplexable.
         /// </summary>
-        private void _Drain() {
-            if (this.state != State.Ended) {
-                this.ondrain.Emit();
-            }
+        /// <returns></returns>
+        private void _Read() {
+            var readable = this.duplexable as IReadable;
+            readable.OnData(buffer => {
+                while(true) {
+                    try {
+                        var frame = Reactor.Web.Frame.Parse(buffer, true);
+                        buffer.Read((int)frame.FrameLength);
+                        if (frame.IsClose) {
+                            readable.Pause();
+                            this._End();
+                        } else {
+                            this.ondata.Emit(Reactor.Buffer.Create(frame.Payload.ToByteArray()));
+                            if (buffer.Length == 0) {
+                                break;
+                            }
+                        }
+                    } catch { }
+                }
+            });
         }
 
         /// <summary>
-        /// Emits the _Error event.
+        /// Handles errors from this socket.
         /// </summary>
         /// <param name="error"></param>
         private void _Error(Exception error) {
-            if (this.state != State.Ended) {
+            if(this.state == State.Reading) {
                 this.onerror.Emit(error);
                 this._End();
             }
         }
 
         /// <summary>
-        /// Emits the 'end' event and disposes.
+        /// Internally ends this socket.
         /// </summary>
+        /// <returns></returns>
         private void _End() {
-            if (this.state != State.Ended) {
+            if (this.state == State.Reading) {
                 this.state = State.Ended;
-                this.writer.Dispose();
                 this.onend.Emit();
             }
-        }
-
-        #endregion
-
-        #region IDisposable
-
-        /// <summary>
-        /// Disposes of this stream.
-        /// </summary>
-        public void Dispose() {
-            this._End();
-        }
-
-        ~Writer() {
-            Loop.Post(() => { this._End(); });
-        }
-
-        #endregion
-
-        #region Statics
-
-        /// <summary>
-        /// Creates a new process writer.
-        /// </summary>
-        /// <param name="filename"></param>
-        /// <param name="index"></param>
-        /// <param name="mode"></param>
-        /// <param name="share"></param>
-        /// <returns></returns>
-        internal static Writer Create(System.IO.Stream stream) {
-            return new Writer(stream);
         }
 
         #endregion

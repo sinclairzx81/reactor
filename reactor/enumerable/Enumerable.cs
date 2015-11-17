@@ -33,9 +33,10 @@ using System.Collections.Generic;
 namespace Reactor {
 
     /// <summary>
-    /// Provides a set of methods for querying data structures over IEnumerable types.
+    /// Provides a set of methods for querying data structures over IEnumerable types. It is 
+    /// provided as a convenience when targeting legacy .net platforms.
     /// </summary>
-    /// <typeparam name="T"></typeparam>
+    /// <typeparam name="T">The type given for enumeration.</typeparam>
     public class Enumerable<T> : IEnumerable<T> {
 
         private IEnumerable<T> enumerable;

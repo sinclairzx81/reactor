@@ -29,8 +29,23 @@ THE SOFTWARE.
 namespace Reactor {
 
     /// <summary>
-    /// Functionality to protect against asynchronous race conditions.
+    /// Racer allows two async operations to race each other. 
     /// </summary>
+    /// <example><![CDATA[
+    /// var racer = new Reactor.Racer();
+    /// Reactor.Timeout.Create(() => {
+    ///     racer.Set(() => {
+    ///         // this code will execute.
+    ///     })
+    /// }, 1000);
+    /// 
+    /// Reactor.Timeout.Create(() => {
+    ///     racer.Set(() => {
+    ///         // this code won't.
+    ///     })
+    /// }, 2000);
+    /// ]]>
+    /// </example>
     public class Racer {
 
         #region Fields

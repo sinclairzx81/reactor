@@ -148,14 +148,14 @@ namespace Reactor.Udp.Stun {
                     if (socket.LocalEndPoint.Equals(result.MappedAddress)) {
                         Test1(socket, endpoint, result.MappedAddress)
                             .Then(resolve)
-                            .Error(reject);
+                            .Catch(reject);
                     } else {
 						Test2(socket, endpoint, result.MappedAddress)
 							.Then(resolve)
-							.Error(reject);						
+							.Catch(reject);						
 					}
 
-                }).Error(error => resolve(new Result { Nat = NatType.UdpBlocked}));
+                }).Catch(error => resolve(new Result { Nat = NatType.UdpBlocked}));
             });
         }
 
@@ -169,7 +169,7 @@ namespace Reactor.Udp.Stun {
                     }
                 })
                 .Then(result => resolve(new Result { Nat = NatType.OpenInternet, EndPoint = mapped }))
-                .Error(error => resolve(new Result { Nat = NatType.SymmetricUdpFirewall, EndPoint = mapped }));
+                .Catch(error => resolve(new Result { Nat = NatType.SymmetricUdpFirewall, EndPoint = mapped }));
             });
         }
 
@@ -183,7 +183,7 @@ namespace Reactor.Udp.Stun {
                     }
                 })
                 .Then(result => resolve(new Result { Nat = NatType.FullCone, EndPoint = mapped }))
-                .Error(error => Test3(socket, endpoint, mapped).Then(resolve).Error(reject));
+                .Catch(error => Test3(socket, endpoint, mapped).Then(resolve).Catch(reject));
             });
         }
 
@@ -192,8 +192,8 @@ namespace Reactor.Udp.Stun {
                 Hole.Request(socket, endpoint, new Packet { 
                     Type           = PacketType.BindingRequest
                 })
-                .Then(result => Test3(socket, endpoint, mapped).Then(resolve).Error(reject))
-                .Error(error => resolve(new Result { Nat = NatType.UdpBlocked, EndPoint = mapped }));
+                .Then(result => Test3(socket, endpoint, mapped).Then(resolve).Catch(reject))
+                .Catch(error => resolve(new Result { Nat = NatType.UdpBlocked, EndPoint = mapped }));
             });          
         }
 
@@ -207,7 +207,7 @@ namespace Reactor.Udp.Stun {
                     }
                 })
                 .Then(result => resolve(new Result { Nat = NatType.RestrictedCone, EndPoint = mapped }))
-                .Error(error => resolve(new Result { Nat = NatType.PortRestrictedCone, EndPoint = mapped }));
+                .Catch(error => resolve(new Result { Nat = NatType.PortRestrictedCone, EndPoint = mapped }));
             });
         }
 
@@ -252,8 +252,8 @@ namespace Reactor.Udp.Stun {
                     }
                     Punch(socket, new IPEndPoint(addresses[0], port))
                         .Then(resolve)
-                        .Error(reject);
-                }).Error(error => {
+                        .Catch(reject);
+                }).Catch(error => {
                     resolve(new Result { Nat = NatType.UdpBlocked} );
                 });
             });

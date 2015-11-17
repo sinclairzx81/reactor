@@ -33,6 +33,9 @@ using System.Text;
 
 namespace Reactor.Http {
 
+    /// <summary>
+    /// Provides a asynchronous abstraction over a System.Net.HttpListenerRequest.
+    /// </summary>
     public class ServerRequest : Reactor.IReadable {
 
         #region States
@@ -95,7 +98,7 @@ namespace Reactor.Http {
         private Reactor.Event<Reactor.Buffer>     onread;
         private Reactor.Event<Exception>          onerror;
         private Reactor.Event                     onend;
-        private Reactor.Streams.Reader            reader;
+        private Reactor.IO.Reader                 reader;
         private Reactor.Buffer                    buffer;
         private ReadState                         readstate;
         private ReadMode                          readmode;
@@ -109,7 +112,8 @@ namespace Reactor.Http {
             this.buffer     = Reactor.Buffer.Create();
             this.readstate  = ReadState.Pending;
             this.readmode   = ReadMode.Unknown;
-            this.reader     = Reactor.Streams.Reader.Create(request.InputStream, Reactor.Settings.DefaultBufferSize);          
+            this.reader     = Reactor.IO.Reader.Create(request.InputStream, 
+                                Reactor.Settings.DefaultReadBufferSize);          
         }
 
         #region Events
@@ -175,7 +179,7 @@ namespace Reactor.Http {
         /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnRead (Reactor.Action<Reactor.Buffer> callback) {
+        public void OnData (Reactor.Action<Reactor.Buffer> callback) {
             if(this.readmode == ReadMode.Unknown ||
                this.readmode == ReadMode.Flowing) {
                 this.readmode = ReadMode.Flowing;
@@ -194,7 +198,7 @@ namespace Reactor.Http {
         /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnceRead (Reactor.Action<Reactor.Buffer> callback) {
+        public void OnceData (Reactor.Action<Reactor.Buffer> callback) {
             if(this.readmode == ReadMode.Unknown ||
                this.readmode == ReadMode.Flowing) {
                 this.readmode = ReadMode.Flowing;
@@ -210,7 +214,7 @@ namespace Reactor.Http {
         /// Unsubscribes this action from the 'read' event.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveRead (Reactor.Action<Reactor.Buffer> callback) {
+        public void RemoveData (Reactor.Action<Reactor.Buffer> callback) {
             if(this.readmode == ReadMode.Unknown ||
                this.readmode == ReadMode.Flowing) {
                 this.readmode = ReadMode.Flowing;
@@ -336,11 +340,11 @@ namespace Reactor.Http {
         /// <param name="writable"></param>
         /// <returns></returns>
         public Reactor.IReadable Pipe (Reactor.IWritable writable) {
-            this.OnRead(buffer => {
+            this.OnData(buffer => {
                 this.Pause();
                 writable.Write(buffer)
                         .Then(this.Resume)
-                        .Error(this._Error);
+                        .Catch(this._Error);
             }); this.OnEnd (() => writable.End());
             return this;
         }
@@ -688,7 +692,7 @@ namespace Reactor.Http {
                         this.onreadable.Emit();
                         break;
                 }
-            }).Error(this._Error);
+            }).Catch(this._Error);
         }
 
         /// <summary>

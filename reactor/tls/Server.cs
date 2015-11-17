@@ -258,8 +258,8 @@ namespace Reactor.Tls {
                     this.onread.Emit(new Reactor.Tls.Socket(socket, stream));
                     if (this.listening) this._Read();
                     else this._End();
-                }).Error(this._Error);
-            }).Error(error => {
+                }).Catch(this._Error);
+            }).Catch(error => {
                 if(this.listening)
                     this._Error(error);
             });

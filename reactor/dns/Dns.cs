@@ -31,12 +31,19 @@ using System;
 namespace Reactor {
 
     /// <summary>
-    /// Provides simple domain name resolution.
+    /// DNS utility functions.
     /// </summary>
+    /// <example><![CDATA[
+    /// Reactor.Dns.GetHostAddresses("www.google.com").Then(addresses => {
+    ///     foreach (var address in addresses)
+    ///         Console.WriteLine(address);
+    /// });
+    /// ]]>
+    /// </example>
     public static class Dns {
 
         /// <summary>
-        /// Asynchronously returns the internet protocol (IP) address for the specified host.
+        /// Obtains the internet protocol (IP) address for the specified host.
         /// </summary>
         /// <param name="hostname">The host name or ip address to resolve.</param>
         public static Reactor.Future<System.Net.IPAddress[]> GetHostAddresses(string hostname) {

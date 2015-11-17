@@ -28,14 +28,14 @@ THE SOFTWARE.
 
 using System;
 
-namespace Reactor.Process
-{
+namespace Reactor.Process {
+
     /// <summary>
     /// Reactor file reader.
     /// </summary>
     public class Reader : Reactor.IReadable, IDisposable {
 
-       #region States
+        #region States
 
         /// <summary>
         /// Readable state.
@@ -90,11 +90,11 @@ namespace Reactor.Process
 
         #endregion
 
+        private Reactor.IO.Reader               reader;
         private Reactor.Event                   onreadable;
-        private Reactor.Event<Reactor.Buffer>   onread;
+        private Reactor.Event<Reactor.Buffer>   ondata;
         private Reactor.Event<Exception>        onerror;
         private Reactor.Event                   onend;
-        private Reactor.Streams.Reader          reader;
         private Reactor.Buffer                  buffer;
         private ReadState                       readstate;
         private ReadMode                        readmode;
@@ -111,13 +111,13 @@ namespace Reactor.Process
         /// <param name="share">The file share.</param>
         internal Reader (System.IO.Stream stream) {
             this.onreadable = Reactor.Event.Create();
-            this.onread     = Reactor.Event.Create<Reactor.Buffer>();
+            this.ondata     = Reactor.Event.Create<Reactor.Buffer>();
             this.onerror    = Reactor.Event.Create<Exception>();
             this.onend      = Reactor.Event.Create();
             this.buffer     = Reactor.Buffer.Create();
             this.readstate  = ReadState.Pending;
             this.readmode   = ReadMode.Unknown;
-            this.reader     = Reactor.Streams.Reader.Create(stream, Reactor.Settings.DefaultBufferSize);
+            this.reader     = Reactor.IO.Reader.Create(stream, Reactor.Settings.DefaultReadBufferSize);
         }
 
         #endregion
@@ -185,11 +185,11 @@ namespace Reactor.Process
         /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnRead (Reactor.Action<Reactor.Buffer> callback) {
+        public void OnData (Reactor.Action<Reactor.Buffer> callback) {
             if(this.readmode == ReadMode.Unknown ||
                this.readmode == ReadMode.Flowing) {
                 this.readmode = ReadMode.Flowing;
-                this.onread.On(callback);
+                this.ondata.On(callback);
                 if (this.readstate == ReadState.Pending) {
                     this.readstate = ReadState.Reading;
                     this._Read();
@@ -204,11 +204,11 @@ namespace Reactor.Process
         /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnceRead (Reactor.Action<Reactor.Buffer> callback) {
+        public void OnceData (Reactor.Action<Reactor.Buffer> callback) {
             if(this.readmode == ReadMode.Unknown ||
                this.readmode == ReadMode.Flowing) {
                 this.readmode = ReadMode.Flowing;
-                this.onread.Once(callback);
+                this.ondata.Once(callback);
                 if (this.readstate == ReadState.Pending) {
                     this.readstate = ReadState.Reading;
                     this._Read();
@@ -220,11 +220,11 @@ namespace Reactor.Process
         /// Unsubscribes this action from the 'read' event.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveRead (Reactor.Action<Reactor.Buffer> callback) {
+        public void RemoveData (Reactor.Action<Reactor.Buffer> callback) {
             if(this.readmode == ReadMode.Unknown ||
                this.readmode == ReadMode.Flowing) {
                 this.readmode = ReadMode.Flowing;
-                this.onread.Remove(callback);
+                this.ondata.Remove(callback);
             }
         }
 
@@ -346,11 +346,11 @@ namespace Reactor.Process
         /// <param name="writable"></param>
         /// <returns></returns>
         public Reactor.IReadable Pipe (Reactor.IWritable writable) {
-            this.OnRead(buffer => {
+            this.OnData(buffer => {
                 this.Pause();
                 writable.Write(buffer)
                         .Then(this.Resume)
-                        .Error(this._Error);
+                        .Catch(this._Error);
             }); this.OnEnd (() => writable.End());
             return this;
         }
@@ -573,7 +573,7 @@ namespace Reactor.Process
         /// in a resume state.
         /// </summary>
         private void _Read () {
-            reader.Read().Then(buffer => {
+            this.reader.Read().Then(buffer => {
                 if (buffer == null) {
                     this._End();
                     return;
@@ -584,7 +584,7 @@ namespace Reactor.Process
                     case ReadMode.Flowing:
                         var clone = this.buffer.Clone();
                         this.buffer.Clear();
-                        this.onread.Emit(clone);
+                        this.ondata.Emit(clone);
                         if (this.readstate == ReadState.Reading)
                             this._Read();
                         break;
@@ -593,7 +593,7 @@ namespace Reactor.Process
                         this.onreadable.Emit();
                         break;
                 }
-            }).Error(this._Error);
+            }).Catch(this._Error);
         }
 
         /// <summary>

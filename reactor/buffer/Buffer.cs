@@ -33,13 +33,32 @@ using System.Text;
 namespace Reactor {
 
     /// <summary>
-    /// The Reactor Buffer is a general purpose, dynamically resizable buffer used to 
-    /// encapsulate data passed on IO bound data events. Supports both read and write 
+    /// The Reactor Buffer is a general purpose, resizable ring buffer used to 
+    /// encapsulate data passed on IO events. It supports both read and write 
     /// operations and can be used as a general in memory storage object.
     /// </summary>
+    /// <example><![CDATA[
+    ///     var buffer = new Reactor.Buffer();
+    ///     buffer.Write(1);
+    ///     buffer.Write(2);
+    ///     buffer.Write(3);
+    ///     int a = buffer.ReadInt32(); // 1
+    ///     int b = buffer.ReadInt32(); // 2
+    ///     int c = buffer.ReadInt32(); // 3
+    /// ]]>
+    /// </example>
+    /// <example><![CDATA[
+    ///     var buffer = new Reactor.Buffer();
+    ///     buffer.Write("world");
+    ///     buffer.Unshift("hello ");
+    ///     buffer.Write("!!!");
+    ///     var message = buffer.ToString();
+    ///     //  -> "hello world!!!"
+    /// ]]>
+    /// </example>    
     public class Buffer : IDisposable {
 
-        internal class Fields {
+        private class Fields {
             public bool         disposed;
             public bool         locked;
             public MemoryStream stream;
@@ -58,7 +77,10 @@ namespace Reactor {
 
         #region Constructor
 
-        private Buffer() {
+        /// <summary>
+        /// Creates a new buffer.
+        /// </summary>
+        public Buffer() {
             this.fields = new Fields();
         }
 
@@ -248,7 +270,7 @@ namespace Reactor {
         /// Reads bytes from this buffer.
         /// </summary>
         /// <param name="count">The number of bytes to read.</param>
-        /// <returns></returns>
+        /// <returns>Bytes read from this buffer.</returns>
         public System.Byte[] Read (int count) {
             this.CheckDisposed();
             this.CheckLocked();

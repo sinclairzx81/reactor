@@ -30,11 +30,31 @@ using System;
 
 namespace Reactor.Fibers {
 
-    
     /// <summary>
-    /// A fiber allows users to execute synchronous code asynchronously. Fibers
-    /// are executed on the application threadpool.
+    /// A fiber allows callers to execute computationally expensive operations 
+    /// within the .net thread pool. The results of the operation are scheduled
+    /// on the reactor event loop.
     /// </summary>
+    /// <example><![CDATA[
+    /// 
+    ///     // it is advised to try and isolate the data that a fiber has
+    ///     // access to. In the example below, we wrap the fiber in a 
+    ///     // method to with arguments a and b. The fiber should only
+    ///     // interact with these values, ideally in a immutable fashion. C#
+    ///     // provides no assurances here, but the author considers this good
+    ///     // practice.
+    /// 
+    ///     public static Reactor.Future<int> Compute(int a, int b) {
+    ///         return Reactor.Fiber.Create<int>(() => {
+    ///             return a + b; // cpu intensive operation here.
+    ///         });
+    ///     });
+    ///     ...
+    ///     Compute(1, 2).Then(value => {
+    ///         // 3 !!
+    ///     });
+    /// ]]>
+    /// </example>    
     public class Fiber {
 
         /// <summary>

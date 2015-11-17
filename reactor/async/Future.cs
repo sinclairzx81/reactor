@@ -33,9 +33,29 @@ using System.Collections.Generic;
 namespace Reactor {
 
     /// <summary>
-    /// Reactor Future.
+    /// Provides functionality asynchronously resolve a value. It 
+    /// is a alternitive to a Task, and analogous to a Promise.
     /// </summary>
-    /// <typeparam name="T"></typeparam>
+    /// <typeparam name="T">The type of value</typeparam>
+    /// <example><![CDATA[
+    /// public static Reactor.Future<int> Run() {
+    ///     return new Reactor.Future<int>((resolve, reject) => {
+    ///         Reactor.Timeout.Create(() => {
+    ///             resolve(123);
+    ///         }, 1000); // 1 second delay.
+    ///     });
+    /// }
+    /// public static void Main(string [] args) {
+    ///     Run().Then(value => {
+    ///         // the value is 123
+    ///     }).Catch(exception => {
+    ///         // a exception happened
+    ///     }).Finally(() => {
+    ///         // continuation.
+    ///     });
+    /// }
+    /// ]]>
+    /// </example>     
     public class Future<T> {
 
         #region State
@@ -63,13 +83,13 @@ namespace Reactor {
             public Exception                       error;
             public T                               value;
             public State                           state;
-            public List<Reactor.Action<Exception>> errors;
+            public List<Reactor.Action<Exception>> catches;
             public List<Reactor.Action<T>>         thens;
             public Fields() {
                 this.error  = null;
                 this.value  = default(T);
                 this.state  = State.Pending;
-                this.errors = new List<Reactor.Action<Exception>>();
+                this.catches = new List<Reactor.Action<Exception>>();
                 this.thens  = new List<Reactor.Action<T>>();
             }
         } private Fields<T> fields;
@@ -138,7 +158,7 @@ namespace Reactor {
                         break;
                     case State.Pending:
                         this.fields.thens.Add(resolve);
-                        this.fields.errors.Add(reject);
+                        this.fields.catches.Add(reject);
                         break;
                 }
                 return future;
@@ -169,7 +189,7 @@ namespace Reactor {
                         break;
                     case State.Pending:
                         this.fields.thens.Add(resolve);
-                        this.fields.errors.Add(reject);
+                        this.fields.catches.Add(reject);
                         break;
                 }
                 return future;
@@ -181,7 +201,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public Reactor.Future Error (Reactor.Action<Exception> callback) {
+        public Reactor.Future Catch (Reactor.Action<Exception> callback) {
             lock (this.fields) {
                 var future  = new Reactor.Future();
                 var resolve = new Reactor.Action<T>(value => {
@@ -200,7 +220,7 @@ namespace Reactor {
                         break;
                     case State.Pending:
                         this.fields.thens.Add(resolve);
-                        this.fields.errors.Add(reject);
+                        this.fields.catches.Add(reject);
                         break;
                 }
                 return future;
@@ -232,7 +252,7 @@ namespace Reactor {
                         break;
                     case State.Pending:
                         this.fields.thens.Add(resolve);
-                        this.fields.errors.Add(reject);
+                        this.fields.catches.Add(reject);
                         break;
                 }            
                 return future;
@@ -254,11 +274,11 @@ namespace Reactor {
                 }
                 this.fields.error = error;
                 this.fields.state = State.Rejected;
-                foreach (var handler in this.fields.errors) {
+                foreach (var handler in this.fields.catches) {
                     handler(error);
                 }
                 this.fields.thens.Clear();
-                this.fields.errors.Clear();
+                this.fields.catches.Clear();
             }
         }
 
@@ -277,7 +297,7 @@ namespace Reactor {
                     handler(value);
                 }
                 this.fields.thens.Clear();
-                this.fields.errors.Clear();
+                this.fields.catches.Clear();
             }
         }
 
@@ -285,8 +305,25 @@ namespace Reactor {
     }
 
     /// <summary>
-    /// Reactor Future.
+    /// Provides functionality asynchronously preform work. It 
+    /// is a alternitive to a Task, and analogous to a Promise, but
+    /// does not resolve a value.
     /// </summary>
+    /// <example><![CDATA[
+    /// public static Reactor.Future<int> Wait(int ms) {
+    ///     return new Reactor.Future<int>((resolve, reject) => {
+    ///         Reactor.Timeout.Create(() => {
+    ///             resolve();
+    ///         }, ms); 
+    ///     });
+    /// }
+    /// public static void Main(string [] args) {
+    ///     Wait(1000).Then(value => {
+    ///         // 1 second has elapsed.  
+    ///     })
+    /// }
+    /// ]]>
+    /// </example>  
     public class Future {
 
         #region State
@@ -313,12 +350,12 @@ namespace Reactor {
         internal class Fields {
             public Exception                       error;
             public State                           state;
-            public List<Reactor.Action<Exception>> errors;
+            public List<Reactor.Action<Exception>> catches;
             public List<Reactor.Action>            thens;
             public Fields() {
                 this.error  = null;
                 this.state  = State.Pending;
-                this.errors = new List<Reactor.Action<Exception>>();
+                this.catches = new List<Reactor.Action<Exception>>();
                 this.thens  = new List<Reactor.Action>();
             }
         } private Fields fields;
@@ -338,7 +375,7 @@ namespace Reactor {
         /// Creates a new future. 
         /// </summary>
         /// <param name="resolver">The resolve / reject function.</param>
-        public  Future(Reactor.Action<Reactor.Action, Reactor.Action<Exception>> resolver) {
+        public Future(Reactor.Action<Reactor.Action, Reactor.Action<Exception>> resolver) {
             this.fields = new Fields();
             try {
                 resolver(this.Resolve, this.Reject);
@@ -376,7 +413,7 @@ namespace Reactor {
                         break;
                     case State.Pending:
                         this.fields.thens.Add(resolve);
-                        this.fields.errors.Add(reject);
+                        this.fields.catches.Add(reject);
                         break;
                 }
                 return future;
@@ -407,7 +444,7 @@ namespace Reactor {
                         break;
                     case State.Pending:
                         this.fields.thens.Add(resolve);
-                        this.fields.errors.Add(reject);
+                        this.fields.catches.Add(reject);
                         break;
                 }
                 return future;
@@ -419,7 +456,7 @@ namespace Reactor {
         /// </summary>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public Reactor.Future Error (Reactor.Action<Exception> callback) {
+        public Reactor.Future Catch (Reactor.Action<Exception> callback) {
             lock (this.fields) {
                 var future  = new Reactor.Future();
                 var resolve = new Reactor.Action(() => {
@@ -438,7 +475,7 @@ namespace Reactor {
                         break;
                     case State.Pending:
                         this.fields.thens.Add(resolve);
-                        this.fields.errors.Add(reject);
+                        this.fields.catches.Add(reject);
                         break;
                 }            
                 return future;
@@ -470,7 +507,7 @@ namespace Reactor {
                         break;
                     case State.Pending:
                         this.fields.thens.Add(resolve);
-                        this.fields.errors.Add(reject);
+                        this.fields.catches.Add(reject);
                         break;
                 }            
                 return future;
@@ -488,11 +525,11 @@ namespace Reactor {
                 }
                 this.fields.error = error;
                 this.fields.state = State.Rejected;
-                foreach (var handler in this.fields.errors) {
+                foreach (var handler in this.fields.catches) {
                     handler(error);
                 }
                 this.fields.thens.Clear();
-                this.fields.errors.Clear();
+                this.fields.catches.Clear();
             }
         }
 
@@ -506,7 +543,7 @@ namespace Reactor {
                     handler();
                 }
                 this.fields.thens.Clear();
-                this.fields.errors.Clear();
+                this.fields.catches.Clear();
             }
         }
 
@@ -579,143 +616,43 @@ namespace Reactor {
                     count++;
                     future.Then(() => {
                         count--;
-                        if (count == 0) { 
+                        if (count == 0)
                             resolve();
-                        }
-                    }).Error(reject);
+                    }).Catch(reject);
                 }
             });
         }
 
         /// <summary>
-        /// Returns a future that resolves when all of the futures in the iterable argument have been resolved. Each
+        /// Returns a future that resolves when all of the future arguments have been resolved. Each
         /// future is run in parallel, if any one future rejects, then it is immediately rejected to the caller.
+        /// Results are returned to the caller in the order in which they were given.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="futures"></param>
         /// <returns></returns>
         public static Reactor.Future<IEnumerable<T>> All<T>(IEnumerable<Reactor.Future<T>> futures) {
-            var count = 0;
             return new Reactor.Future<IEnumerable<T>>((resolve, reject) => {
-                var list = new List<T>();
-                foreach (var future in futures) {
-                    count++;
-                    future.Then(v => {
-                        list.Add(v);
-                        count--;
-                        if(count == 0) 
-                            resolve(list);
-                    }).Error(reject);
+                var count = 0;
+                foreach (var _ in futures)  
+                    count += 1;
+                if(count == 0) {
+                    resolve(new T[] { });
+                } else {
+                    var results   = new T[count];
+                    var completed = 0;
+                    var index     = 0;
+                    foreach (var future in futures) {
+                        var _index = index++;
+                        future.Then(value => {
+                            results[_index] = value;
+                            completed++;
+                            if(completed == results.Length)
+                                resolve(results);
+                        }).Catch(reject);
+                    }
                 }
             });
-        }
-
-        #endregion
-    }
-
-    /// <summary>
-    /// Reactor Deferred
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    public class Deferred<T> {
-        private Reactor.Future<T>         future;
-        private Reactor.Action<T>         resolve;
-        private Reactor.Action<Exception> reject;
-
-        #region Constructors
-
-        /// <summary>
-        /// Creates a new deferred.
-        /// </summary>
-        public Deferred() {
-            this.future = new Future<T>((resolve, reject) => {
-                this.resolve = resolve;
-                this.reject = reject;
-            });
-        }
-
-        #endregion
-
-        #region Properties
-
-        /// <summary>
-        /// The deferred future.
-        /// </summary>
-        public Reactor.Future<T> Future {
-            get {  return this.future; }
-        }
-
-        #endregion
-
-        #region Methods
-
-        /// <summary>
-        /// Resolves this deferred.
-        /// </summary>
-        /// <param name="value"></param>
-        public void Resolve(T value) {
-            this.resolve(value);
-        }
-
-        /// <summary>
-        /// Rejects this deferred.
-        /// </summary>
-        /// <param name="error"></param>
-        public void Reject(Exception error) {
-            this.reject(error);
-        }
-
-        #endregion
-    }
-
-    /// <summary>
-    /// Reactor Deferred
-    /// </summary>
-    public class Deferred {
-        private Reactor.Future            future;
-        private Reactor.Action            resolve;
-        private Reactor.Action<Exception> reject;
-
-        #region Constructors
-
-        /// <summary>
-        /// Creates a new deferred.
-        /// </summary>
-        public Deferred() {
-            this.future = new Future((resolve, reject) => {
-                this.resolve = resolve;
-                this.reject = reject;
-            });
-        }
-
-        #endregion
-
-        #region Properties
-
-        /// <summary>
-        /// The deferred future.
-        /// </summary>
-        public Reactor.Future Future {
-            get {  return this.future; }
-        }
-
-        #endregion
-
-        #region Methods
-
-        /// <summary>
-        /// Resolves this deferred.
-        /// </summary>
-        public void Resolve() {
-            this.resolve();
-        }
-
-        /// <summary>
-        /// Rejects this deferred.
-        /// </summary>
-        /// <param name="error"></param>
-        public void Reject(Exception error) {
-            this.reject(error);
         }
 
         #endregion

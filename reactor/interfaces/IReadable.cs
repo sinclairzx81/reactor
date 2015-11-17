@@ -64,28 +64,28 @@ namespace Reactor {
         void RemoveReadable (Reactor.Action callback);
 
         /// <summary>
-        /// Subscribes this action to the 'read' event. Attaching a data event 
+        /// Subscribes this action to the 'data' event. Attaching a data event 
         /// listener to a stream that has not been explicitly paused will 
         /// switch the stream into flowing mode and begin reading immediately. 
         /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
-        void OnRead (Reactor.Action<Reactor.Buffer> callback);
+        void OnData (Reactor.Action<Reactor.Buffer> callback);
 
         /// <summary>
-        /// Subscribes this action once to the 'read' event. Attaching a data event 
+        /// Subscribes this action once to the 'data' event. Attaching a data event 
         /// listener to a stream that has not been explicitly paused will 
         /// switch the stream into flowing mode and begin reading immediately. 
         /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
-        void OnceRead(Reactor.Action<Reactor.Buffer> callback);
+        void OnceData(Reactor.Action<Reactor.Buffer> callback);
 
         /// <summary>
-        /// Unsubscribes this action from the 'read' event.
+        /// Unsubscribes this action from the 'data' event.
         /// </summary>
         /// <param name="callback"></param>
-        void RemoveRead (Reactor.Action<Reactor.Buffer> callback);
+        void RemoveData (Reactor.Action<Reactor.Buffer> callback);
 
         /// <summary>
         /// Subscribes this action to the 'error' event.

@@ -27,67 +27,18 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 using System;
-using System.IO;
+using System.Collections.Generic;
+using System.Text;
 
-namespace Reactor.File {
+namespace Reactor.Http {
 
     /// <summary>
-    /// Reactor file reader. Provides a asynchronous read interface over
-    /// a System.IO.FileStream.
+    /// Provides direct access to the underlying HTTP transport stream.
     /// </summary>
-    /// <example><![CDATA[
-    ///     
-    ///     // the following will open the file 'input.dat' and
-    ///     // begin reading. Reading happens as soon as the OnData
-    ///     // event is subscribed to.
-    /// 
-    ///     var reader = Reactor.File.Reader.Create("input.dat");
-    ///     reader.OnData (data  => Console.WriteLine(data));
-    ///     reader.OnError(error => Console.WriteLine(error));
-    ///     reader.OnEnd  (()    => Console.WriteLine("finished reading"));
-    /// ]]>
-    /// </example>
-    /// <example><![CDATA[
-    /// 
-    ///     // the following will open input.dat for reading and 
-    ///     // output.dat for writing. The reader will pipe the 
-    ///     // contents of the reader to the write (a copy).
-    ///     // note that a Pipe() will interleave read and writes
-    ///     // when moving data to and from ensuring data in 
-    ///     // transit is kept to a minimum.
-    /// 
-    ///     var reader = Reactor.File.Reader.Create("input.dat");
-    ///     var writer = Reactor.File.Writer.Create("output.dat");
-    ///     reader.Pipe(writer);
-    ///     reader.OnEnd  (() => Console.WriteLine("finished piping"));
-    /// ]]>
-    /// </example>
-    /// <example><![CDATA[
-    /// 
-    ///     // the following is a explicit implementation of a Pipe()
-    ///     // operation. The following code will open input.dat for
-    ///     // reading and output.data for writing. note that each
-    ///     // time the reader emits a buffer, we immediately pause()
-    ///     // the reader to allow time to write. once completed,
-    ///     // we resume() the reader and the process starts over.
-    /// 
-    ///     var reader = Reactor.File.Reader.Create("input.dat");
-    ///     var writer = Reactor.File.Writer.Create("output.dat");    
-    ///     
-    ///     reader.OnData(buffer => {            // read() buffer
-    ///         reader.Pause();                  // pause() reader.
-    ///         writer.Write(buffer)             // write() buffer.
-    ///               .Then(reader.Resume)       // resume() reader.
-    ///               .Catch(error => {});       // write error.
-    ///     });
-    ///     reader.OnError(error => {});         // read error.
-    ///     reader.OnEnd (() => writable.End()); // clean up.          
-    /// ]]>
-    /// </example> 
-    public class Reader : Reactor.IReadable, IDisposable {
+    public class ServerTransport : Reactor.IDuplexable, IDisposable {
 
         #region States
-
+        
         /// <summary>
         /// Readable state.
         /// </summary>
@@ -126,22 +77,27 @@ namespace Reactor.File {
         /// </summary>
         internal enum ReadMode {
             /// <summary>
-            /// The mode is unknown.
+            /// Unknown read mode.
             /// </summary>
             Unknown,
             /// <summary>
-            /// This stream is using flowing semantics.
+            /// This stream is flowing.
             /// </summary>
             Flowing,
             /// <summary>
-            /// This stream is using non-flowing semantics.
+            /// This stream is non-flowing.
             /// </summary>
             NonFlowing
         }
 
         #endregion
 
+        #region Fields
+
+        private Reactor.Net.HttpConnection      connection;
         private Reactor.IO.Reader               reader;
+        private Reactor.IO.Writer               writer;
+        private Reactor.Event                   ondrain;
         private Reactor.Event                   onreadable;
         private Reactor.Event<Reactor.Buffer>   ondata;
         private Reactor.Event<Exception>        onerror;
@@ -149,41 +105,81 @@ namespace Reactor.File {
         private Reactor.Buffer                  buffer;
         private ReadState                       readstate;
         private ReadMode                        readmode;
-        private long                            offset;
-        private long                            count;
-        private long                            received;
-        private long                            length;
+        private bool                            inuse;
+
+        #endregion
 
         #region Constructors
 
         /// <summary>
-        /// Creates a new file reader.
+        /// Creates a new transport bound to this http connection.
         /// </summary>
-        /// <param name="filename">The file to read.</param>
-        /// <param name="offset">The offset to begin reading.</param>
-        /// <param name="count">The number of bytes to read.</param>
-        /// <param name="mode">The file mode.</param>
-        /// <param name="share">The file share.</param>
-        public Reader (string filename, long offset, long count, System.IO.FileMode mode, System.IO.FileShare share) {
+        /// <param name="socket">The connection to bind.</param>
+        internal ServerTransport (Reactor.Net.HttpConnection connection) {
+            this.ondrain    = Reactor.Event.Create();
             this.onreadable = Reactor.Event.Create();
             this.ondata     = Reactor.Event.Create<Reactor.Buffer>();
             this.onerror    = Reactor.Event.Create<Exception>();
             this.onend      = Reactor.Event.Create();
-            this.buffer     = Reactor.Buffer.Create();
             this.readstate  = ReadState.Pending;
             this.readmode   = ReadMode.Unknown;
-            var stream      = new FileStream(filename, mode, FileAccess.Read, share);
-            this.length     = stream.Length;
-            this.received   = 0;
-            this.offset     = (offset > (stream.Length)) ? stream.Length : offset;
-            this.count      = (count  > (stream.Length - this.offset)) ? (stream.Length - this.offset) : count;
-            stream.Seek(this.offset, SeekOrigin.Begin);
-            this.reader     = Reactor.IO.Reader.Create(stream, Reactor.Settings.DefaultReadBufferSize);
+            this.inuse      = false;
+
+            this.connection = connection;
+            this.reader     = Reactor.IO.Reader.Create(connection.Stream, Reactor.Settings.DefaultReadBufferSize);
+            this.writer     = Reactor.IO.Writer.Create(connection.Stream);
+            this.buffer     = Reactor.Buffer.Create();
+            this.writer.OnDrain (this._Drain);
+            this.writer.OnError (this._Error);
+            this.writer.OnEnd   (this._End);
+        }
+
+        #endregion
+
+        #region Properties
+        
+        /// <summary>
+        /// Indicates if this transport is being used. note, the
+        /// flow on effect of this is that the transport will 
+        /// attempt to clean itself up via a seperate path from
+        /// the request and response types.
+        /// </summary>
+        internal bool InUse {
+            get { return this.inuse;  }
+            set { this.inuse = value; }
         }
 
         #endregion
 
         #region Events
+
+        /// <summary>
+        /// Subscribes this action to the 'drain' event. The event indicates
+        /// when a write operation has completed and the caller should send
+        /// more data.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnDrain (Reactor.Action callback) {
+            this.ondrain.On(callback);
+        }
+
+        /// <summary>
+        /// Subscribes this action once to the 'drain' event. The event indicates
+        /// when a write operation has completed and the caller should send
+        /// more data.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void OnceDrain (Reactor.Action callback) {
+            this.ondrain.Once(callback);
+        }
+
+        /// <summary>
+        /// Unsubscribes from the OnDrain event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void RemoveDrain (Reactor.Action callback) {
+            this.ondrain.Remove(callback);
+        }
 
         /// <summary>
         /// Subscribes this action to the 'readable' event. When a chunk of 
@@ -196,7 +192,7 @@ namespace Reactor.File {
         /// <param name="callback"></param>
         public void OnReadable (Reactor.Action callback) {
             if(this.readmode == ReadMode.Unknown ||
-               this.readmode == ReadMode.NonFlowing) {
+                this.readmode == ReadMode.NonFlowing) {
                 this.readmode = ReadMode.NonFlowing;
                 this.onreadable.On(callback);
                 if (this.readstate == ReadState.Pending) {
@@ -215,9 +211,9 @@ namespace Reactor.File {
         /// transition into a pending state prior to reading from the resource.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnceReadable (Reactor.Action callback) {
+        public void OnceReadable(Reactor.Action callback) {
             if(this.readmode == ReadMode.Unknown ||
-               this.readmode == ReadMode.NonFlowing) {
+                this.readmode == ReadMode.NonFlowing) {
                 this.readmode = ReadMode.NonFlowing;
                 this.onreadable.Once(callback);
                 if (this.readstate == ReadState.Pending) {
@@ -231,9 +227,9 @@ namespace Reactor.File {
         /// Unsubscribes this action from the 'readable' event.
         /// </summary>
         /// <param name="callback"></param>
-        public void RemoveReadable (Reactor.Action callback) {
+        public void RemoveReadable(Reactor.Action callback) {
             if(this.readmode == ReadMode.Unknown ||
-               this.readmode == ReadMode.NonFlowing) {
+                this.readmode == ReadMode.NonFlowing) {
                 this.readmode = ReadMode.NonFlowing;
                 this.onreadable.Remove(callback);
             }
@@ -248,7 +244,7 @@ namespace Reactor.File {
         /// <param name="callback"></param>
         public void OnData (Reactor.Action<Reactor.Buffer> callback) {
             if(this.readmode == ReadMode.Unknown ||
-               this.readmode == ReadMode.Flowing) {
+                this.readmode == ReadMode.Flowing) {
                 this.readmode = ReadMode.Flowing;
                 this.ondata.On(callback);
                 if (this.readstate == ReadState.Pending) {
@@ -265,9 +261,9 @@ namespace Reactor.File {
         /// Data will then be passed as soon as it is available.
         /// </summary>
         /// <param name="callback"></param>
-        public void OnceData (Reactor.Action<Reactor.Buffer> callback) {
+        public void OnceData(Reactor.Action<Reactor.Buffer> callback) {
             if(this.readmode == ReadMode.Unknown ||
-               this.readmode == ReadMode.Flowing) {
+                this.readmode == ReadMode.Flowing) {
                 this.readmode = ReadMode.Flowing;
                 this.ondata.Once(callback);
                 if (this.readstate == ReadState.Pending) {
@@ -283,7 +279,7 @@ namespace Reactor.File {
         /// <param name="callback"></param>
         public void RemoveData (Reactor.Action<Reactor.Buffer> callback) {
             if(this.readmode == ReadMode.Unknown ||
-               this.readmode == ReadMode.Flowing) {
+                this.readmode == ReadMode.Flowing) {
                 this.readmode = ReadMode.Flowing;
                 this.ondata.Remove(callback);
             }
@@ -370,6 +366,47 @@ namespace Reactor.File {
         }
 
         /// <summary>
+        /// Writes this buffer to the stream.
+        /// </summary>
+        /// <param name="buffer">The buffer to write.</param>
+        /// <param name="callback">A callback to signal when this buffer has been written.</param>
+        public Reactor.Future Write (Reactor.Buffer buffer) {
+            buffer.Locked = true;
+            return this.writer.Write(buffer);
+        }
+
+        /// <summary>
+        /// Flushes this stream.
+        /// </summary>
+        /// <param name="callback">A callback to signal when this buffer has been flushed.</param>
+        public Reactor.Future Flush () {
+            return this.writer.Flush();
+        }
+
+        /// <summary>
+        /// Ends this stream.
+        /// </summary>
+        /// <param name="callback">A callback to signal when this stream has ended.</param>
+        public Reactor.Future End () {
+            return this.writer.End().Finally(this._End);
+        }
+
+        /// <summary>
+        /// Forces buffering of all writes. Buffered data will be 
+        /// flushed either at .Uncork() or at .End() call.
+        /// </summary>
+        public void Cork() {
+            this.writer.Cork();
+        }
+
+        /// <summary>
+        /// Flush all data, buffered since .Cork() call.
+        /// </summary>
+        public void Uncork() {
+            this.writer.Uncork();
+        }
+
+        /// <summary>
         /// Pauses this stream. This method will cause a 
         /// stream in flowing mode to stop emitting data events, 
         /// switching out of flowing mode. Any data that becomes 
@@ -377,10 +414,10 @@ namespace Reactor.File {
         /// </summary>
         public void Pause() {
             if(this.readmode == ReadMode.Unknown ||
-               this.readmode == ReadMode.Flowing) {
+                this.readmode == ReadMode.Flowing) {
                 this.readmode  = ReadMode.Flowing;
                 this.readstate = ReadState.Paused;
-            }
+            }           
         }
 
         /// <summary>
@@ -391,7 +428,7 @@ namespace Reactor.File {
         /// </summary>
         public void Resume() {
             if(this.readmode == ReadMode.Unknown ||
-               this.readmode == ReadMode.Flowing) {
+                this.readmode == ReadMode.Flowing) {
                 this.readmode = ReadMode.Flowing;
                 if(this.readstate  == ReadState.Paused ||
                     this.readstate == ReadState.Pending) {
@@ -418,13 +455,280 @@ namespace Reactor.File {
 
         #endregion
 
-        #region Properties
+        #region IWritable Extension
+
+        /// <summary>
+        /// Writes this data to the stream.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="index"></param>
+        /// <param name="count"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Future Write (byte[] buffer, int index, int count) {
+            return this.Write(Reactor.Buffer.Create(buffer, 0, count));
+        }
+
+        /// <summary>
+        /// Writes this data to the stream.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Future Write (byte[] buffer) {
+            return this.Write(buffer, 0, buffer.Length);
+        }
+
+        /// <summary>
+        /// Writes this data to the stream.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Future Write (string data) {
+            return this.Write(System.Text.Encoding.UTF8.GetBytes(data));
+        }
+
+        /// <summary>
+        /// Writes this data to the stream.
+        /// </summary>
+        /// <param name="format"></param>
+        /// <param name="args"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Future Write (string format, params object[] args) {
+            format = string.Format(format, args);
+            return this.Write(System.Text.Encoding.UTF8.GetBytes(format));
+        }
+
+        /// <summary>
+        /// Writes this data to the stream.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Future Write (byte data) {
+            return this.Write(new byte[1] { data });
+        }
+
+        /// <summary>
+        /// Writes a System.Boolean value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Future Write (bool value) {
+            return this.Write(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Writes a System.Int16 value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Future Write (short value) {
+            return this.Write(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Writes a System.UInt16 value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Future Write (ushort value) {
+            return this.Write(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Writes a System.Int32 value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Future Write (int value) {
+            return this.Write(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Writes a System.UInt32 value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Future Write (uint value) {
+            return this.Write(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Writes a System.Int64 value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Future Write (long value) {
+            return this.Write(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Writes a System.UInt64 value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Future Write (ulong value) {
+            return this.Write(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Writes a System.Single value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Future Write (float value) {
+            return this.Write(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// Writes a System.Double value to the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed.</returns>
+        public Reactor.Future Write (double value) {
+            return this.Write(BitConverter.GetBytes(value));
+        }
         
         /// <summary>
-        /// Gets the length in bytes of the stream.
+        /// Writes this data to the stream then ends the stream.
         /// </summary>
-        public long Length {
-            get { return this.length; }
+        /// <param name="buffer"></param>
+        /// <param name="index"></param>
+        /// <param name="count"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End (byte[] buffer, int index, int count) {
+            this.Write(Reactor.Buffer.Create(buffer, 0, count));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes this data to the stream then ends the stream.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(byte[] buffer) {
+            this.Write(buffer, 0, buffer.Length);
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes this data to the stream then ends the stream.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(string data) {
+            this.Write(System.Text.Encoding.UTF8.GetBytes(data));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes this data to the stream then ends the stream.
+        /// </summary>
+        /// <param name="format"></param>
+        /// <param name="args"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(string format, params object[] args) {
+            format = string.Format(format, args);
+            this.Write(System.Text.Encoding.UTF8.GetBytes(format));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes this data to the stream then ends the stream.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(byte data) {
+            this.Write(new byte[1] { data });
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Boolean value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(bool value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Int16 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(short value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.UInt16 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(ushort value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Int32 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(int value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.UInt32 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(uint value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Int64 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(long value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.UInt64 value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(ulong value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Single value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(float value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
+        }
+
+        /// <summary>
+        /// Writes a System.Double value to the stream then ends the stream.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns>A future resolved when this write has completed and the stream has ended.</returns>
+        public Reactor.Future End(double value) {
+            this.Write(BitConverter.GetBytes(value));
+            return this.End();
         }
 
         #endregion
@@ -641,17 +945,21 @@ namespace Reactor.File {
         #region Machine
 
         /// <summary>
-        /// Reads from the internal stream if we are
-        /// in a resume state.
+        /// Handles OnDrain events.
         /// </summary>
-        private void _Read () {
-            var expecting = (this.count - this.received);
-            reader.Read((int)expecting).Then(buffer => {
+        private void _Drain () {
+            this.ondrain.Emit();
+        }
+
+        /// <summary>
+        /// Begins reading from the underlying stream.
+        /// </summary>
+        private void _Read  () {
+            reader.Read().Then(buffer => {
                 if (buffer == null) {
                     this._End();
                     return;
                 }
-                this.received += buffer.Length;
                 this.buffer.Write(buffer);
                 buffer.Dispose();
                 switch (this.readmode) {
@@ -675,7 +983,7 @@ namespace Reactor.File {
         /// </summary>
         /// <param name="error"></param>
         private void _Error (Exception error) {
-            if (this.readstate != ReadState.Ended) {
+            if (this.readstate != ReadState.Ended) { 
                 this.onerror.Emit(error);
                 this._End();
             }
@@ -684,12 +992,21 @@ namespace Reactor.File {
         /// <summary>
         /// Terminates the stream.
         /// </summary>
-        private void _End () {
+        private void _End   () {
             if (this.readstate != ReadState.Ended) {
                 this.readstate = ReadState.Ended;
-                this.reader.Dispose();
-                this.buffer.Dispose();
-                this.onend.Emit();
+                    try {
+                        // specialized method to bring down
+                        // the connection gracefully when
+                        // accessing the transport directly.
+                        if(this.inuse)
+                            this.connection.Shutdown();
+                        this.reader.Dispose();
+                        this.writer.Dispose();
+                        this.buffer.Dispose();
+                    }
+                    catch { }
+                    this.onend.Emit();
             }
         }
 
@@ -701,117 +1018,14 @@ namespace Reactor.File {
         /// Disposes of this stream.
         /// </summary>
         public void Dispose() {
-            this._End();
+            this._End(); 
         }
 
         /// <summary>
-        /// Finalizer dispose.
+        /// Stream finalizer.
         /// </summary>
-        ~Reader() {
-            Loop.Post(() => { this._End(); });
-        }
-
-        #endregion
-
-        #region Statics
-
-        /// <summary>
-        /// Creates a new file reader.
-        /// </summary>
-        /// <param name="filename"></param>
-        /// <param name="mode"></param>
-        /// <param name="share"></param>
-        /// <returns></returns>
-        public static Reader Create(string filename, FileMode mode, FileShare share) {
-            return new Reader(filename, 0, long.MaxValue, mode, share);
-        }
-
-        /// <summary>
-        /// Creates a new file reader.
-        /// </summary>
-        /// <param name="filename"></param>
-        /// <param name="index"></param>
-        /// <param name="mode"></param>
-        /// <param name="share"></param>
-        /// <returns></returns>
-        public static Reader Create(string filename, long index, FileMode mode, FileShare share) {
-            return new Reader(filename, index, long.MaxValue, mode, share);
-        }
-
-        /// <summary>
-        /// Creates a new file reader.
-        /// </summary>
-        /// <param name="filename"></param>
-        /// <param name="index"></param>
-        /// <param name="count"></param>
-        /// <param name="mode"></param>
-        /// <param name="share"></param>
-        /// <returns></returns>
-        public static Reader Create(string filename, long index, long count, FileMode mode, FileShare share) {
-            return new Reader(filename, index, count, mode, share);
-        }
-
-        /// <summary>
-        /// Creates a new file reader.
-        /// </summary>
-        /// <param name="filename"></param>
-        /// <param name="mode"></param>
-        /// <returns></returns>
-        public static Reader Create(string filename, FileMode mode) {
-            return new Reader(filename, 0, long.MaxValue, mode, FileShare.Read);
-        }
-
-        /// <summary>
-        /// Creates a new file reader.
-        /// </summary>
-        /// <param name="filename"></param>
-        /// <param name="index"></param>
-        /// <param name="mode"></param>
-        /// <returns></returns>
-        public static Reader Create(string filename, long index, FileMode mode) {
-            return new Reader(filename, index, long.MaxValue, mode, FileShare.Read);
-        }
-
-        /// <summary>
-        /// Creates a new file reader.
-        /// </summary>
-        /// <param name="filename"></param>
-        /// <param name="index"></param>
-        /// <param name="count"></param>
-        /// <param name="mode"></param>
-        /// <returns></returns>
-        public static Reader Create(string filename, long index, long count, FileMode mode) {
-            return new Reader(filename, index, count, mode, FileShare.Read);
-        }
-
-        /// <summary>
-        /// Creates a new file reader.
-        /// </summary>
-        /// <param name="filename"></param>
-        /// <returns></returns>
-        public static Reader Create(string filename) {
-            return new Reader(filename, 0, long.MaxValue, FileMode.Open, FileShare.Read);
-        }
-
-        /// <summary>
-        /// Creates a new file reader.
-        /// </summary>
-        /// <param name="filename"></param>
-        /// <param name="index"></param>
-        /// <returns></returns>
-        public static Reader Create(string filename, long index) {
-            return new Reader(filename, index, long.MaxValue, FileMode.OpenOrCreate, FileShare.Read);
-        }
-
-        /// <summary>
-        /// Creates a new file reader.
-        /// </summary>
-        /// <param name="filename"></param>
-        /// <param name="index"></param>
-        /// <param name="count"></param>
-        /// <returns></returns>
-        public static Reader Create(string filename, long index, long count) {
-            return new Reader(filename, index, count, FileMode.OpenOrCreate, FileShare.Read);
+        ~ServerTransport() {
+            //Loop.Post(() => { this._End(); });
         }
 
         #endregion

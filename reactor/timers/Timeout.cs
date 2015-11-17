@@ -82,6 +82,32 @@ namespace Reactor {
             return new Reactor.Timeout(callback, 1);
         }
 
+        /// <summary>
+        /// Creates a new Timeout.
+        /// </summary>
+        /// <param name="interval"></param>
+        /// <returns></returns>
+        public static Reactor.Future Create(int interval) {
+            return new Reactor.Future((resolve, reject) => {
+                Reactor.Timeout.Create(() => {
+                    resolve();
+                }, interval);
+            });
+        }
+
+        /// <summary>
+        /// Creates a new Timeout.
+        /// </summary>
+        /// <param name="interval"></param>
+        /// <returns></returns>
+        public static Reactor.Future Create() {
+            return new Reactor.Future((resolve, reject) => {
+                Reactor.Timeout.Create(() => {
+                    resolve();
+                }, 1);
+            });
+        }
+
         #endregion
     }
 }

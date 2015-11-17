@@ -34,8 +34,8 @@ namespace Reactor {
     internal static class Settings {
 
         /// <summary>
-        /// The default buffer size. Used by Reactor.Buffer.
+        /// Used by stream readers to buffer incoming data.
         /// </summary>
-        public static int DefaultBufferSize  = 16384 * 4;
+        public static int DefaultReadBufferSize  = 16384 * 4; // 64kb 
     }
 }

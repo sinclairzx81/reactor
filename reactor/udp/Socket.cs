@@ -57,7 +57,7 @@ namespace Reactor.Udp {
         #endregion
 
         private System.Net.Sockets.Socket          socket;
-        private Reactor.Queue                      queue;
+        private Reactor.Scheduler                      queue;
         private Reactor.Event<Reactor.Udp.Message> onread;
         private Reactor.Event<System.Exception>    onerror;
         private Reactor.Event                      onend;
@@ -71,7 +71,7 @@ namespace Reactor.Udp {
         /// </summary>
         public Socket(int buffersize) {
             this.socket      = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            this.queue       = Reactor.Queue.Create(1);
+            this.queue       = Reactor.Scheduler.Create(1);
             this.onread      = Reactor.Event.Create<Reactor.Udp.Message>();
             this.onerror     = Reactor.Event.Create<System.Exception>();
             this.onend       = Reactor.Event.Create();
@@ -179,8 +179,8 @@ namespace Reactor.Udp {
             return new Reactor.Future<int>((resolve, reject) => {
                 this.SendTo(message)
                     .Then(resolve)
-                    .Error(reject)
-                    .Error(this._Error);
+                    .Catch(reject)
+                    .Catch(this._Error);
             });
         }
 
@@ -536,7 +536,7 @@ namespace Reactor.Udp {
                     this.onread.Emit(message);
                     this._Read();
                 }
-            }).Error(this._Error);
+            }).Catch(this._Error);
         }
 
         #endregion
@@ -569,7 +569,7 @@ namespace Reactor.Udp {
         /// </summary>
         /// <returns></returns>
         public static Socket Create() {
-            return new Socket(Reactor.Settings.DefaultBufferSize);
+            return new Socket(Reactor.Settings.DefaultReadBufferSize);
         }
 
         #endregion

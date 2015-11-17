@@ -229,7 +229,7 @@ namespace Reactor.Tcp {
                 catch (Exception error) {
                     this._Error(error);
                 }
-            }).Error(error => {
+            }).Catch(error => {
                 if(this.listening) 
                     this._Error(error);
             });

@@ -32,6 +32,7 @@ namespace Reactor.Udp {
     /// Encapsulates data passed over a udp socket.
     /// </summary>
     public class Message {
+        
         /// <summary>
         /// The target endpoint for this message.
         /// </summary>

@@ -32,220 +32,20 @@ using System.Collections.Generic;
 namespace Reactor {
 
     /// <summary>
-    /// Publish / Subscribe messaging channel.
+    /// Single source event. Provides a alternitive to .net events.
     /// </summary>
-    public class Event : IDisposable {
-        
-        #region Callback
+    /// <typeparam name="T">The type of message sent over this event</typeparam>
+    /// <example><![CDATA[
+    ///     var e = new Reactor.Event<string>();
+    ///     e.On(data => {
+    ///         Console.WriteLine(data);
+    ///     });
+    ///     e.Emit("1");
+    ///     e.Emit("2");
+    ///     e.Emit("3");
+    /// ]]>
+    /// </example>
 
-        /// <summary>
-        /// Event Callback.
-        /// </summary>
-        internal class Callback {
-            public bool           once;
-            public Reactor.Action action;
-        }
-
-        #endregion
-
-        #region Fields
-
-        internal class Fields {
-            public bool multicast;
-            public List<Callback> callbacks;
-            public Fields() {
-                this.multicast = true;
-                this.callbacks = new List<Callback>();
-            }
-        } private Fields fields;
-
-        #endregion
-
-        #region Constructors
-
-        /// <summary>
-        /// Creates a new Event.
-        /// </summary>
-        /// <param name="multicast"></param>
-        public Event(bool multicast) {
-            this.fields = new Fields();
-            this.fields.multicast = multicast;
-        }
-
-        /// <summary>
-        /// Creates a new multicast event.
-        /// </summary>
-        public Event() : this(true) { }
-
-        #endregion
-
-        #region Properties
-
-        /// <summary>
-        /// Indicates if this event is multicast.
-        /// </summary>
-        public bool Multicast {
-            get {  lock(this.fields) return this.fields.multicast; }
-        }
-
-        #endregion
-
-        #region Methods
-
-        /// <summary>
-        /// Subscribes this action to this event.
-        /// </summary>
-        /// <param name="action"></param>
-        public void On (Reactor.Action action) {
-            lock (this.fields) {
-                var callback = new Callback{action = action, once = false};
-                if (this.fields.multicast) {
-                    this.fields.callbacks.Add(callback);
-                }
-                else {
-                    if (this.fields.callbacks.Count == 0) {
-                        this.fields.callbacks.Add(callback);
-                    }
-                    else { 
-                        this.fields.callbacks[0] = callback;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Subscribes this action once to this event.
-        /// </summary>
-        /// <param name="callback"></param>
-        public void Once (Reactor.Action action) {
-            lock (this.fields) {
-                var callback = new Callback{action = action, once = true};
-                if (this.fields.multicast) {
-                    this.fields.callbacks.Add(callback);
-                }
-                else {
-                    if (this.fields.callbacks.Count == 0) {
-                        this.fields.callbacks.Add(callback);
-                    }
-                    else { 
-                        this.fields.callbacks[0] = callback;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Unsubscribes this action from this event.
-        /// </summary>
-        /// <param name="action"></param>
-        public void Remove (Reactor.Action action) {
-            lock (this.fields) {
-                for (int i = 0; i < this.fields.callbacks.Count; i++) {
-                    if (this.fields.callbacks[i].action == action) {
-                        this.fields.callbacks.Remove(this.fields.callbacks[i]);
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets all actions associated with this event.
-        /// </summary>
-        /// <returns></returns>
-        public IEnumerable<Reactor.Action> Subscribers () {
-            lock (this.fields) {
-                var clone = new List<Reactor.Action>();
-                foreach (var callback in this.fields.callbacks) {
-                    clone.Add(callback.action);
-                }
-                return clone;
-            }
-        }
-
-        /// <summary>
-        /// Emits this event.
-        /// </summary>
-        /// <param name="data"></param>
-        public void Emit () {
-            lock (this.fields) {
-                for (int i = 0; i < this.fields.callbacks.Count; i++) {
-                    var callback = this.fields.callbacks[i];
-                    if (callback.once) {
-                        this.fields.callbacks.Remove(callback);
-                    }
-                    callback.action();
-                }
-            }
-        }
-
-        #endregion
-
-        #region IDisposable
-
-        private bool disposed = false;
-        private void Dispose(bool disposing) {
-            lock (this.fields) {
-                this.fields.callbacks.Clear();
-                this.disposed = true;
-            }
-        }
-
-        public void Dispose() {
-            this.Dispose(true);
-        }
-
-        ~Event() {
-            this.Dispose(false);
-        }
-
-        #endregion
-
-        #region Statics
-
-        /// <summary>
-        /// Creates a new event.
-        /// </summary>
-        /// <param name="multicast"></param>
-        /// <returns></returns>
-        public static Event Create(bool multicast) {
-            return new Event(multicast);
-        }
-
-        /// <summary>
-        /// Creates a new multicast event.
-        /// </summary>
-        /// <returns></returns>
-        public static Event Create() {
-            return new Event(true);
-        }
-
-        /// <summary>
-        /// Creates a new event.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="multicast"></param>
-        /// <returns></returns>
-        public static Event<T> Create<T> (bool multicast){
-            return new Event<T>(multicast);
-        }
-
-        /// <summary>
-        /// Creates a new multicast event.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="multicast"></param>
-        /// <returns></returns>
-        public static Event<T> Create<T> (){
-            return new Event<T>(true);
-        }
-
-        #endregion
-    }
-
-    /// <summary>
-    /// Publisher / Subscriber messaging channel.
-    /// </summary>
-    /// <typeparam name="T">The type of message sent over this channel</typeparam>
     public class Event<T> : IDisposable {
 
         #region Callback
@@ -365,7 +165,7 @@ namespace Reactor {
         /// Gets all listeners for this event.
         /// </summary>
         /// <returns></returns>
-        public IEnumerable<Action<T>> Subscribers() {
+        public IEnumerable<Action<T>> Listeners() {
             lock (this.data) {
                 var clone = new List<Reactor.Action<T>>();
                 foreach (var callback in this.data.callbacks) {
@@ -409,6 +209,229 @@ namespace Reactor {
 
         ~Event() {
             this.Dispose(false);
+        }
+
+        #endregion
+    }
+
+    /// <summary>
+    /// Single source event. Provides a alternitive to .net events.
+    /// </summary>
+    /// <example><![CDATA[
+    ///     var e = new Reactor.Event();
+    ///     e.On(() => {
+    ///         Console.WriteLine("have event");
+    ///     });
+    ///     e.Emit();
+    ///     e.Emit();
+    ///     e.Emit();
+    /// ]]>
+    /// </example>
+    public class Event : IDisposable {
+        
+        #region Callback
+
+        /// <summary>
+        /// Event Callback.
+        /// </summary>
+        internal class Callback {
+            public bool           once;
+            public Reactor.Action action;
+        }
+
+        #endregion
+
+        #region Fields
+
+        internal class Fields {
+            public bool multicast;
+            public List<Callback> callbacks;
+            public Fields() {
+                this.multicast = true;
+                this.callbacks = new List<Callback>();
+            }
+        } private Fields fields;
+
+        #endregion
+
+        #region Constructors
+
+        /// <summary>
+        /// Creates a new Event.
+        /// </summary>
+        /// <param name="multicast"></param>
+        public Event(bool multicast) {
+            this.fields = new Fields();
+            this.fields.multicast = multicast;
+        }
+
+        /// <summary>
+        /// Creates a new multicast event.
+        /// </summary>
+        public Event() : this(true) { }
+
+        #endregion
+
+        #region Properties
+
+        /// <summary>
+        /// Indicates if this event is multicast.
+        /// </summary>
+        public bool Multicast {
+            get {  lock(this.fields) return this.fields.multicast; }
+        }
+
+        #endregion
+
+        #region Methods
+
+        /// <summary>
+        /// Subscribes this action to this event.
+        /// </summary>
+        /// <param name="action"></param>
+        public void On (Reactor.Action action) {
+            lock (this.fields) {
+                var callback = new Callback{action = action, once = false};
+                if (this.fields.multicast) {
+                    this.fields.callbacks.Add(callback);
+                }
+                else {
+                    if (this.fields.callbacks.Count == 0) {
+                        this.fields.callbacks.Add(callback);
+                    }
+                    else { 
+                        this.fields.callbacks[0] = callback;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Subscribes this action once to this event.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void Once (Reactor.Action action) {
+            lock (this.fields) {
+                var callback = new Callback{action = action, once = true};
+                if (this.fields.multicast) {
+                    this.fields.callbacks.Add(callback);
+                }
+                else {
+                    if (this.fields.callbacks.Count == 0) {
+                        this.fields.callbacks.Add(callback);
+                    }
+                    else { 
+                        this.fields.callbacks[0] = callback;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Unsubscribes this action from this event.
+        /// </summary>
+        /// <param name="action"></param>
+        public void Remove (Reactor.Action action) {
+            lock (this.fields) {
+                for (int i = 0; i < this.fields.callbacks.Count; i++) {
+                    if (this.fields.callbacks[i].action == action) {
+                        this.fields.callbacks.Remove(this.fields.callbacks[i]);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets all actions associated with this event.
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<Reactor.Action> Listeners () {
+            lock (this.fields) {
+                var clone = new List<Reactor.Action>();
+                foreach (var callback in this.fields.callbacks) {
+                    clone.Add(callback.action);
+                }
+                return clone;
+            }
+        }
+
+        /// <summary>
+        /// Emits this event.
+        /// </summary>
+        /// <param name="data"></param>
+        public void Emit () {
+            lock (this.fields) {
+                for (int i = 0; i < this.fields.callbacks.Count; i++) {
+                    var callback = this.fields.callbacks[i];
+                    if (callback.once) {
+                        this.fields.callbacks.Remove(callback);
+                    }
+                    callback.action();
+                }
+            }
+        }
+
+        #endregion
+
+        #region IDisposable
+
+        private bool disposed = false;
+        private void Dispose(bool disposing) {
+            lock (this.fields) {
+                this.fields.callbacks.Clear();
+                this.disposed = true;
+            }
+        }
+        /// <summary>
+        /// Disposes of this event and any listeners.
+        /// </summary>
+        public void Dispose() {
+            this.Dispose(true);
+        }
+
+        ~Event() {
+            this.Dispose(false);
+        }
+
+        #endregion
+
+        #region Statics
+
+        /// <summary>
+        /// Creates a new event.
+        /// </summary>
+        /// <param name="multicast"></param>
+        /// <returns></returns>
+        public static Event Create(bool multicast) {
+            return new Event(multicast);
+        }
+
+        /// <summary>
+        /// Creates a new multicast event.
+        /// </summary>
+        /// <returns></returns>
+        public static Event Create() {
+            return new Event(true);
+        }
+
+        /// <summary>
+        /// Creates a new event.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="multicast"></param>
+        /// <returns></returns>
+        public static Event<T> Create<T> (bool multicast){
+            return new Event<T>(multicast);
+        }
+
+        /// <summary>
+        /// Creates a new multicast event.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="multicast"></param>
+        /// <returns></returns>
+        public static Event<T> Create<T> (){
+            return new Event<T>(true);
         }
 
         #endregion

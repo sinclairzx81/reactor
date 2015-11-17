@@ -33,7 +33,7 @@ using System.IO;
 namespace Reactor.Process
 {
     /// <summary>
-    /// A operating system process with event streams for stdin, stdout and stderr.
+    /// Provides functionality to child OS processes and stream data via stdin/stdout/stderr.
     /// </summary>
     public class Process {
 

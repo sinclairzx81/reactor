@@ -41,10 +41,8 @@ namespace Reactor {
 
         #region Node
 
-        internal class Node
-        {
+        internal class Node {
             public T   Value;
-
             public Node Next;
         }
 

@@ -46,7 +46,7 @@
   <ItemGroup>
     <Compile Include="async\Event.cs" />
     <Compile Include="async\Future.cs" />
-    <Compile Include="async\Queue.cs" />
+    <Compile Include="async\Scheduler.cs" />
     <Compile Include="async\Racer.cs" />
     <Compile Include="buffer\Buffer.cs" />
     <Compile Include="dns\Dns.cs" />
@@ -54,8 +54,15 @@
     <Compile Include="file\Reader.cs" />
     <Compile Include="http\Context.cs" />
     <Compile Include="http\Server.cs" />
+    <Compile Include="http\ServerTransport.cs" />
     <Compile Include="http\ServerRequest.cs" />
     <Compile Include="http\ServerResponse.cs" />
+    <Compile Include="web\sockets\Socket.cs" />
+    <Compile Include="web\sockets\SocketRouter.cs" />
+    <Compile Include="web\sockets\protocol\Enums.cs" />
+    <Compile Include="web\sockets\protocol\Frame.cs" />
+    <Compile Include="web\sockets\protocol\Payload.cs" />
+    <Compile Include="web\sockets\protocol\Util.cs" />
     <Compile Include="ip\Message.cs" />
     <Compile Include="net\AuthenticationSchemes.cs" />
     <Compile Include="net\AuthenticationSchemeSelector.cs" />
@@ -86,20 +93,16 @@
     <Compile Include="net\WebHeaderCollection.cs" />
     <Compile Include="primitives\Tuple.cs" />
     <Compile Include="process\Current.cs" />
-    <Compile Include="stream\Reader.cs" />
-    <Compile Include="stream\Writer.cs" />
+    <Compile Include="io\Reader.cs" />
+    <Compile Include="io\Writer.cs" />
     <Compile Include="tcp\Socket.cs" />
     <Compile Include="udp\Message.cs" />
     <Compile Include="udp\Socket.cs" />
-    <Compile Include="domains\Domain.cs" />
     <Compile Include="file\Writer.cs" />
     <Compile Include="interfaces\IDuplexable.cs" />
     <Compile Include="interfaces\IReadable.cs" />
     <Compile Include="interfaces\IWriteable.cs" />
-    <Compile Include="loop\Context.cs" />
     <Compile Include="loop\Loop.cs" />
-    <Compile Include="loop\Messages.cs" />
-    <Compile Include="loop\Runtime.cs" />
     <Compile Include="primitives\Action.cs" />
     <Compile Include="primitives\Func.cs" />
     <Compile Include="ip\Socket.cs" />
@@ -116,6 +119,9 @@
     <Compile Include="tls\Socket.cs" />
     <Compile Include="udp\stun\Packet.cs" />
     <Compile Include="udp\stun\Stun.cs" />
+    <Compile Include="web\router\AppRouter.cs" />
+    <Compile Include="web\static\Mime.cs" />
+    <Compile Include="web\static\StaticRouter.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="process\Reader.cs" />
