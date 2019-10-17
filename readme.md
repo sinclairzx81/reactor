@@ -54,17 +54,20 @@ leverage Reactor to both consume realtime network services, as well as expose re
 	* [socket](#udp_socket)
 
 <a name='getting_started' />
+
 ### getting started
 
 The following section describes setting up a Reactor application.
 
 <a name='getting_started_event_loop' />
+
 #### the event loop
 
 At its core, reactor requires that users start an event loop. The reactor event loop internally demultiplexes asynchronous callback 
 operations back to the caller. The following describes recommended approaches to running a loop.
 
 <a name='getting_started_console_applications' />
+
 #### console applications
 
 The following describes running a reactor event loop in a typical console application. Calling Reactor.Loop.Start()
