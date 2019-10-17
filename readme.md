@@ -1,4 +1,5 @@
-# reactor
+# Reactor
+
 ## Asynchronous event driven IO for .net
 
 ```csharp
@@ -89,6 +90,7 @@ class Program
 ```
 
 <a name='getting_started_windows_forms_applications' />
+
 #### windows forms applications
 
 When developing UI applications, handling asynchronous callbacks typically requires the developer to manage 
@@ -123,6 +125,7 @@ public partial class Form1 : Form
 ```
 
 <a name='getting_started_unity3D_applications' />
+
 #### unity3D applications
 
 In Unity3D, a SynchronizationContext is not available to developers. Rather, Unity3D requires developers to 
@@ -151,12 +154,14 @@ public class MyGameObject : MonoBehaviour {
 ```
 
 <a name='timers' />
+
 ### timers
 
 Reactor comes bundled with two timing primitives, Timeouts and Intervals. These are
 fashioned after javascript setTimeout() and setInterval() respectively. 
 
 <a name='timers_timeout' />
+
 #### timeouts
 
 Use the Timeout class set a delay.
@@ -170,6 +175,7 @@ Reactor.Timeout.Create(() => {
 ```
 
 <a name='timers_interval' />
+
 #### intervals
 
 Use the Interval class setup a repeating interval.
@@ -196,6 +202,7 @@ interval = Reactor.Interval.Create(() => {
 }, 2000);
 ```
 <a name='buffers' />
+
 ### buffers
 
 Reactor has a single buffer primitive which is used to buffer data in memory, and to act as
@@ -224,6 +231,7 @@ Reactor.Tcp.Server.Create(socket => {
 ```
 
 <a name='streams' />
+
 ### streams
 
 Reactor aligns closely with the evented io model found in nodejs. Reactor implements IReadable, 
@@ -245,6 +253,7 @@ Reactor.Http.Server.Create(context => {
 ```
 
 <a name='streams_readstream' />
+
 #### IReadable
 
 Supports OnData, OnEnd and OnError events. As well as Pause(), Resume() and Pipe().
@@ -271,6 +280,7 @@ readstream.OnError += (error) => {
 ```
 
 <a name='streams_writestream' />
+
 #### IWriteable
 
 Supports Write(), Flush() and End() operations on a underlying stream.
@@ -288,11 +298,13 @@ writestream.End();
 ```
 
 <a name='files' />
+
 ### files
 
 Reactor provides a evented abstraction for the .net type System.IO.FileStream. The following outlines its use.
 
 <a name='files_readstream' />
+
 #### readstream
 
 The following creates a reactor file readstream. The example outputs its contents to the console window.
@@ -306,6 +318,7 @@ readstream.OnEnd  += ()     => Console.Write("finished reading");
 ```
 
 <a name='files_writestream' />
+
 #### writestream
 
 The followinf creates a reactor file writestream. The example writes data and ends the stream when complete.
@@ -320,11 +333,13 @@ writestream.End();
 ```
 
 <a name='http' />
+
 ### http
 
 Reactor provides a evented abstraction over the http bcl classes.
 
 <a name='http_server' />
+
 #### server
 
 The following will create a simple http server and listen on port 8080.
@@ -343,6 +358,7 @@ The reactor http server passes a 'context' for each request. The context object 
 are in themselves, implementations of IReadable and IWritable respectively.
 
 <a name='http_request' />
+
 #### request
 
 Reactor provides a evented abstraction over both HttpWebRequest and HttpWebResponse classes. 
@@ -381,11 +397,13 @@ request.End();
 
 
 <a name='tcp' />
+
 ### tcp
 
 Reactor provides a evented abstraction over the System.Net.Sockets.Socket TCP socket.
 
 <a name='tcp_server' />
+
 #### server
 
 Create a tcp socket server. The following example emits the message "hello world" to a connecting client, 
@@ -402,6 +420,7 @@ Reactor.Tcp.Server.Create(socket => {
 ```
 
 <a name='tcp_socket' />
+
 #### socket
 
 Reactor tcp sockets are evented abstractions over System.Net.Socket.Socket. Tcp sockets are implementations
@@ -419,12 +438,14 @@ client.OnConnect += () => { // wait for connection.
 ```
 
 <a name='udp' />
+
 ### udp
 
 Reactor provides a evented abstraction over a System.Net.Sockets.Socket for UDP sockets. The following 
 demonstrates setting up two udp endpoints, and exchanging messages between both.
 
 <a name='udp_socket' />
+
 #### socket
 
 The following demonstrates setting up two sockets, one to connect to the other.
@@ -456,11 +477,13 @@ b.Send(IPAddress.Loopback, 5000, System.Text.Encoding.UTF8.GetBytes("hello from 
 ```
 
 <a name='threads' />
+
 ### threads
 
 Reactor has the ability to execute threads within the applications thread pool.
 
 <a name='threads_worker' />
+
 #### async tasks
 
 In the following example, a 'task' is created which accepts an integer argument, and returns a integer. Inside the 
