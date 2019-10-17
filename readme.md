@@ -1,5 +1,5 @@
 # reactor
-## asynchronous evented io for .net
+## Asynchronous event driven IO for .net
 
 ```csharp
 Reactor.Loop.Start();
@@ -15,7 +15,7 @@ var server = Reactor.Http.Server.Create(context => {
 
 ### overview
 
-Reactor is a evented, asynchronous io and networking framework written for Microsoft.Net, Mono, Xamarin, and Unity3D
+Reactor is a event driven, asynchronous io and networking framework written for Microsoft.Net, Mono, Xamarin, and Unity3D
 platforms. Reactor is heavily influenced by libuv and nodejs, and aims to mirror both their feature set, and ultimately 
 provide easy interoperability between .net applications and real-time network services.
 
